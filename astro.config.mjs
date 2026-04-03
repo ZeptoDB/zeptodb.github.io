@@ -18,18 +18,33 @@ export default defineConfig({
       defaultLocale: 'root',
       locales: {
         root: { label: 'English', lang: 'en' },
-        ko: { label: '한국어', lang: 'ko' },
       },
       customCss: ['./src/styles/brand.css'],
       components: {
         Header: './src/components/Header.astro',
       },
       sidebar: [
-        { label: 'Getting Started', autogenerate: { directory: 'getting-started' } },
-        { label: 'API Reference', autogenerate: { directory: 'api' } },
-        { label: 'Deployment', autogenerate: { directory: 'deployment' } },
-        { label: 'Operations', autogenerate: { directory: 'operations' } },
-        { label: 'Feed Handlers', autogenerate: { directory: 'feeds' } },
+        // ── Docs & Reference (sidebar) ──
+        {
+          label: 'Getting Started',
+          autogenerate: { directory: 'getting-started' },
+        },
+        {
+          label: 'API Reference',
+          autogenerate: { directory: 'api' },
+        },
+        {
+          label: 'Deployment',
+          autogenerate: { directory: 'deployment' },
+        },
+        {
+          label: 'Operations',
+          autogenerate: { directory: 'operations' },
+        },
+        {
+          label: 'Feed Handlers',
+          autogenerate: { directory: 'feeds' },
+        },
       ],
     }),
   ],
