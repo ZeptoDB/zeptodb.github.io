@@ -16,8 +16,17 @@ const SOURCE = process.argv[2] || process.env.ZEPTODB_DOCS_PATH || join(import.m
 const DEST = join(import.meta.dirname, '..', 'src', 'content', 'docs');
 
 const SKIP = new Set(['assets', 'requirements.txt', 'requirements']);
+// Directories that are internal-only (not for public docs site)
+const INTERNAL = new Set([
+  'business', 'devlog', 'design', 'bench', 'community', 'ops',
+]);
 // Files we manage manually in the repo (don't overwrite)
 const MANUAL_FILES = new Set(['index.md']);
+// Standalone internal files to exclude (relative to docs root)
+const INTERNAL_FILES = new Set([
+  'backlog.md', 'completed.md', 'api_reference.md',
+  'brand_guidelines.md', 'parquet_s3_activation.md', 'web_ui.md',
+]);
 
 function extractTitle(content) {
   const match = content.match(/^#\s+(.+)$/m);
@@ -74,6 +83,7 @@ async function getAllMdFiles(dir, base = dir) {
     const full = join(dir, entry.name);
     if (SKIP.has(entry.name)) continue;
     if (entry.isDirectory()) {
+      if (INTERNAL.has(entry.name)) continue;
       files.push(...await getAllMdFiles(full, base));
     } else if (entry.name.endsWith('.md')) {
       files.push({ full, rel: relative(base, full) });
@@ -120,6 +130,8 @@ async function main() {
 
     // Skip root index.md — we have a custom index.mdx
     if (rel === 'index.md') continue;
+    // Skip internal standalone files
+    if (INTERNAL_FILES.has(rel)) continue;
 
     if (name.endsWith('.ko.md')) {
       // Korean → ko/ subdirectory, strip .ko
