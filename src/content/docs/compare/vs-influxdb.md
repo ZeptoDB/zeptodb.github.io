@@ -50,4 +50,4 @@ InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targe
 
 ---
 
-Get started with the [Quick Start Guide](/ZeptoDB-site/getting-started/quick_start/).
+Get started with the [Quick Start Guide](/getting-started/quick_start/).

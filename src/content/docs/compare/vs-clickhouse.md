@@ -61,4 +61,4 @@ ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-
 | Ingestion (single stream) | 5.52M/sec | ~100K/sec |
 | Python result access | 522ns | ~1ms (serialization) |
 
-Get started with the [Quick Start Guide](/ZeptoDB-site/getting-started/quick_start/).
+Get started with the [Quick Start Guide](/getting-started/quick_start/).

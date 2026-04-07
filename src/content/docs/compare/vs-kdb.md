@@ -63,4 +63,4 @@ ZeptoDB supports the same temporal operations as kdb+ with SQL syntax:
 | `mavg[50; price]` | `mavg(price, 50)` |
 | `wj[w; \`sym\`time; trades; (quotes; (max;bid); (min;ask))]` | `trades WINDOW JOIN quotes ...` |
 
-Get started with the [Quick Start Guide](/ZeptoDB-site/getting-started/quick_start/).
+Get started with the [Quick Start Guide](/getting-started/quick_start/).
