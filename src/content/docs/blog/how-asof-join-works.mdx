@@ -1,0 +1,112 @@
+---
+title: "How ASOF JOIN Works in ZeptoDB"
+description: "A deep dive into ZeptoDB's ASOF JOIN — from SQL parsing to SIMD-accelerated merge."
+---
+
+ASOF JOIN is the single most important operation in time-series analytics. It answers: "for each row in the left table, find the most recent matching row in the right table." This is how you join trades with the latest quote, sensor readings with the nearest calibration, or any event with its temporal context.
+
+---
+
+## The Problem
+
+Standard SQL JOINs match on equality. But time-series data rarely has exact timestamp matches:
+
+```
+trades:  10:00:00.001  AAPL  150.25
+         10:00:00.003  AAPL  150.30
+
+quotes:  10:00:00.000  AAPL  bid=150.20  ask=150.30
+         10:00:00.002  AAPL  bid=150.25  ask=150.35
+```
+
+An equi-join on timestamp would return nothing. An ASOF JOIN returns the correct point-in-time view:
+
+```sql
+SELECT t.ts, t.price, q.bid, q.ask
+FROM trades t
+ASOF JOIN quotes q ON t.sym = q.sym AND t.ts >= q.ts
+```
+
+| trade ts | price | bid | ask |
+|----------|-------|-----|-----|
+| 10:00:00.001 | 150.25 | 150.20 | 150.30 |
+| 10:00:00.003 | 150.30 | 150.25 | 150.35 |
+
+---
+
+## Implementation
+
+ZeptoDB's ASOF JOIN uses a sorted merge algorithm. Both tables are sorted by the join key (timestamp), then merged in a single pass:
+
+```
+Left pointer  →  [t1, t2, t3, ...]    (trades, sorted by ts)
+Right pointer →  [q1, q2, q3, ...]    (quotes, sorted by ts)
+
+For each left row:
+  Advance right pointer while right.ts <= left.ts
+  The current right row is the ASOF match
+```
+
+This is O(n + m) — linear in the size of both tables. No hash table, no nested loop.
+
+### Why It's Fast
+
+1. **Columnar layout**: Timestamp columns are contiguous in memory — sequential scan is cache-friendly
+2. **Sorted data**: Time-series data arrives in order. The column store maintains sort order, so no pre-sort is needed
+3. **SIMD scan**: Highway SIMD accelerates the pointer advancement with vectorized comparisons
+4. **Zero allocation**: The merge produces output indices, not copied rows. Final materialization happens once
+
+### Window JOIN Variant
+
+ZeptoDB also supports Window JOIN — match within a time window rather than "most recent":
+
+```sql
+SELECT *
+FROM sensors s
+WINDOW JOIN calibration c
+  ON s.device = c.device
+  AND s.ts BETWEEN c.ts - interval '5 seconds' AND c.ts
+```
+
+This uses the same sorted merge with a sliding window, maintaining a deque of candidate matches.
+
+---
+
+## SQL Parsing
+
+The SQL parser recognizes ASOF JOIN as a first-class join type:
+
+```
+join_clause := table_ref 'ASOF' 'JOIN' table_ref 'ON' join_condition
+join_condition := equi_condition 'AND' temporal_condition
+temporal_condition := left.ts '>=' right.ts
+```
+
+The AST node carries the join type, equi-columns (symbol), and temporal column (timestamp) separately, so the executor can choose the optimal merge strategy.
+
+---
+
+## Benchmarks
+
+On 1M trades ASOF JOIN 1M quotes (single symbol):
+
+| Metric | Value |
+|--------|-------|
+| Latency | 12ms |
+| Throughput | 83M rows/sec |
+| Memory | Zero additional allocation (index-only merge) |
+
+For multi-symbol joins, ZeptoDB partitions by symbol and merges each partition independently — enabling parallel execution across cores.
+
+---
+
+## kdb+ Compatibility
+
+If you're migrating from kdb+, the mapping is straightforward:
+
+| kdb+ | ZeptoDB SQL |
+|------|-------------|
+| `aj[\`sym\`time; trades; quotes]` | `trades ASOF JOIN quotes ON sym, ts` |
+| `wj[w; \`sym\`time; trades; (quotes; (max;bid); (min;ask))]` | `trades WINDOW JOIN quotes ON sym, ts WITHIN interval '100ms'` |
+
+See the [SQL Reference](/api/sql_reference/) for full syntax.

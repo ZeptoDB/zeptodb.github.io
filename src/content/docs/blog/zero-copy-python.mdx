@@ -1,0 +1,111 @@
+---
+title: "Zero-Copy Python: 522ns to NumPy"
+description: "How ZeptoDB achieves sub-microsecond Python query results using memory-mapped column views."
+---
+
+Most databases serialize query results into bytes, send them over a socket, and deserialize on the Python side. ZeptoDB skips all of that. A Python query result is a NumPy array that directly references the engine's in-memory column — no copy, no serialization, 522 nanoseconds.
+
+---
+
+## How It Works
+
+ZeptoDB's column store uses an arena allocator. Each column is a contiguous array of fixed-width values (int64, float64, etc.) in memory. The Python binding exposes these arrays directly:
+
+```cpp
+// C++ side: pybind11 binding
+py::capsule base(raw_ptr, [](void*) { /* no-op destructor */ });
+return py::array_t<int64_t>(
+    { static_cast<py::ssize_t>(nrows) },
+    { sizeof(int64_t) },
+    raw_ptr,
+    base  // prevents NumPy from freeing the memory
+);
+```
+
+The key trick: `py::capsule` with a no-op destructor. NumPy thinks it owns the memory (so it won't complain), but the actual ownership stays with ZeptoDB's arena allocator. You can verify this:
+
+```python
+import zeptodb
+db = zeptodb.Pipeline()
+# ... ingest data ...
+col = db.get_column("trades", "price")
+print(col.flags['OWNDATA'])  # False — zero-copy confirmed
+```
+
+---
+
+## Lazy DSL: Polars-Style API
+
+Beyond raw column access, ZeptoDB provides a lazy evaluation DSL inspired by Polars:
+
+```python
+df = db.table("trades", symbol="AAPL")
+
+# Nothing executes yet — builds an expression tree
+result = df[df['price'] > 15000]['volume'].sum()
+
+# Execution happens here, in C++
+value = result.collect()
+
+# Second call hits cache — no re-execution
+value2 = result.collect()
+```
+
+The expression tree is:
+
+```
+DataFrame(symbol="AAPL")
+  └── Filter(price > 15000)
+        └── Select('volume')
+              └── Aggregate(sum)
+                    └── LazyResult (cached after first collect)
+```
+
+Each `collect()` call dispatches to the C++ engine — SIMD-accelerated filter, vectorized aggregation, zero-copy result.
+
+---
+
+## Benchmarks: ZeptoDB vs Polars
+
+100K rows, single symbol, measured with `timeit`:
+
+| Operation | ZeptoDB | Polars Lazy | Speedup |
+|-----------|---------|-------------|---------|
+| VWAP | **56.9μs** | 228.7μs | **4.0x** |
+| Filter+Sum | **66.9μs** | 98.8μs | **1.5x** |
+| COUNT | **716ns** | 26.3μs | **36.7x** |
+| get_column | **522ns** | 760ns | **1.5x** |
+
+COUNT is 37x faster because ZeptoDB only needs to read partition metadata — no scan at all. VWAP is 4x faster thanks to SIMD 8-way unrolled accumulation with FMA instructions.
+
+---
+
+## Arrow Flight: Zero-Copy Over the Network
+
+For remote clients, ZeptoDB exposes an Arrow Flight server (gRPC on port 8815). Query results stream as Arrow RecordBatches — columnar format that Polars, Pandas, and DuckDB can consume without deserialization:
+
+```python
+import pyarrow.flight as fl
+import polars as pl
+
+client = fl.connect("grpc://zeptodb-host:8815")
+reader = client.do_get(fl.Ticket(b"SELECT * FROM trades WHERE sym='AAPL'"))
+df = pl.from_arrow(reader.read_all())
+```
+
+---
+
+## The Tradeoff
+
+Zero-copy means the Python array is a **view** into engine memory. If the engine modifies or deallocates the underlying column (e.g., partition compaction), the view becomes invalid. ZeptoDB handles this with reference counting on partitions — a partition won't be freed while any Python view references it.
+
+For long-lived analysis, call `.copy()` to own the data:
+
+```python
+col = db.get_column("trades", "price")
+owned = col.copy()  # now safe even if engine reclaims memory
+```
+
+---
+
+Get started: [Python Reference →](/api/python_reference/) · [Quick Start →](/getting-started/quick_start/)

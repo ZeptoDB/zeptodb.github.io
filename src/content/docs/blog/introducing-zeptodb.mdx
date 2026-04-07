@@ -1,0 +1,72 @@
+---
+title: "Introducing ZeptoDB"
+description: "Why we built an open-source microsecond time-series database — and how it compares to kdb+, ClickHouse, and InfluxDB."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+The time-series database market has a gap. kdb+ delivers microsecond performance but costs $100K+/year and requires learning a proprietary language. ClickHouse and InfluxDB are affordable but operate at millisecond latency — 100-1000x slower for real-time workloads. None offer zero-copy Python integration for ML pipelines.
+
+ZeptoDB closes this gap.
+
+---
+
+## The Architecture
+
+ZeptoDB is a C++20 in-memory columnar database built from scratch for microsecond-latency time-series workloads. The core pipeline:
+
+```
+Feed Handler → MPMC Ring Buffer → Column Store → SIMD/JIT Query Engine
+                    ↓
+                   WAL (crash recovery)
+                    ↓
+               Parquet HDB (S3/NFS)
+```
+
+Every layer is designed around a single principle: **zero-copy, zero-allocation on the hot path**.
+
+- **Ingestion**: Lock-free MPMC ring buffer with Highway SIMD batch copy — 5.52M events/sec
+- **Storage**: Arena allocator with columnar layout, no malloc during ingestion or query
+- **Execution**: LLVM JIT compiles SQL to native code, Highway SIMD for vectorized aggregation
+- **Python**: pybind11 zero-copy — NumPy arrays reference engine memory directly (522ns)
+
+---
+
+## How It Compares
+
+| | kdb+ | ClickHouse | InfluxDB | ZeptoDB |
+|---|---|---|---|---|
+| Latency | μs | ms | ms | **μs** |
+| Ingestion | ~5M/sec | 100K/sec | 50K/sec | **5.52M/sec** |
+| SQL | ✗ (q lang) | ✓ | InfluxQL | **✓ Standard SQL** |
+| Python | IPC | — | — | **522ns zero-copy** |
+| ASOF JOIN | ✓ | ✗ | ✗ | **✓** |
+| License | $100K+/yr | OSS | OSS | **OSS (Apache 2.0)** |
+
+---
+
+## Who Is It For?
+
+<CardGrid>
+  <Card title="Quant Researchers" icon="star">
+    ASOF JOIN, VWAP, EMA, xbar — the temporal operations you need, in standard SQL. Python zero-copy for notebooks.
+  </Card>
+  <Card title="Trading Desks" icon="rocket">
+    5.52M ticks/sec ingestion with built-in FIX 4.4, ITCH, and exchange WebSocket parsers.
+  </Card>
+  <Card title="IoT / Robotics" icon="seti:clock">
+    10KHz sensor ingestion, Window JOIN for sensor fusion, Parquet HDB for historical replay.
+  </Card>
+</CardGrid>
+
+---
+
+## What's Next
+
+ZeptoDB is open source under Apache 2.0. We're actively developing:
+
+- MQTT / OPC-UA connectors for industrial IoT
+- JDBC/ODBC drivers for BI tool integration
+- Managed cloud offering
+
+Try it: [Quick Start →](/getting-started/quick_start/)

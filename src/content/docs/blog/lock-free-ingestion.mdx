@@ -1,0 +1,108 @@
+---
+title: "Lock-Free Ingestion at 5.52M Events/sec"
+description: "Inside ZeptoDB's MPMC ring buffer — design decisions, SIMD batch copy, and Highway vectorization."
+---
+
+ZeptoDB ingests 5.52 million events per second on a single node. This post explains how — from the lock-free ring buffer to Highway SIMD batch copy to the LLVM JIT query engine that processes the data.
+
+---
+
+## The Pipeline
+
+```
+Feed Handler → Ring Buffer (MPMC) → Drain Thread → Column Store → Query Engine
+                                         ↓
+                                        WAL
+```
+
+Every component on this path is designed for zero allocation and zero contention.
+
+### Ring Buffer: Lock-Free MPMC
+
+The ingestion entry point is a multi-producer, multi-consumer (MPMC) ring buffer. Multiple feed handlers can write concurrently without locks:
+
+- **Atomic sequence numbers** for coordination — no mutex, no spinlock
+- **Power-of-2 sizing** for bitwise modulo (mask instead of division)
+- **Cache-line padding** between producer and consumer counters to prevent false sharing
+- **Batch drain**: the consumer thread pulls up to N items per iteration, amortizing the atomic overhead
+
+### Drain Thread: Dedicated Core
+
+A single background thread drains the ring buffer into the column store. On bare-metal deployments, this thread is pinned to a dedicated CPU core with `pthread_setaffinity_np` — no context switches, no scheduler interference.
+
+### Column Store: Arena Allocator
+
+Each partition uses an arena allocator — a pre-allocated memory block with bump-pointer allocation. Appending a tick is a pointer increment, not a `malloc` call. The columnar layout means each field (timestamp, price, volume, symbol) is stored in a contiguous array, maximizing SIMD and cache efficiency.
+
+---
+
+## Highway SIMD
+
+ZeptoDB uses Google's [Highway](https://github.com/google/highway) library for portable SIMD. Highway compiles each function for multiple targets (SSE4, AVX2, AVX-512, NEON) and selects the optimal one at runtime.
+
+### Vectorized Operations
+
+| Operation | Technique | Cache-Hot Speedup |
+|-----------|-----------|-------------------|
+| `sum_i64` | 4 independent accumulators + `ReduceSum` | **4.2x** |
+| `filter_gt` | Mask → `StoreMaskBits` → bit traversal | **2.6x** |
+| `vwap` | `ConvertTo(i64→f64)` + `MulAdd` FMA pipeline | **2.5x** |
+
+The key insight: **4 independent accumulators** for sum. A single accumulator creates a pipeline dependency (each add waits for the previous). Four accumulators let the CPU execute 4 additions in parallel via instruction-level parallelism.
+
+For filter, SIMD replaces scalar `if` branches with mask-based predication — eliminating branch mispredictions entirely.
+
+### Cache Behavior
+
+On cache-resident data (100K rows, ~800KB — fits in L2):
+- SIMD delivers 2.5-4.2x speedup — compute-bound, SIMD wins big
+
+On memory-bound data (10M rows, ~80MB — exceeds L3):
+- Pure reads (sum) are bandwidth-limited — only 1.2x
+- Compute-intensive ops (filter, VWAP) still improve 1.8-2.3x
+
+This matches the DataBlock pipeline design: queries process 8192-row blocks that fit in L1/L2 cache, where SIMD is maximally effective.
+
+---
+
+## LLVM JIT
+
+Filter expressions are compiled to native code via LLVM OrcJIT v2:
+
+```
+SQL WHERE clause → Parser → AST → LLVM IR → Native function pointer
+```
+
+The compiled function has signature `bool (*)(int64_t price, int64_t volume)` — a direct function pointer call, no virtual dispatch. Compilation takes ~2.6ms; the result is cached for repeated queries.
+
+---
+
+## Feed Handlers
+
+Built-in parsers for common market data protocols:
+
+| Protocol | Throughput | Parse Latency |
+|----------|-----------|---------------|
+| FIX 4.4 | 1.1M msg/sec | 420ns |
+| ITCH | 2.8M msg/sec | 180ns |
+| Binance WS | 850K msg/sec | 580ns |
+| Kafka | 3.2M msg/sec | batch |
+
+Each feed handler runs in its own thread and writes directly to the ring buffer — no intermediate queue, no serialization.
+
+---
+
+## Bare-Metal Tuning
+
+For maximum throughput on dedicated hardware:
+
+- **CPU pinning**: Feed handler threads on producer cores, drain thread on a dedicated core
+- **NUMA awareness**: Allocate ring buffer and column store on the same NUMA node
+- **Huge pages**: 2MB huge pages for arena allocator — fewer TLB misses
+- **io_uring**: Async WAL writes via io_uring — no `fsync` blocking the hot path
+
+See [Bare Metal Tuning →](/deployment/bare_metal_tuning/) for the full guide.
+
+---
+
+Get started: [Quick Start →](/getting-started/quick_start/) · [Feed Handler Guide →](/feeds/feed_handler_guide/)
