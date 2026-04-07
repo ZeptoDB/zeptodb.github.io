@@ -6,32 +6,11 @@ next: false
 description: "ZeptoDB engineering blog — performance deep dives, release notes, and tutorials"
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import BlogList from '../../../components/BlogList.astro';
 
 ## Latest Posts
 
-<CardGrid>
-  <Card title="Introducing ZeptoDB" icon="star">
-    Why we built an open-source microsecond time-series database — and how it compares to kdb+, ClickHouse, and InfluxDB.
-
-    [Read →](/blog/introducing-zeptodb/)
-  </Card>
-  <Card title="How ASOF JOIN Works" icon="seti:clock">
-    A deep dive into ZeptoDB's ASOF JOIN implementation — from SQL parsing to SIMD-accelerated sorted merge.
-
-    [Read →](/blog/how-asof-join-works/)
-  </Card>
-  <Card title="Zero-Copy Python: 522ns to NumPy" icon="seti:python">
-    How we achieved sub-microsecond Python query results using memory-mapped column views and pybind11.
-
-    [Read →](/blog/zero-copy-python/)
-  </Card>
-  <Card title="Lock-Free Ingestion at 5.52M events/sec" icon="rocket">
-    Inside the MPMC ring buffer: design decisions, Highway SIMD batch copy, and LLVM JIT compilation.
-
-    [Read →](/blog/lock-free-ingestion/)
-  </Card>
-</CardGrid>
+<BlogList />
 
 ---
 

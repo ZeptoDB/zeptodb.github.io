@@ -45,6 +45,18 @@ export default defineConfig({
           label: 'Feed Handlers',
           autogenerate: { directory: 'feeds' },
         },
+        // ── Product pages in sidebar ──
+        {
+          label: 'Product',
+          items: [
+            { label: 'Security', slug: 'security' },
+            { label: 'Integrations', slug: 'integrations' },
+          ],
+        },
+        {
+          label: 'Blog',
+          autogenerate: { directory: 'blog' },
+        },
       ],
     }),
   ],
