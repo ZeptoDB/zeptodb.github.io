@@ -1,7 +1,3 @@
-# ZeptoDB-site: Build & Deploy to GitHub Pages
-# Triggered by:
-#   1. Push to main (site code changes)
-#   2. repository_dispatch from ZeptoDB repo (docs changes)
 name: Build & Deploy
 
 on:
@@ -42,10 +38,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm install
+        run: pnpm install --no-frozen-lockfile
 
       - name: Sync docs from ZeptoDB repo
         run: node scripts/sync-docs.mjs zeptodb-source/docs
