@@ -1,10 +1,12 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
+import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
   site: 'https://zeptodb.github.io',
   integrations: [
+    sitemap(),
     starlight({
       title: 'ZeptoDB',
       logo: {
@@ -22,6 +24,7 @@ export default defineConfig({
       customCss: ['./src/styles/brand.css'],
       components: {
         Header: './src/components/Header.astro',
+        Head: './src/components/Head.astro',
       },
       sidebar: [
         // ── Docs & Reference (sidebar) ──

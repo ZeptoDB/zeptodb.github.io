@@ -33,12 +33,28 @@ function extractTitle(content) {
   return match ? match[1].trim() : null;
 }
 
+function extractDescription(body) {
+  // Find first non-empty line that isn't a heading, frontmatter, or markdown syntax
+  const lines = body.split('\n');
+  for (const line of lines) {
+    const trimmed = line.trim();
+    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('|') || trimmed.startsWith('```') || trimmed.startsWith('---') || trimmed.startsWith('- [')) continue;
+    // Strip markdown formatting
+    const clean = trimmed.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').trim();
+    if (clean.length >= 20) return clean.length > 160 ? clean.slice(0, 157) + '...' : clean;
+  }
+  return '';
+}
+
 function addFrontmatter(content, fallbackTitle) {
   if (content.startsWith('---')) return content;
   const title = extractTitle(content) || fallbackTitle;
   // Remove the first # heading that matches the title to avoid duplication
   const body = content.replace(/^#\s+.+\n*/m, '');
-  return `---\ntitle: "${title.replace(/"/g, '\\"')}"\n---\n\n${body}`;
+  // Auto-generate description from first non-empty paragraph
+  const desc = extractDescription(body);
+  const descLine = desc ? `\ndescription: "${desc.replace(/"/g, '\\"')}"` : '';
+  return `---\ntitle: "${title.replace(/"/g, '\\"')}"${descLine}\n---\n\n${body}`;
 }
 
 /**

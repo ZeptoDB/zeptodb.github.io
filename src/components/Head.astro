@@ -1,0 +1,25 @@
+---
+import type { Props } from '@astrojs/starlight/props';
+import Default from '@astrojs/starlight/components/Head.astro';
+
+const ogImage = new URL('/og-default.png', Astro.site);
+
+const jsonLd = JSON.stringify({
+  '@context': 'https://schema.org',
+  '@type': 'SoftwareApplication',
+  name: 'ZeptoDB',
+  url: 'https://zeptodb.github.io',
+  applicationCategory: 'Database',
+  operatingSystem: 'Linux',
+  description: 'Ultra-low latency in-memory time-series database for trading, IoT, and robotics.',
+  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+});
+---
+
+<Default {...Astro.props}><slot /></Default>
+
+<!-- Starlight already handles og:title, og:description, og:url, og:type, twitter:card, meta description -->
+<!-- We add only what's missing: images and structured data -->
+<meta property="og:image" content={ogImage.href} />
+<meta name="twitter:image" content={ogImage.href} />
+<script type="application/ld+json" set:html={jsonLd} />
