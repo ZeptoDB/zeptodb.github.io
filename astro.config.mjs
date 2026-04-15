@@ -4,7 +4,7 @@ import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 
 export default defineConfig({
-  site: 'https://zeptodb.github.io',
+  site: 'https://zeptodb.com',
   integrations: [
     sitemap(),
     starlight({
@@ -16,6 +16,7 @@ export default defineConfig({
       },
       social: [
         { icon: 'github', label: 'GitHub', href: 'https://github.com/zeptodb/zeptodb' },
+        { icon: 'discord', label: 'Discord', href: 'https://discord.gg/PAtzvCa7' },
       ],
       defaultLocale: 'root',
       locales: {
@@ -54,6 +55,7 @@ export default defineConfig({
           items: [
             { label: 'Security', slug: 'security' },
             { label: 'Integrations', slug: 'integrations' },
+            { label: 'Community', slug: 'community' },
           ],
         },
         {
