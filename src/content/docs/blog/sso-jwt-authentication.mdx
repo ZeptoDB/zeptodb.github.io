@@ -1,0 +1,140 @@
+---
+title: "SSO and JWT Authentication: From JWKS to Multi-IdP Support"
+description: "How ZeptoDB evolved its authentication from static JWT keys to full SSO with JWKS auto-fetch, multi-IdP routing, group-to-role mapping, OIDC discovery, and token refresh."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Enterprise databases need to integrate with existing identity infrastructure. ZeptoDB's SSO journey went from static JWT keys to a full multi-IdP authentication system with OIDC discovery, server-side sessions, and token refresh — all without breaking the existing API key auth.
+
+---
+
+## Authentication Priority Chain
+
+```
+Incoming Request
+       │
+       ▼
+┌──────────────────────┐
+│ SSO Identity Provider │──→ issuer-routed, multi-IdP
+└──────────┬───────────┘
+           │ unmatched
+┌──────────┴───────────┐
+│ JWT Validator         │──→ single-IdP fallback
+└──────────┬───────────┘
+           │ unmatched
+┌──────────┴───────────┐
+│ API Key Store         │──→ traditional key auth
+└──────────────────────┘
+```
+
+Each layer falls through gracefully — unmatched tokens pass to the next authenticator.
+
+---
+
+## Phase 1: JWKS Auto-Fetch and CLI Flags
+
+```bash
+zepto_http_server \
+  --jwt-issuer "https://corp.okta.com/oauth2/default" \
+  --jwt-audience "zeptodb-prod" \
+  --jwks-url "https://corp.okta.com/oauth2/default/v1/keys"
+```
+
+Any `--jwt-*` flag auto-enables JWT authentication. The `JwksProvider` class handles the full lifecycle:
+
+- Fetches `{"keys":[...]}` from the JWKS endpoint (HTTP or HTTPS)
+- Filters for `kty=RSA, use=sig` keys, converts JWK → PEM via OpenSSL
+- Maintains a `kid`-based key map for seamless key rotation
+- Background refresh thread (default: 3600s), force refresh via `POST /admin/auth/reload`
+
+The `JwtValidator` gained a `KeyResolver` callback — when no static PEM is configured, it queries the `JwksProvider` by `kid` from the JWT header.
+
+---
+
+## Phase 2: Multi-IdP Identity Provider
+
+Real enterprises use multiple identity providers. `SsoIdentityProvider` routes tokens by issuer:
+
+```cpp
+IdpConfig okta;
+okta.id             = "okta-prod";
+okta.issuer         = "https://corp.okta.com/oauth2/default";
+okta.jwks_url       = "https://corp.okta.com/.../v1/keys";
+okta.group_claim    = "groups";
+okta.group_role_map = {
+    {"ZeptoDB-Admins", Role::ADMIN},
+    {"Trading-Desk",   Role::WRITER},
+};
+cfg.sso_idps.push_back(okta);
+```
+
+<CardGrid>
+  <Card title="Issuer Routing" icon="approve-check">
+    JWT `iss` claim matched against registered IdPs — each has its own JWKS and role mapping.
+  </Card>
+  <Card title="Group→Role Mapping" icon="approve-check">
+    IdP groups (e.g. "ZeptoDB-Admins") map directly to ZeptoDB roles.
+  </Card>
+  <Card title="Identity Cache" icon="approve-check">
+    TTL-based cache (300s, 10K capacity) avoids repeated JWT validation.
+  </Card>
+  <Card title="Tenant Extraction" icon="approve-check">
+    Custom claim mapping extracts tenant_id from IdP tokens.
+  </Card>
+</CardGrid>
+
+---
+
+## Phase 3: OIDC Discovery, Sessions, and Token Refresh
+
+### OIDC Auto-Discovery
+
+```bash
+zepto_http_server --oidc-issuer "https://corp.okta.com"
+```
+
+Fetches `/.well-known/openid-configuration` and auto-populates `jwks_uri`, `authorization_endpoint`, `token_endpoint`, and `userinfo_endpoint`. One flag configures everything.
+
+### Server-Side Sessions
+
+Cookie-based session management: `zepto_sid=<id>; Path=/; HttpOnly; SameSite=Lax` with configurable TTL (default 1h), sliding window refresh, and 10K concurrent session capacity.
+
+### OAuth2 Endpoints
+
+| Endpoint | Purpose |
+|----------|---------|
+| `GET /auth/login` | Redirect to IdP authorization endpoint |
+| `GET /auth/callback` | Code exchange → session cookie → redirect |
+| `POST /auth/session` | Create session from Bearer token |
+| `POST /auth/logout` | Destroy session + clear cookie |
+| `POST /auth/refresh` | Server-side token refresh |
+| `GET /auth/me` | Current identity (cookie or Bearer) |
+
+---
+
+## The Full Picture
+
+```
+Browser/CLI                ZeptoDB                   IdP (Okta/Azure/Google)
+    │                        │                            │
+    ├── GET /auth/login ────→│                            │
+    │←── 302 redirect ───────┤──→ authorization_endpoint─→│
+    │                        │                            │
+    │←── callback + code ────┤←── auth code ──────────────┤
+    │                        ├──→ token_endpoint ────────→│
+    │                        │←── access + refresh token──┤
+    │←── Set-Cookie ─────────┤                            │
+    │                        │                            │
+    ├── GET /query (cookie)─→│  session → AuthContext      │
+    │←── results ────────────┤                            │
+    │                        │                            │
+    ├── POST /auth/refresh──→│──→ token_endpoint ────────→│
+    │←── new session ────────┤←── new access_token ───────┤
+```
+
+---
+
+## Test Coverage
+
+26+ tests across the three phases covering IdP routing, JWKS key conversion, cache TTL, session lifecycle, OIDC discovery, token refresh, and graceful fallback to JWT/API key auth.

@@ -1,0 +1,186 @@
+---
+title: "Building a Cost-Based Query Planner from Scratch"
+description: "How ZeptoDB built a cost-based query planner in 7 phases — from HyperLogLog statistics to physical plan generation to EXPLAIN v2 with cost estimates."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Not every query needs a cost-based planner. Single-table scans with a WHERE clause are fast enough with rule-based execution. But once JOINs, CTEs, and subqueries enter the picture, choosing the right execution strategy matters. This post covers how ZeptoDB built a cost-based planner from scratch, in 7 phases.
+
+---
+
+## Adaptive 2-Tier Planning
+
+The first design decision: don't slow down simple queries. A `needs_cost_planning()` check (~10ns) routes queries:
+
+```
+Simple SELECT/WHERE/GROUP BY  →  existing fast path (zero overhead)
+JOIN / CTE / subquery / set-op  →  cost-based planning pipeline
+```
+
+This means 90%+ of time-series queries (single-table scans) pay nothing for the planner's existence.
+
+---
+
+## Phase 1: Statistics Collection
+
+Accurate cost estimation requires knowing the data. `TableStatistics` collects per-column, per-partition stats:
+
+| Statistic | Method | Cost |
+|-----------|--------|------|
+| min / max | Track on append | O(1) per row |
+| null_count | Increment on null | O(1) per row |
+| distinct_count | HyperLogLog (64 registers) | O(1) per row, ~2-15% error |
+| row_count | Counter per partition | O(1) |
+| ts_min / ts_max | From timestamp column | O(1) |
+
+The HyperLogLog uses 64 registers with FNV-1a hashing — 64 bytes of memory per column, ~30 lines of code. The 2-15% error is acceptable for cost estimation (we need order-of-magnitude accuracy, not exact counts).
+
+Stats are updated incrementally on append and frozen when a partition is sealed (immutable). Cross-partition aggregation merges stats for query planning.
+
+---
+
+## Phase 2: Cost Model
+
+The cost model estimates execution cost for each operator type:
+
+```
+Cost Constants:
+  SEQ_SCAN    = 1.0    (sequential read, cache-friendly)
+  RANDOM_IO   = 4.0    (random access, cache-unfriendly)
+  INDEX_PROBE = 0.5    (binary search, O(log n))
+  HASH_BUILD  = 1.5    (hash map construction)
+  HASH_PROBE  = 0.5    (hash map lookup)
+  SORT_COST   = 2.0    (comparison + swap)
+  AGG_COST    = 1.0    (accumulate)
+```
+
+### Selectivity Estimation
+
+The cost model estimates how many rows survive each predicate:
+
+| Predicate | Selectivity Formula |
+|-----------|-------------------|
+| `col = value` | 1 / NDV (number of distinct values) |
+| `col BETWEEN lo AND hi` | (hi - lo) / (max - min) |
+| `col IN (a, b, c)` | list_size / NDV |
+| `A AND B` | sel(A) × sel(B) |
+| `A OR B` | sel(A) + sel(B) - sel(A) × sel(B) |
+
+The crossover point between index scan and sequential scan is ~15-25% selectivity. Below 15%, the index scan's O(log n) probe + random access is cheaper. Above 25%, sequential scan's cache-friendly linear read wins.
+
+---
+
+## Phase 3: Logical Plan
+
+The parser produces an AST (`SelectStmt`). The logical planner converts it to an operator tree:
+
+```
+Simple SELECT:
+  SCAN → FILTER → PROJECT → SORT → LIMIT
+
+JOIN:
+  SCAN(left) ─┐
+               ├── JOIN → FILTER → PROJECT → SORT → LIMIT
+  SCAN(right) ─┘
+
+GROUP BY:
+  SCAN → FILTER → AGGREGATE → SORT → LIMIT
+```
+
+### Rule-Based Optimizations
+
+Before cost-based planning, two rule-based rewrites run:
+
+1. **Predicate pushdown**: Move FILTER below JOIN when it references only one side. This reduces the number of rows entering the JOIN.
+2. **Projection pushdown**: Propagate needed columns to SCAN nodes. Don't read columns that aren't used.
+
+---
+
+## Phase 4: Physical Plan
+
+The physical planner converts logical operators to physical operators using statistics:
+
+| Logical | Physical | Selection Criteria |
+|---------|----------|-------------------|
+| SCAN | SEQ_SCAN | Default |
+| SCAN | INDEX_SCAN | Selectivity ≤ 0.15 |
+| SCAN | SORTED_RANGE_SCAN | Timestamp range on sorted column |
+| JOIN | HASH_JOIN | Default (smaller side as build) |
+| JOIN | ASOF_JOIN | ASOF semantics |
+| AGGREGATE | HASH_AGGREGATE | Default |
+| SORT + LIMIT | TOPN_SORT | LIMIT present (partial sort) |
+| SORT | FULL_SORT | No LIMIT |
+
+### Build Side Selection
+
+For HASH_JOIN, the planner uses statistics to pick the smaller side as the build side. Building the hash map on fewer rows means less memory and faster construction:
+
+```
+Left:  100K rows (reference data)  → build side
+Right: 10M rows (trade data)       → probe side
+```
+
+---
+
+## Phase 5-6: Integration and EXPLAIN v2
+
+The physical plan integrates into `exec_select()` for complex queries. Simple queries bypass planning entirely.
+
+EXPLAIN output for complex queries shows the physical plan tree with cost estimates:
+
+```
+EXPLAIN SELECT t.*, r.name
+FROM trades t JOIN ref r ON t.symbol_id = r.id
+WHERE t.price > 100;
+
+Physical Plan:
+├── HASH_JOIN (cost: 15234.0, est_rows: 45000)
+│   ├── SEQ_SCAN trades (cost: 10000.0, est_rows: 100000)
+│   │   └── FILTER price > 100 (sel: 0.45)
+│   └── SEQ_SCAN ref (cost: 100.0, est_rows: 1000) [build]
+└── PROJECT t.*, r.name
+```
+
+---
+
+## Phase 7: Wiring to Execution
+
+The final phase connects planner decisions to actual execution. Three operators were wired:
+
+**HASH_JOIN build side swap** — explicitly wired. The executor reads the physical plan to determine which side to build on:
+
+```cpp
+auto* hj_node = find_hash_join_node(last_physical_plan_);
+if (hj_node && !hj_node->build_right) {
+    // Planner says left side is smaller — swap build/probe
+    planner_swap = true;
+}
+```
+
+INNER and FULL OUTER JOINs support the swap. LEFT/RIGHT JOINs are excluded — their semantics require specific build sides.
+
+**TOPN_SORT** — already wired. The executor's `apply_order_by()` already uses `std::partial_sort` when LIMIT is present.
+
+**INDEX_SCAN** — already wired. The executor's `collect_and_intersect()` automatically uses timestamp binary search and sorted column scans.
+
+Planning overhead: ~1μs per query. Simple queries: zero overhead via the fast-path check.
+
+<CardGrid>
+  <Card title="Zero overhead for simple queries" icon="rocket">
+    2-tier routing: ~10ns check skips planning for single-table queries.
+  </Card>
+  <Card title="HyperLogLog statistics" icon="open-book">
+    64 bytes per column. Incremental updates. 2-15% error — good enough for cost estimation.
+  </Card>
+  <Card title="Predicate pushdown" icon="down-arrow">
+    Filters pushed below JOINs. Fewer rows enter the expensive operator.
+  </Card>
+  <Card title="Build side selection" icon="setting">
+    Statistics-driven. Smaller side builds the hash map. Confirmed working via EXPLAIN.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [GROUP BY Optimization →](/blog/groupby-time-index/) · [FlatHashMap JOINs →](/blog/flat-hash-map-joins/) · [Parallel Query Engine →](/blog/parallel-query-engine/)

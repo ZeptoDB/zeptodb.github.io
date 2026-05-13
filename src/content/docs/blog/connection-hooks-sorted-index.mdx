@@ -1,0 +1,135 @@
+---
+title: "Sorted Column Index: 100-1000x Faster Range Queries"
+description: "How ZeptoDB's s# sorted attribute enables binary search on arbitrary columns, turning full-partition scans into sub-millisecond range lookups — plus connection lifecycle hooks for session management."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Range queries are the bread and butter of time-series analytics. A quant running `WHERE price BETWEEN 15000 AND 16000` on a million-row partition shouldn't scan all million rows when only 1% match. This post covers how ZeptoDB's `s#` sorted column attribute eliminates that waste — and how connection hooks bring session-level observability to the HTTP layer.
+
+---
+
+## The Full-Scan Problem
+
+ZeptoDB partitions are columnar and append-only. Timestamps are always sorted (by construction), so `timestamp_range()` already used binary search. But every other column — price, quantity, sequence number — required a linear scan through all N rows, even when the result set was tiny.
+
+For a 1M-row partition with 1% selectivity, that's 990,000 wasted row evaluations.
+
+## s# Sorted Column Attribute
+
+kdb+'s `s#` attribute marks a vector as sorted, enabling `bin` (binary search) for range lookups. ZeptoDB now supports the same concept at the partition level:
+
+```cpp
+// Mark a column as sorted
+partition.set_sorted("price");
+
+// Check attribute
+bool sorted = partition.is_sorted("price");  // O(1) lookup
+
+// Binary search for range [lo, hi)
+auto [begin, end] = partition.sorted_range("price", 15000.0, 16000.0);
+// Uses std::lower_bound + std::upper_bound internally
+```
+
+The `sorted_columns_` set is a lightweight metadata annotation — no additional data structure is built. The column data itself is already in a contiguous array, so `std::lower_bound` and `std::upper_bound` operate directly on it with O(log N) comparisons.
+
+## Query Integration
+
+The executor's `exec_simple_select` calls `extract_sorted_col_range()`, which scans the WHERE clause AST for patterns that can exploit sorted order:
+
+- `col BETWEEN lo AND hi`
+- `col >= lo AND col <= hi` (any combination of `>=`, `>`, `<=`, `<`, `=`)
+- Multiple AND-connected predicates on the same sorted column (tightest bounds win)
+
+```
+SQL: SELECT * FROM trades WHERE price BETWEEN 15000 AND 16000 AND side = 'B'
+
+AST analysis:
+  → price is s# sorted
+  → extract bounds: [15000, 16000]
+  → sorted_range("price", 15000, 16000) → row range [42000, 52000)
+
+Execution:
+  → eval_where_ranged() on rows 42000..52000 only
+  → remaining predicate (side = 'B') evaluated within pruned range
+```
+
+Instead of scanning 1,000,000 rows, the engine evaluates ~10,000 — the binary search itself touches only ~20 rows (log₂ 1M ≈ 20).
+
+## Performance Impact
+
+| Scenario | Without s# | With s# | Speedup |
+|----------|-----------|---------|---------|
+| 1M rows, 1% selectivity | 1,000,000 rows scanned | ~10,000 rows scanned | **~100x** |
+| 1M rows, 0.1% selectivity | 1,000,000 rows scanned | ~1,000 rows scanned | **~1000x** |
+| 1M rows, 100% selectivity | 1,000,000 rows scanned | 1,000,000 rows scanned | 1x (no benefit) |
+
+The speedup scales inversely with selectivity. For the narrow range queries common in financial analytics — "show me trades in this price band in the last 5 minutes" — the improvement is dramatic.
+
+### Current Limitations
+
+- Aggregate-only queries (`exec_agg`, `exec_agg_parallel`) do not yet use `sorted_range`
+- `OR` / `NOT` conditions cannot be optimized with a single contiguous range
+- `g#` (hash index) and `p#` (parted index) are planned but not yet implemented
+
+---
+
+## Connection Hooks: Session Lifecycle for HTTP
+
+kdb+ users rely on `.z.po` (port open) and `.z.pc` (port close) callbacks for audit logging, rate limiting, and session cleanup. ZeptoDB now provides equivalent hooks at the HTTP layer.
+
+Since httplib operates over HTTP/1.1 (not raw TCP), true socket-level events aren't available. Instead, we track logical sessions by `remote_addr`:
+
+```cpp
+struct ConnectionInfo {
+    std::string remote_addr;
+    std::string user;
+    int64_t     connected_at_ns;
+    int64_t     last_active_ns;
+    uint64_t    query_count;
+};
+
+server.set_on_connect([](const ConnectionInfo& ci) {
+    ZEPTO_INFO("Session opened: {}", ci.remote_addr);
+});
+
+server.set_on_disconnect([](const ConnectionInfo& ci) {
+    ZEPTO_INFO("Session closed: {} (queries={})",
+               ci.remote_addr, ci.query_count);
+});
+```
+
+- **on_connect** fires on the first HTTP request from a new `remote_addr`
+- **on_disconnect** fires on `Connection: close` header or when `evict_idle_sessions()` removes a stale session
+
+### Admin Endpoint
+
+`GET /admin/sessions` returns the active session list:
+
+```json
+[{
+  "remote_addr": "127.0.0.1:54321",
+  "connected_at_ns": 1742000000000000000,
+  "last_active_ns": 1742000001000000000,
+  "query_count": 3
+}]
+```
+
+<CardGrid>
+  <Card title="O(log N) range queries" icon="rocket">
+    Binary search on sorted columns. 100-1000x speedup for selective range queries on million-row partitions.
+  </Card>
+  <Card title="Zero overhead annotation" icon="approve-check">
+    s# is metadata only — no secondary index structure. Works directly on the existing columnar array.
+  </Card>
+  <Card title="Session lifecycle hooks" icon="setting">
+    on_connect / on_disconnect callbacks with ConnectionInfo. /admin/sessions endpoint for operational visibility.
+  </Card>
+  <Card title="20 new tests" icon="star">
+    13 sorted index tests (range, exact match, boundary conditions) + 7 connection hook tests. 467/467 total passing.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SIMD JIT Optimization →](/blog/simd-jit-optimization/) · [Parallel Query Engine →](/blog/parallel-query-engine/) · [Composite Index →](/blog/composite-index/)

@@ -1,0 +1,167 @@
+---
+title: "Composite Index with Index Intersection"
+description: "Replacing single-winner index selection with a collect-and-intersect approach that combines multiple indexes per partition scan for multi-predicate queries."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Multi-predicate queries like `WHERE timestamp BETWEEN ... AND exchange = 3 AND price BETWEEN ...` should use all available indexes. ZeptoDB's executor previously picked one winner and linearly scanned the rest. This post covers the index intersection approach that combines multiple indexes per partition.
+
+---
+
+## The Problem: Single-Winner Waterfall
+
+The old executor used a waterfall pattern — only ONE index per partition scan:
+
+```
+WHERE timestamp BETWEEN t1 AND t2
+  AND exchange = 3
+  AND price BETWEEN p1 AND p2
+
+Old approach:
+  1. timestamp range → s# sorted index → [row 1000..5000]
+  2. exchange = 3   → IGNORED (already used timestamp)
+  3. price BETWEEN  → IGNORED
+  4. Linear scan rows 1000..5000, evaluate exchange AND price per row
+```
+
+With 4,000 rows in the timestamp range but only 50 matching all three predicates, the executor was doing 4,000 row evaluations instead of ~50.
+
+---
+
+## The Solution: Collect and Intersect
+
+### IndexResult Accumulator
+
+A single struct tracks the narrowing result across multiple index lookups:
+
+```cpp
+struct IndexResult {
+    size_t range_begin = 0;
+    size_t range_end   = SIZE_MAX;          // full partition by default
+    std::optional<std::vector<size_t>> row_set;  // specific row indices
+
+    void intersect_range(size_t b, size_t e);    // narrow [begin, end)
+    void intersect_set(const std::vector<size_t>& rows);  // filter by set
+    std::vector<size_t> materialize();           // final row indices
+};
+```
+
+`intersect_range()` narrows via `[max(b1,b2), min(e1,e2)]`. `intersect_set()` filters a g#/p# row set against the current range or existing set. `materialize()` produces the final row indices for scanning.
+
+### collect_and_intersect() Method
+
+Single entry point replacing all waterfall patterns:
+
+```
+collect_and_intersect(partition, where_clause):
+  1. Timestamp range (if available)
+       → intersect_range(begin, end)
+
+  2. ALL s# sorted column ranges
+       → extract_all_sorted_ranges(where)
+       → for each: binary search → intersect_range()
+
+  3. ALL g#/p# equality predicates
+       → extract_all_index_eqs(where)
+       → for each: lookup row set → intersect_set()
+
+  4. materialize() → candidate row indices
+
+  5. eval_remaining_where() for non-indexed predicates
+```
+
+### Example: Three-Predicate Query
+
+```sql
+WHERE timestamp BETWEEN t1 AND t2
+  AND exchange = 3
+  AND price BETWEEN p1 AND p2
+```
+
+```
+Step 1: timestamp s# index → range [1000, 5000)
+Step 2: price s# index     → range [200, 4500)
+        Intersect ranges   → [1000, 4500)
+Step 3: exchange g# index  → row set {1050, 1200, 2300, 3100, 4200}
+        Intersect with range → {1050, 1200, 2300, 3100, 4200}
+Step 4: materialize → 5 candidate rows
+Step 5: eval_remaining_where → final filter (if any non-indexed predicates)
+```
+
+From 4,000 rows scanned down to 5 candidates. The remaining WHERE evaluation runs on 5 rows instead of 4,000.
+
+---
+
+## Index Types in ZeptoDB
+
+| Index | Notation | Lookup | Best For |
+|-------|----------|--------|----------|
+| Sorted | s# | Binary search → range | Timestamp, price (ordered data) |
+| Grouped | g# | Hash → row set | Exchange, side (low cardinality) |
+| Parted | p# | Hash → contiguous range | Symbol (data physically grouped) |
+
+Sorted indexes produce ranges. Grouped/parted indexes produce row sets. The intersection algorithm handles both:
+
+- Range ∩ Range → narrower range (`intersect_range`)
+- Range ∩ Set → filtered set (`intersect_set` with range bounds)
+- Set ∩ Set → set intersection (`intersect_set` with existing set)
+
+---
+
+## Where It's Applied
+
+`collect_and_intersect()` replaced the waterfall pattern in three executor paths:
+
+| Path | Before | After |
+|------|--------|-------|
+| `exec_simple_select` | Single index → linear scan | All indexes → intersect → minimal scan |
+| `exec_agg` | Single index → linear scan | All indexes → intersect → minimal scan |
+| `exec_group_agg` | Single index → linear scan | All indexes → intersect → minimal scan |
+
+All three paths (symbol-group, single-column, multi-column GROUP BY) now use the same `collect_and_intersect()` entry point. The parallel execution paths benefit automatically — they call the serial per-partition logic internally.
+
+---
+
+## What's Preserved
+
+The existing single-index functions (`extract_time_range`, `extract_sorted_col_range`, `extract_index_eq`) are preserved — they're used by the new `extract_all_*` functions internally and by other code paths.
+
+---
+
+## Edge Cases
+
+| Scenario | Behavior |
+|----------|----------|
+| No indexes available | range = [0, partition_size), full scan |
+| Range intersection empty | range_begin ≥ range_end, zero rows |
+| Set intersection empty | empty vector, zero rows |
+| Single predicate | Degenerates to single-index lookup (same as before) |
+| All predicates indexed | eval_remaining_where is a no-op |
+
+The algorithm gracefully degenerates: with one predicate, it behaves identically to the old waterfall. With zero indexed predicates, it falls through to full scan. No performance regression for existing queries.
+
+---
+
+## Test Results
+
+All 1,024 existing tests pass with zero regression. The `SortedColumnQueryTest` suite (5 tests) validates BETWEEN, GE/LE, EQ, out-of-range, and rows-scanned counts.
+
+<CardGrid>
+  <Card title="Multi-index intersection" icon="rocket">
+    Combine s#, g#, and p# indexes in a single pass. N predicates → N index lookups → one intersection.
+  </Card>
+  <Card title="Range ∩ Set algebra" icon="approve-check">
+    Ranges narrow ranges. Sets filter against ranges. Sets intersect sets. One unified accumulator.
+  </Card>
+  <Card title="Zero regression" icon="list-format">
+    Single-predicate queries degenerate to the old behavior. 1,024 tests pass unchanged.
+  </Card>
+  <Card title="Three executor paths" icon="setting">
+    Simple SELECT, aggregation, and GROUP BY all use the same collect_and_intersect() entry point.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [XBAR Sorted-Scan →](/blog/xbar-explain-null/) · [Cost-Based Query Planner →](/blog/cost-based-query-planner/) · [Parallel Query Engine →](/blog/parallel-query-engine/)

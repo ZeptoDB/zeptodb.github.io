@@ -1,0 +1,164 @@
+---
+title: "Distributed Cluster Architecture: Sharding, Routing, and Replication"
+description: "How ZeptoDB scales horizontally with CRTP transport abstraction, consistent hashing, and UDP health monitoring — all with zero virtual call overhead on the hot path."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB was designed as a single-node, in-memory time-series database. Scaling it horizontally required solving three problems: transport abstraction without runtime overhead, partition routing with minimal data movement, and health monitoring that doesn't lie. Here's how we did it.
+
+---
+
+## Design Principles
+
+<CardGrid>
+  <Card title="Zero Virtual Calls" icon="rocket">
+    CRTP template dispatch on the hot path — no vtable indirection.
+  </Card>
+  <Card title="Transport Swap = 1 Line" icon="setting">
+    Switch from shared memory to RDMA by changing a single template parameter.
+  </Card>
+  <Card title="Consistent Hashing" icon="random">
+    128 virtual nodes per physical node — minimal partition movement on topology changes.
+  </Card>
+  <Card title="Full Local Testing" icon="laptop">
+    SharedMemBackend lets you test multi-node clusters without RDMA hardware.
+  </Card>
+</CardGrid>
+
+---
+
+## Transport Abstraction (CRTP)
+
+The transport layer uses CRTP (Curiously Recurring Template Pattern) to eliminate virtual call overhead:
+
+```cpp
+template <typename Impl>
+class TransportBackend {
+public:
+    void remote_write(const void* src, const RemoteRegion& remote,
+                      size_t offset, size_t bytes) {
+        impl().do_remote_write(src, remote, offset, bytes);  // inlined
+    }
+    Impl& impl() { return static_cast<Impl&>(*this); }
+};
+```
+
+Two backends implement this interface:
+
+| Backend | Use Case | `remote_write` impl |
+|---------|----------|---------------------|
+| `SharedMemBackend` | Dev/test | `memcpy` via POSIX `shm_open` + `mmap` |
+| `UCXBackend` | Production | UCX one-sided RDMA (`ucp_put_nbi`) |
+
+Switching backends is a template parameter change: `ClusterNode<SharedMemBackend>` → `ClusterNode<UCXBackend>`.
+
+---
+
+## Partition Routing: Consistent Hashing
+
+Each physical node maps to 128 virtual nodes on a `uint64` hash ring:
+
+```
+Hash ring (uint64 → NodeId):
+──────────────────────────────────────────
+  0              ...             UINT64_MAX
+  ├──●──●──●──●──●──●──●──●──●──●──●──●──┤
+  │  N1 N2 N1 N3 N2 N1 N3 N1 N2 N3 N2 N1 │
+  └─ (128 vnodes per physical node)        ┘
+
+Lookup: symbol_id → hash → upper_bound(ring) → NodeId
+        O(log n), cached to O(1)
+```
+
+When a node joins or leaves, only the affected range migrates — other nodes are untouched.
+
+**Benchmark results:**
+
+| Operation | Throughput | Latency |
+|-----------|-----------|---------|
+| `route()` (cached) | 500M ops/s | 2.0 ns |
+| `route()` (uncached) | 29M ops/s | 34.6 ns |
+
+---
+
+## Health Monitoring: UDP Heartbeat
+
+The `HealthMonitor` runs a UDP heartbeat protocol with a compact 24-byte packet:
+
+```cpp
+struct HeartbeatPacket {
+    uint32_t magic = 0x41504558;  // 'APEX'
+    NodeId   node_id;
+    uint64_t seq_num;
+    uint64_t timestamp_ns;
+};
+```
+
+State machine:
+
+```
+JOINING ──heartbeat──▶ ACTIVE
+ACTIVE  ──3s timeout──▶ SUSPECT
+SUSPECT ──heartbeat──▶ ACTIVE  (recovery)
+SUSPECT ──7s more────▶ DEAD    (failover triggered)
+```
+
+The two-phase timeout (SUSPECT → DEAD) prevents false positives from transient network blips.
+
+---
+
+## ClusterNode: Putting It Together
+
+`ClusterNode<Transport>` unifies all components:
+
+```cpp
+template <typename Transport>
+class ClusterNode {
+    Transport        transport_;        // SharedMem or UCX
+    PartitionRouter  router_;           // Consistent hash ring
+    HealthMonitor    health_;           // UDP heartbeat
+    ZeptoPipeline    local_pipeline_;   // Local storage + query engine
+};
+```
+
+The ingestion hot path is simple:
+
+```
+ingest_tick(msg):
+  owner = router_.route(msg.symbol_id)   // 2ns cached lookup
+  if owner == self:
+      local_pipeline_.ingest_tick(msg)    // local fast path
+  else:
+      transport_.remote_write(...)        // one-sided RDMA
+```
+
+---
+
+## Performance Summary
+
+| Operation | Throughput | Latency |
+|-----------|-----------|---------|
+| SharedMem write+fence (64B) | 73.9M ops/s | 13.5 ns |
+| SharedMem bulk write (4KB) | 14.9M ops/s | 66.9 ns (61 GB/s) |
+| Partition routing (cached) | 500.4M ops/s | 2.0 ns |
+| Single-node ingest | 5.1M ops/s | 195.7 ns |
+
+SharedMem at 13.5 ns is a useful baseline — production RDMA adds network latency (1–15 μs typical), but the software overhead is already minimized.
+
+---
+
+## Lesson: Always Heap-Allocate Large Objects
+
+`ClusterNode` is ~8 MB due to the embedded `ZeptoPipeline` (which contains a 65K-slot ring buffer). Two stack-allocated nodes in a test caused a 16 MB stack overflow — caught by UCX's signal handler with confusing crash logs.
+
+```cpp
+// Wrong: stack overflow
+ClusterNode<SharedMemBackend> node1(cfg1), node2(cfg2);  // 16MB on stack
+
+// Right: heap allocation
+auto node1 = std::make_unique<ShmNode>(cfg1);
+auto node2 = std::make_unique<ShmNode>(cfg2);
+```
+
+In HFT systems, always heap-allocate objects with large embedded buffers.

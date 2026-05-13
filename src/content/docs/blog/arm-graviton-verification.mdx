@@ -1,0 +1,121 @@
+---
+title: "ARM Graviton: 766/766 Tests Passing, 3x Faster GROUP BY"
+description: "Full cross-platform verification of ZeptoDB on AWS Graviton (aarch64) — identical test results, Highway SIMD and LLVM JIT working natively, and surprising performance wins."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Shipping a high-performance C++ database on a single architecture is table stakes. Shipping it on two — with SIMD vectorization, JIT compilation, and protocol parsers all working identically — is the real test. This post covers ZeptoDB's full verification on AWS Graviton (aarch64): 766/766 tests passing, with some benchmarks that surprised us.
+
+---
+
+## Why ARM Matters
+
+AWS Graviton instances offer ~20% cost savings over equivalent x86 instances. For a database that runs 24/7 in production, that's a significant line item. But cost savings mean nothing if the database doesn't work correctly — and ZeptoDB relies heavily on architecture-specific features:
+
+- **Google Highway SIMD**: vectorized column scans, aggregations, and filter evaluation
+- **LLVM JIT**: runtime code generation for query expressions
+- **Feed parsers**: bit-level protocol parsing for FIX and ITCH market data
+
+All of these need to work correctly on ARM's NEON instruction set, not just x86's SSE/AVX.
+
+## Test Environment
+
+| | x86 Instance | Graviton Instance |
+|---|---|---|
+| Architecture | x86_64 | aarch64 |
+| CPU | Intel Xeon 6975P (8 vCPU) | Graviton (4 vCPU) |
+| RAM | — | 15 GB |
+| OS | Amazon Linux 2023 | Amazon Linux 2023 |
+| Compiler | Clang 19.1.7 | Clang 19.1.7 |
+| Highway SIMD | 1.2.0 | 1.2.0 |
+| LLVM JIT | 19.1.7 | 19.1.7 |
+
+Same compiler, same library versions, same OS. The only variable is the CPU architecture.
+
+## Build
+
+CMake + Ninja in Release mode. 137/137 targets built successfully on both architectures — identical target count, no conditional compilation needed. The Python binding (`zeptodb.cpython-39-aarch64-linux-gnu.so`) also generated successfully.
+
+Highway's architecture abstraction is the key enabler here. Code written against Highway's portable API compiles to NEON on ARM and AVX2/AVX-512 on x86 without `#ifdef` blocks.
+
+## Test Results
+
+| Test Suite | x86_64 | aarch64 |
+|---|---|---|
+| Unit Tests | 619/619 ✅ | 619/619 ✅ |
+| Feed Tests | 21/21 ✅ | 21/21 ✅ |
+| Migration Tests | 126/126 ✅ | 126/126 ✅ |
+| **Total** | **766/766** | **766/766** |
+
+Zero platform-specific failures. Every test — from basic column operations through JIT-compiled expressions to FIX/ITCH protocol parsing — produces identical results on both architectures.
+
+---
+
+## Benchmark: Graviton Surprises
+
+We ran the standard micro-benchmarks on the Graviton instance:
+
+| Metric | Graviton (aarch64) | x86 (previous) | Ratio |
+|---|---:|---:|---|
+| xbar GROUP BY (1M rows) | **7.99 ms** | 24 ms | **3x faster** |
+| ITCH Parser | 17.18 ns/msg (**58.2M msg/s**) | 23.3 ns/msg (42.9M msg/s) | **1.36x faster** |
+| FIX Parser | 358.97 ns/msg (2.79M msg/s) | — | — |
+
+The 3x faster `xbar` GROUP BY on Graviton was unexpected. The likely explanation is memory access pattern differences — Graviton's memory subsystem handles the sequential column scan + hash aggregation pattern particularly well. HugePages were not configured on the Graviton instance (fallback warning present), so the actual gap may narrow with identical memory configurations.
+
+The ITCH parser at 58.2 million messages per second on ARM is notable — this is a bit-level binary protocol parser where every cycle counts.
+
+:::caution[Benchmark Caveat]
+The x86 and Graviton instances differ in core count (8 vs 4 vCPU) and memory configuration. These numbers show Graviton is competitive, but a rigorous A/B comparison requires identical core counts and HugePages settings on both sides.
+:::
+
+---
+
+## Bug Fix: Not ARM-Specific
+
+One test failure appeared during verification: `FIXMessageBuilderTest.BuildLogon`. The test constructed a message with `FIXMessageBuilder("ZEPTO", "SERVER")` but asserted `49=APEX` — a SenderCompID mismatch.
+
+```cpp
+// Before (wrong):
+// Expected: 49=APEX
+// Actual:   49=ZEPTO
+
+// Fix: tests/feeds/test_fix_parser.cpp:165
+// Changed expected value to match constructor argument
+// 49=APEX → 49=ZEPTO
+```
+
+This was a pre-existing test typo that failed on both architectures. Not an ARM-specific issue.
+
+---
+
+## What This Means
+
+ZeptoDB is fully portable across x86_64 and aarch64 with zero code changes:
+
+- **Highway SIMD** abstracts NEON vs SSE/AVX transparently
+- **LLVM JIT** generates native ARM code through the same IR pipeline
+- **Feed parsers** (FIX, ITCH, Binance) work identically — no endianness or alignment issues
+- **Python bindings** build and load correctly on aarch64
+
+For deployment, this means teams can choose Graviton instances for cost savings without any functional risk.
+
+<CardGrid>
+  <Card title="766/766 tests passing" icon="approve-check">
+    Every test suite — unit, feed, migration — produces identical results on x86_64 and aarch64.
+  </Card>
+  <Card title="3x faster GROUP BY" icon="rocket">
+    xbar aggregation on Graviton completed in 7.99ms vs 24ms on x86. Memory subsystem advantage.
+  </Card>
+  <Card title="58.2M ITCH msg/s" icon="star">
+    Bit-level protocol parsing at full speed on ARM NEON. No performance penalty for portability.
+  </Card>
+  <Card title="Zero #ifdef blocks" icon="setting">
+    Highway SIMD + LLVM JIT abstract the architecture. Same source, same behavior, different ISA.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SIMD JIT Optimization →](/blog/simd-jit-optimization/) · [EKS Architecture Benchmark →](/blog/eks-architecture-benchmark/) · [Bare Metal Tuning →](/blog/bare-metal-tuning/)

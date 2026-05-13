@@ -1,0 +1,159 @@
+---
+title: "SIMD-ifying the Window JOIN Aggregate Loop"
+description: "How ZeptoDB applies a three-tier SIMD strategy to the Window JOIN aggregate loop — contiguous fast-path, gather+SIMD for large windows, and scalar fallback."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Window JOINs match each left row to a time range of right rows, then aggregate the window. The aggregate loop is the hottest code in the operator — and it has a tricky access pattern that resists naive SIMD. This post covers the three-tier strategy that makes it fast.
+
+---
+
+## The Problem: Indirect Access
+
+The Window JOIN operator groups right-table rows by symbol, then for each left row, finds the matching time window within the group. The aggregate loop looks like this:
+
+```cpp
+for (size_t i = begin; i < end; ++i)
+    sum += right_val[right_group_indices[i]];  // indirect access
+```
+
+`right_group_indices` contains sorted indices into the right table. The access pattern `right_val[indices[i]]` is a **gather** — non-contiguous memory reads at arbitrary offsets. SIMD vectorization can't help with scattered memory access; the bottleneck is the random loads, not the arithmetic.
+
+But there's a common case where the indices *are* contiguous.
+
+---
+
+## Insight: Contiguous Windows
+
+When the right table is sorted by timestamp (the common case for time-series data), the indices within a symbol group are sequential: `[42, 43, 44, 45, ...]`. The values form a contiguous slice in `right_val`.
+
+A simple check detects this:
+
+```cpp
+bool is_contiguous = true;
+for (size_t i = begin + 1; i < end; ++i) {
+    if (indices[i] != indices[i-1] + 1) {
+        is_contiguous = false;
+        break;
+    }
+}
+```
+
+If contiguous, we can pass a direct pointer to the existing SIMD `sum_i64()` function — zero-copy, maximum throughput.
+
+---
+
+## Three-Tier Strategy
+
+```
+aggregate_window(begin, end)
+    │
+    ├── Contiguous? ──YES──▶ sum_i64(&right_val[base], n)
+    │                         Direct pointer, Highway SIMD
+    │
+    ├── n ≥ 32? ──YES──▶ Gather into temp buffer, then sum_i64()
+    │                      Copy overhead amortized by SIMD benefit
+    │
+    └── n < 32 ──────────▶ Scalar loop
+                            SIMD setup overhead exceeds benefit
+```
+
+### Tier 1: Contiguous Fast-Path
+
+```cpp
+if (is_contiguous) {
+    size_t base = indices[begin];
+    result = sum_i64(&right_val[base], window_size);  // Highway SIMD
+}
+```
+
+This reuses the existing `sum_i64()` implementation — 4-way unrolled Highway SIMD with `ReduceSum`. No new SIMD code needed. The contiguity check is O(n) but runs once per window; the SIMD benefit on the aggregation far outweighs it for large windows.
+
+### Tier 2: Large Non-Contiguous (n ≥ 32)
+
+```cpp
+std::vector<int64_t> temp(window_size);
+for (size_t i = 0; i < window_size; ++i)
+    temp[i] = right_val[indices[begin + i]];  // gather into contiguous buffer
+result = sum_i64(temp.data(), window_size);    // SIMD on contiguous data
+```
+
+The gather into a temporary buffer is scalar, but it converts scattered reads into a contiguous array. The subsequent SIMD aggregation on the contiguous buffer is fast enough to amortize the copy cost — at 32+ elements, the SIMD benefit exceeds the gather overhead.
+
+### Tier 3: Small Windows (n < 32)
+
+```cpp
+int64_t sum = 0;
+for (size_t i = begin; i < end; ++i)
+    sum += right_val[indices[i]];
+```
+
+Plain scalar loop. For small windows, SIMD setup (lane loading, mask handling, horizontal reduction) costs more than the actual computation. The scalar loop is also branch-predictor-friendly for small, predictable iteration counts.
+
+---
+
+## Aggregation Functions
+
+The three-tier strategy applies to SUM and AVG. Other aggregates have simpler handling:
+
+| Function | Contiguous Path | Non-Contiguous Path |
+|----------|----------------|-------------------|
+| SUM | `sum_i64()` SIMD | Gather + `sum_i64()`, or scalar |
+| AVG | `sum_i64()` / count | Same as SUM, then divide |
+| MIN | Sequential scan via pointer | Scalar loop (no existing SIMD min) |
+| MAX | Sequential scan via pointer | Scalar loop (no existing SIMD max) |
+| COUNT | `end - begin` | `end - begin` (trivial) |
+
+MIN/MAX use the contiguous pointer for cache-friendly sequential access even without SIMD — reading from a contiguous slice is still faster than gathering from scattered addresses.
+
+AVG preserves double-precision division to match existing behavior — integer sum divided by count, matching the precision that downstream tests depend on.
+
+---
+
+## Why Not Hardware Gather?
+
+AVX2 has `VPGATHERDD` / `VPGATHERDQ` instructions that load from scattered addresses in one instruction. We didn't use them because:
+
+1. **Throughput**: Hardware gather on Skylake is ~4-8 cycles per element — barely faster than scalar loads (~4 cycles each). The instruction issues multiple micro-ops internally.
+2. **Index width**: Our indices are `size_t` (64-bit), but gather instructions use 32-bit offsets. Converting adds overhead.
+3. **Portability**: Hardware gather is AVX2+ only. The contiguity-check approach works on any architecture, including ARM NEON.
+
+The contiguous fast-path is strictly better: when data is contiguous, we get full SIMD throughput (not gather throughput). When it's not, the software gather + SIMD is comparable to hardware gather but more portable.
+
+---
+
+## Test Coverage
+
+10 tests cover all paths and edge cases:
+
+| Test | What It Verifies |
+|------|-----------------|
+| SumContiguous (1000 elements) | Contiguous SIMD path |
+| SumLarge (10000 elements) | Deep SIMD loop |
+| AvgContiguous | Integer truncation matches original |
+| MinContiguous, MaxContiguous | Sequential access path |
+| SmallWindow (3 elements) | Scalar fallback |
+| SingleElement | All 4 aggregation types |
+| EmptyWindow | Zero-match case returns 0 |
+| NegativeValues | Correctness with negative data |
+| MultipleLeftRows | Different window sizes per left row |
+
+<CardGrid>
+  <Card title="Contiguous fast-path" icon="rocket">
+    Zero-copy SIMD when indices are sequential. Common case for sorted time-series data.
+  </Card>
+  <Card title="Reuses existing SIMD" icon="approve-check">
+    Calls sum_i64() directly. No new SIMD code — minimal implementation, proven correctness.
+  </Card>
+  <Card title="Graceful degradation" icon="list-format">
+    Large non-contiguous: gather + SIMD. Small windows: scalar. Each tier is optimal for its size.
+  </Card>
+  <Card title="No hardware gather" icon="setting">
+    Software approach is faster for contiguous data and equally fast for scattered data. More portable.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [JIT SIMD Emit →](/blog/jit-simd-emit/) · [FlatHashMap JOINs →](/blog/flat-hash-map-joins/) · [How ASOF JOIN Works →](/blog/how-asof-join-works/)

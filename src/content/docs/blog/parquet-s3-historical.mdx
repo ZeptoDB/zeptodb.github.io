@@ -1,0 +1,156 @@
+---
+title: "Parquet on S3: Historical Data Storage for Time-Series"
+description: "How ZeptoDB writes Apache Parquet files and uploads them to S3 for long-term historical storage — with partition-based file layout, compression codec selection, and direct query integration with DuckDB and Polars."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB's proprietary binary format (`.bin`) is optimized for maximum-speed local I/O, but it's opaque to external tools. By adding Apache Parquet as a storage format with automatic S3 upload, historical data becomes queryable from DuckDB, Polars, Spark, and any Arrow-compatible tool — without touching ZeptoDB at all.
+
+---
+
+## Storage Path Architecture
+
+When a partition is sealed, the `FlushManager` routes it based on the configured output format:
+
+```
+Partition (SEALED)
+    │
+    ├──[BINARY]───→ HDBWriter → {base}/{symbol}/{hour}/{col}.bin
+    │                           (LZ4 compressed, fastest local I/O)
+    │
+    ├──[PARQUET]──→ ParquetWriter → {base}/{symbol}/{hour}/{symbol}_{hour}.parquet
+    │                   │            (Arrow compatible, SNAPPY/ZSTD)
+    │                   └──[S3]──→ S3Sink → s3://{bucket}/{prefix}/{symbol}/{hour}.parquet
+    │
+    └──[BOTH]─────→ BINARY + PARQUET stored simultaneously
+```
+
+`BOTH` mode gives you the best of both worlds: local binary for real-time queries, Parquet on S3 for external analytics and disaster recovery.
+
+---
+
+## ParquetWriter: Type Mapping
+
+ZeptoDB column types map cleanly to Arrow/Parquet types:
+
+| ZeptoDB ColumnType | Arrow DataType | Parquet Physical Type |
+|--------------------|----------------|----------------------|
+| INT32 | int32() | INT32 |
+| INT64 | int64() | INT64 |
+| FLOAT32 | float32() | FLOAT |
+| FLOAT64 | float64() | DOUBLE |
+| TIMESTAMP_NS | timestamp(ns, UTC) | INT64 (TIMESTAMP) |
+| SYMBOL | uint32() | INT32 |
+| BOOL | boolean() | BOOLEAN |
+
+Timestamps preserve nanosecond precision and UTC timezone through the full pipeline.
+
+---
+
+## Compression Codec Selection
+
+| Codec | Speed | Ratio | Best For |
+|-------|-------|-------|----------|
+| SNAPPY (default) | ★★★★★ | ★★★ | Real-time flush |
+| ZSTD | ★★★ | ★★★★★ | Cold storage / S3 long-term |
+| LZ4_RAW | ★★★★★ | ★★★ | Maximum-speed compression |
+| NONE | — | — | Testing / debugging |
+
+SNAPPY is the default for real-time flush — it's fast enough to keep up with ingestion. ZSTD is recommended for S3 uploads where compression ratio matters more than speed.
+
+---
+
+## S3 Upload
+
+### Path Convention
+
+```
+s3://{bucket}/{prefix}/{symbol_id}/{hour_epoch}.parquet
+
+Examples:
+  s3://zepto-hdb/prod/hdb/1/1742648000.parquet
+  s3://zepto-hdb/prod/hdb/2/1742648000.parquet
+```
+
+### In-Memory Serialization for S3
+
+`flush_to_buffer()` serializes Parquet directly to memory — no intermediate local file needed for S3 upload:
+
+```cpp
+auto buf = parquet_writer.flush_to_buffer(partition);
+s3_sink.upload_buffer(
+    reinterpret_cast<const char*>(buf->data()), buf->size(), s3_key);
+```
+
+### Credential Chain
+
+AWS SDK standard credential chain: environment variables → `~/.aws/credentials` → IAM Role (recommended for production). For self-hosted S3 (MinIO), set `endpoint_url` and `use_path_style = true`.
+
+---
+
+## Configuration Example
+
+```cpp
+FlushConfig config;
+config.output_format              = HDBOutputFormat::PARQUET;
+config.parquet_config.compression = ParquetCompression::ZSTD;
+config.enable_s3_upload           = true;
+config.s3_config.bucket           = "zepto-hdb-prod";
+config.s3_config.prefix           = "hdb";
+config.s3_config.region           = "ap-southeast-1";
+config.delete_local_after_s3      = true;  // save local storage
+
+FlushManager flush_mgr(pm, hdb_writer, config);
+flush_mgr.start();
+// Automatically saves Parquet and uploads to S3 when partition is sealed
+```
+
+For `BOTH` mode, set `output_format = HDBOutputFormat::BOTH` — binary stays on local NVMe for real-time queries, Parquet goes to S3 for external analytics.
+
+---
+
+## Query Integration
+
+### DuckDB: Direct S3 Parquet Query
+
+```sql
+-- 5-minute OHLCV bars from ZeptoDB HDB on S3
+SELECT
+    epoch_ms(timestamp / 1000000) AS bar_time,
+    first(price) AS open, max(price) AS high,
+    min(price) AS low, last(price) AS close, sum(volume) AS volume
+FROM read_parquet('s3://zepto-hdb-prod/hdb/1/*.parquet')
+GROUP BY time_bucket(INTERVAL '5 minutes', bar_time)
+ORDER BY bar_time;
+```
+
+### Polars: Direct S3 Read
+
+```python
+import polars as pl
+
+df = pl.read_parquet("s3://zepto-hdb-prod/hdb/1/1742648000.parquet")
+df = df.with_columns([
+    pl.col("price").ewm_mean(span=20).alias("ema20")
+])
+```
+
+<CardGrid>
+  <Card title="Arrow ecosystem compatible" icon="approve-check">
+    Standard Parquet files readable by DuckDB, Polars, Spark, pandas, and any Arrow-compatible tool.
+  </Card>
+  <Card title="Automatic S3 offload" icon="rocket">
+    Sealed partitions upload to S3 automatically. Optional local deletion saves NVMe space.
+  </Card>
+  <Card title="Dual format mode" icon="star">
+    BOTH mode: binary on local NVMe for sub-millisecond queries, Parquet on S3 for external analytics.
+  </Card>
+  <Card title="In-memory serialization" icon="setting">
+    flush_to_buffer() serializes Parquet directly to memory for S3 upload — no intermediate local file.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [HDB Tiered Storage →](/blog/hdb-tiered-storage/) · [Python Ecosystem Integration →](/blog/python-ecosystem-integration/) · [DuckDB Embedding →](/blog/duckdb-embedding/)

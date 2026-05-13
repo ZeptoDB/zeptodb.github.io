@@ -1,0 +1,150 @@
+---
+title: "Granular API Key Access Control"
+description: "How ZeptoDB implements per-key symbol and table ACLs, tenant binding, key expiry, and in-place editing for fine-grained API key management."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+A single API key with full access is a liability. ZeptoDB now supports per-key permissions — restrict which symbols and tables a key can access, bind keys to tenants, set expiry dates, and edit keys in place without rotation.
+
+---
+
+## What Changed
+
+<CardGrid>
+  <Card title="Symbol/Table ACLs" icon="approve-check">
+    Each key can be scoped to specific symbols and tables at creation time.
+  </Card>
+  <Card title="Tenant Binding" icon="approve-check">
+    Keys can be bound to a tenant_id for multi-tenant isolation.
+  </Card>
+  <Card title="Key Expiry" icon="approve-check">
+    Keys have an optional expiry timestamp — expired keys are rejected on validation.
+  </Card>
+  <Card title="In-Place Editing" icon="approve-check">
+    PATCH endpoint to modify key fields without revoking and re-creating.
+  </Card>
+</CardGrid>
+
+---
+
+## API Key Entry Structure
+
+The `ApiKeyEntry` was extended with new fields while maintaining backward compatibility with the existing file format:
+
+```cpp
+struct ApiKeyEntry {
+    std::string id;
+    std::string hashed_key;
+    Role        role;
+    bool        enabled;
+    int64_t     created_at_ns;
+    int64_t     last_used_ns;
+    std::vector<std::string> allowed_symbols;  // empty = all
+    std::vector<std::string> allowed_tables;   // empty = all
+    std::string tenant_id;                     // empty = no binding
+    int64_t     expires_at_ns;                 // 0 = never
+
+    bool is_expired() const;
+};
+```
+
+The file format appends `tenant_id` (field 8) and `expires_at_ns` (field 9) — older files load cleanly with defaults.
+
+---
+
+## Validation Flow
+```
+API Request with key
+       │
+       ▼
+  ┌─────────────┐
+  │ Key lookup   │──→ not found → 401
+  └──────┬──────┘
+         ▼
+  ┌─────────────┐
+  │ is_expired()?│──→ yes → 401 "key expired"
+  └──────┬──────┘
+         ▼
+  ┌─────────────┐
+  │ enabled?     │──→ no → 401 "key disabled"
+  └──────┬──────┘
+         ▼
+  ┌─────────────┐
+  │ Symbol ACL   │──→ denied → 403
+  └──────┬──────┘
+         ▼
+  ┌─────────────┐
+  │ Table ACL    │──→ denied → 403
+  └──────┬──────┘
+         ▼
+     ✅ Authorized
+```
+
+---
+
+## HTTP Endpoints
+
+### Create Key — `POST /admin/keys`
+
+```json
+{
+  "role": "writer",
+  "symbols": ["AAPL", "MSFT"],
+  "tables": ["trades", "quotes"],
+  "tenant_id": "desk-alpha",
+  "expires_at_ns": 1743465600000000000
+}
+```
+
+### List Keys — `GET /admin/keys`
+
+Response now includes scope, tenant, expiry, and last-used timestamps:
+
+| Field | Description |
+|-------|-------------|
+| `allowed_symbols` | Symbol whitelist (empty = unrestricted) |
+| `allowed_tables` | Table whitelist (empty = unrestricted) |
+| `tenant_id` | Bound tenant (empty = global) |
+| `expires_at_ns` | Expiry timestamp (0 = never) |
+| `last_used_ns` | Last successful validation time |
+
+### Edit Key — `PATCH /admin/keys/:id`
+
+Modify any combination of fields in place:
+
+```json
+{
+  "symbols": ["AAPL", "MSFT", "GOOG"],
+  "tenant_id": "desk-beta",
+  "enabled": false
+}
+```
+
+This avoids the revoke-and-recreate pattern that forces downstream credential updates.
+
+---
+
+## Multi-Tenant Isolation
+
+When a key has `tenant_id` set, all queries executed with that key are scoped to the tenant's data. Combined with symbol ACLs, this enables fine-grained access patterns:
+
+| Use Case | Config |
+|----------|--------|
+| Trading desk sees only their symbols | `symbols: ["AAPL","MSFT"]`, `tenant_id: "desk-1"` |
+| Read-only analytics key | `role: reader`, `tables: ["trades"]` |
+| Temporary contractor access | `expires_at_ns: <30 days>`, `symbols: ["*"]` |
+| Service account (no expiry) | `expires_at_ns: 0`, `role: writer` |
+
+---
+
+## Test Coverage
+
+| Test | What It Verifies |
+|------|-----------------|
+| `ExpiryBlocksValidation` | Expired key is rejected |
+| `NonExpiredKeyValidates` | Future-expiry key accepted, `expires_at_ns` preserved |
+| `TenantIdPreserved` | Tenant ID round-trips through create/validate |
+| `UpdateKeyFields` | Symbols and tenant updated via `update_key` |
+| `UpdateKeyDisable` | Key disabled via `update_key` |
+| `TenantAndExpiryPersistence` | All new fields survive file persistence |

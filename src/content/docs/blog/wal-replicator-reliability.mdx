@@ -1,0 +1,157 @@
+---
+title: "WAL Replication: Quorum Writes, Retry, and Backpressure"
+description: "How ZeptoDB's WalReplicator evolved from best-effort async to production-grade replication with quorum acknowledgment, exponential retry, and configurable backpressure."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+The original `WalReplicator` was async best-effort: data dropped silently on queue overflow, failed sends were never retried, and there was no way to distinguish partial replica failures. For a time-series database handling financial data, that's not good enough. Here's what we built.
+
+---
+
+## Before and After
+
+<CardGrid>
+  <Card title="Before" icon="error">
+    Queue overflow → silent data loss. Send failure → error counter incremented, data gone. No quorum concept.
+  </Card>
+  <Card title="After" icon="approve-check">
+    Quorum writes with configurable W. Retry queue with exponential backoff. Optional backpressure to block producers.
+  </Card>
+</CardGrid>
+
+---
+
+## Quorum Writes
+
+In `flush_batch()`, the replicator sends to each replica and tallies ACK count:
+
+```
+flush_batch(batch):
+  ack_count = 0
+  for each replica in replicas_:
+    if send(replica, batch) == OK:
+      ack_count++
+    else:
+      enqueue_retry(replica, batch)
+
+  if quorum_w == 0:
+    success = (ack_count == replicas_.size())   // all must ACK
+  else:
+    success = (ack_count >= quorum_w)           // W of N
+```
+
+| `quorum_w` | Behavior |
+|------------|----------|
+| `0` | All replicas must ACK (strongest guarantee) |
+| `1` | At least 1 replica ACKs (availability over consistency) |
+| `N/2 + 1` | Majority quorum (typical production setting) |
+
+---
+
+## Retry Queue
+
+Failed batches go into a bounded retry queue. The send loop processes retries on every iteration:
+
+```
+send_loop():
+  while running:
+    batch = dequeue()              // main queue
+    flush_batch(batch)
+    process_retry_queue()          // retry failed batches
+
+process_retry_queue():
+  for each entry in retry_queue_:
+    if entry.attempts >= max_retries:
+      drop(entry)                  // log + increment retry_exhausted
+      continue
+    if send(entry.replica, entry.batch) == OK:
+      stats_.retried++
+      remove(entry)
+    else:
+      entry.attempts++
+```
+
+### Configuration
+
+```cpp
+struct ReplicatorConfig {
+    uint32_t quorum_w               = 0;      // 0 = all replicas
+    size_t   retry_queue_capacity   = 65536;  // 64K entries
+    uint32_t retry_interval_ms      = 100;    // between retry attempts
+    uint32_t max_retries            = 3;      // then drop
+    bool     backpressure           = false;   // block producer on full queue
+    uint32_t backpressure_timeout_ms = 500;   // max block time
+};
+```
+
+---
+
+## Backpressure
+
+When `backpressure = true` and the main queue is full, the producer thread blocks instead of dropping data:
+
+```
+enqueue(batch):
+  if queue_.full():
+    if config_.backpressure:
+      stats_.backpressured++
+      cv_.wait_for(lock, backpressure_timeout_ms)
+      if queue_.full():
+        drop(batch)    // timeout — drop as last resort
+        return
+    else:
+      drop(batch)      // no backpressure — drop immediately
+      return
+  queue_.push(batch)
+```
+
+The condition variable is signaled by `send_loop()` after each batch swap, creating natural flow control between producer and replicator.
+
+---
+
+## Statistics
+
+```cpp
+struct ReplicatorStats {
+    uint64_t sent;              // successfully sent batches
+    uint64_t failed;            // send failures (queued for retry)
+    uint64_t dropped;           // dropped on queue overflow
+    uint64_t retried;           // successfully retried batches
+    uint64_t retry_exhausted;   // dropped after max_retries exceeded
+    uint64_t backpressured;     // enqueue calls that blocked
+};
+```
+
+These are exposed via `/admin/metrics` for Prometheus monitoring. Key alerts to set up:
+
+| Metric | Alert Threshold | Meaning |
+|--------|----------------|---------|
+| `retry_exhausted` | > 0 | Data loss — replicas unreachable beyond retry budget |
+| `backpressured` | increasing | Producer faster than replication — consider more replicas |
+| `dropped` | > 0 | Queue overflow without backpressure — enable backpressure or increase capacity |
+
+---
+
+## Production Configuration Guide
+
+| Workload | `quorum_w` | `backpressure` | `max_retries` | Rationale |
+|----------|-----------|----------------|---------------|-----------|
+| HFT (latency-critical) | 1 | false | 1 | Minimize write latency; accept some data loss |
+| Financial (correctness) | N/2+1 | true | 5 | Majority quorum; block rather than lose data |
+| IoT (high volume) | 1 | false | 3 | Best-effort with retries; volume too high to block |
+| Observability | 0 | false | 3 | All replicas; drop on overload (metrics are replaceable) |
+
+---
+
+## Backward Compatibility
+
+All defaults match the original behavior:
+
+| Field | Default | Original Behavior |
+|-------|---------|-------------------|
+| `quorum_w` | 0 | All replicas attempted |
+| `max_retries` | 3 | New (was 0 — no retries) |
+| `backpressure` | false | Drop on overflow |
+
+The only behavioral change: failed sends are now retried up to 3 times before dropping. This is strictly better than the original behavior.

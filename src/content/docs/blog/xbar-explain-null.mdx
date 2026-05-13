@@ -1,0 +1,166 @@
+---
+title: "XBAR Sorted-Scan Optimization and EXPLAIN Statement"
+description: "Exploiting timestamp monotonicity to eliminate hash lookups in GROUP BY XBAR, adding EXPLAIN for query plan inspection, and standardizing NULL handling across all executor paths."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Three targeted improvements in one session: a sorted-scan optimization that cuts xbar GROUP BY time by 12%, an EXPLAIN statement for query plan visibility, and NULL standardization across all aggregation paths.
+
+---
+
+## The Problem: Redundant Hash Lookups
+
+GROUP BY XBAR on timestamps produces time bars — 1M rows might yield only 3,334 unique 5-minute buckets. The executor was doing a full `unordered_map` hash lookup for every row, even though consecutive rows almost always land in the same bucket.
+
+Why? Time-series partitions store timestamps in monotonically increasing order. Within a 5-minute bar, thousands of consecutive rows share the same xbar key. The hash map was doing ~1M lookups when ~3,334 would suffice.
+
+---
+
+## The Fix: Cached Key/Slot
+
+Two variables before the partition loop:
+
+```cpp
+int64_t  cached_key  = INT64_MIN;
+uint32_t cached_slot = 0;
+```
+
+In the hot row loop:
+
+```cpp
+if (__builtin_expect(kv != cached_key, 0)) {
+    auto it = key_to_slot.find(kv);
+    if (__builtin_expect(it == key_to_slot.end(), 0)) {
+        it = key_to_slot.emplace(kv, next_slot++).first;
+        flat_states.resize(flat_states.size() + ncols);
+    }
+    cached_key  = kv;
+    cached_slot = it->second;
+}
+GroupState* states = flat_states.data() + cached_slot * ncols;
+```
+
+`__builtin_expect(..., 0)` tells the branch predictor that key changes are rare. The common path — same key as previous row — is a single integer comparison with no hash lookup, no map traversal, no cache miss.
+
+### Why This Works for Time-Series
+
+```
+Partition timestamps (sorted):
+  [1000, 1001, 1002, ..., 1999, 2000, 2001, ...]
+   \___________ bar 0 ___________/ \____ bar 1 ____
+
+~99.7% of rows: same bar as previous row
+~0.3% of rows: new bar boundary → hash lookup
+```
+
+Hash operations drop from O(N_rows) to O(N_buckets). For 1M rows with 3,334 bars, that's a 300× reduction in hash lookups.
+
+### Results
+
+| Configuration | xbar 1M rows |
+|--------------|-------------|
+| Before flat GroupState | 45.2ms |
+| After flat GroupState | 11.62ms |
+| After sorted-scan + PGO | **10.25ms** |
+
+The same cache was applied to the parallel path's per-thread `PartialGroupScalar` struct.
+
+---
+
+## EXPLAIN Statement
+
+`EXPLAIN SELECT ...` returns a human-readable execution plan without running the query:
+
+```sql
+EXPLAIN SELECT count(*) FROM trades
+```
+
+```
+→ Operation: Aggregate
+→ Table: trades  Partitions: 2  EstimatedRows: 20000
+→ GroupBy: (none)
+→ Path: serial
+```
+
+```sql
+EXPLAIN SELECT sum(volume) FROM trades
+  GROUP BY XBAR(recv_ts, 300000000000)
+```
+
+```
+→ Operation: GroupAggregate
+→ Table: trades  Partitions: 2  EstimatedRows: 20000
+→ GroupBy: XBAR(300000000000)
+→ Path: serial
+```
+
+### Implementation
+
+Minimal changes across three layers:
+
+- **Tokenizer**: added `EXPLAIN` keyword
+- **AST**: `bool explain = false` flag on `SelectStmt`
+- **Parser**: detects `EXPLAIN` prefix, sets flag, parses the rest normally
+- **Executor**: `build_explain_plan()` builds plan lines and returns early before any data scan
+
+The plan output uses `QueryResultSet::string_rows` — the same format as DDL results — so HTTP clients and the CLI display it without special handling.
+
+---
+
+## NULL Standardization
+
+Different executor paths were returning inconsistent values for empty aggregates:
+
+| Aggregate | `exec_agg` (serial) | `exec_agg_parallel` | `exec_group_agg` |
+|-----------|---------------------|---------------------|-------------------|
+| MIN (no rows) | 0 ✗ | 0 ✗ | INT64_MIN ✓ |
+| MAX (no rows) | 0 ✗ | 0 ✗ | INT64_MIN ✓ |
+| AVG (count=0) | 0 ✗ | 0 ✗ | INT64_MIN ✓ |
+| VWAP (vol=0) | 0 ✗ | — | INT64_MIN ✓ |
+
+ZeptoDB uses `INT64_MIN` as the universal NULL sentinel. Returning 0 for an empty MIN is wrong — 0 is a valid price. The fix was straightforward: check for zero count/rows before writing the result, and emit `INT64_MIN` instead of 0.
+
+COUNT and SUM correctly return 0 for empty inputs (the sum of nothing is 0, the count of nothing is 0).
+
+---
+
+## PGO Profile Refresh
+
+After all code changes, a fresh PGO6 profile was collected. PGO profiles become stale after hot-path modifications — the branch prediction hints and inlining decisions from the old profile no longer match the new code layout.
+
+```bash
+# Instrumentation build
+cmake . -DCMAKE_CXX_FLAGS="-O3 -march=native -fprofile-generate=/tmp/zepto_pgo6"
+./tests/zepto_tests --gtest_filter="Benchmark.*:SqlExecutor*:FinancialFunction*"
+
+# Optimized build
+cmake . -DCMAKE_CXX_FLAGS="-O3 -march=native -flto -fprofile-use=/tmp/zepto_pgo6"
+```
+
+### Final Benchmarks (LTO + PGO6 + tcmalloc + hugepages)
+
+| Benchmark | Time |
+|-----------|------|
+| xbar GROUP BY 1M rows | **10.25ms** |
+| EMA 1M rows | **2.22ms** |
+| Window JOIN 100K×100K | **11.6ms** |
+
+<CardGrid>
+  <Card title="Sorted-scan cache" icon="rocket">
+    Single integer comparison eliminates 99.7% of hash lookups. Exploits timestamp monotonicity.
+  </Card>
+  <Card title="EXPLAIN" icon="approve-check">
+    Query plan inspection without execution. Same output format as DDL — zero client changes.
+  </Card>
+  <Card title="NULL consistency" icon="list-format">
+    INT64_MIN sentinel standardized across serial, parallel, and GROUP BY paths.
+  </Card>
+  <Card title="PGO refresh" icon="setting">
+    Fresh profile after hot-path changes. Stale PGO profiles hurt more than they help.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Financial Functions →](/blog/financial-functions/) · [SQL Arithmetic and CASE WHEN →](/blog/sql-arithmetic-case-datetime/) · [GROUP BY Time Index →](/blog/groupby-time-index/)

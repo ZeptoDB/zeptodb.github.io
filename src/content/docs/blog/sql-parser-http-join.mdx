@@ -1,0 +1,150 @@
+---
+title: "Building a SQL Parser, HTTP API, and JOIN Framework"
+description: "How ZeptoDB implements a recursive descent SQL parser, ClickHouse-compatible HTTP API, and ASOF JOIN — the three pillars of a queryable time-series database."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB needed a query interface that financial engineers could use without learning a new DSL. This post covers the three components built in a single sprint: a hand-rolled SQL parser, a ClickHouse-compatible HTTP server, and an ASOF JOIN operator designed for market data.
+
+---
+
+## The Tokenizer → Parser → AST Pipeline
+
+No flex, bison, or ANTLR. The entire SQL frontend is a pure C++ recursive descent parser — zero external dependencies, full control over error messages, and sub-5μs parse times.
+
+```
+SQL string → Tokenizer → Token stream → Parser → AST → Executor → Results
+```
+
+The tokenizer produces typed tokens (keywords, identifiers, operators, literals). The parser consumes them via a predictive top-down walk, building an AST that the executor translates into `ZeptoPipeline` API calls.
+
+### Supported SQL Subset
+
+```sql
+SELECT price, volume FROM trades WHERE symbol = 1 AND price > 15000
+SELECT count(*), sum(volume), avg(price) FROM trades WHERE symbol = 1
+SELECT VWAP(price, volume) FROM trades                -- finance-specific
+SELECT symbol, sum(volume) FROM trades GROUP BY symbol
+SELECT price FROM trades ORDER BY price DESC LIMIT 100
+SELECT * FROM trades WHERE price BETWEEN 15000 AND 16000
+```
+
+The grammar targets the SQL subset actually used in financial time-series workloads — no subqueries or CTEs yet, but full coverage of aggregation, filtering, sorting, and grouping.
+
+### Parse Performance
+
+| Query Type | Average | P99 |
+|-----------|---------|-----|
+| Simple SELECT | 1.17μs | 1.23μs |
+| Aggregate | 1.79μs | 1.85μs |
+| GROUP BY | 1.39μs | 1.43μs |
+| ASOF JOIN | 4.56μs | 4.63μs |
+| Complex JOIN | 5.06μs | 5.14μs |
+
+All queries parse in under 6μs. The parser is never the bottleneck.
+
+---
+
+## Symbol-Aware Query Execution
+
+ZeptoDB partitions data by symbol ID — there's no `symbol` column in the column store. When the executor sees `WHERE symbol = 1`, it doesn't scan and filter; it routes directly to the matching partitions:
+
+```cpp
+if (has_where_symbol(stmt, sym_filter, alias)) {
+    auto parts = pm.get_partitions_for_symbol(sym_filter);
+    // Scan only matching partitions — skip everything else
+}
+```
+
+This partition-level routing means symbol filters are O(1) lookups, not O(n) scans.
+
+---
+
+## ASOF JOIN: The Finance Core
+
+ASOF JOIN matches each left row to the most recent right row where the timestamp is ≤ the left timestamp. This is the fundamental operation for aligning trades with quotes.
+
+```sql
+SELECT t.price, t.volume, q.bid, q.ask
+FROM trades t
+ASOF JOIN quotes q ON t.symbol = q.symbol AND t.timestamp >= q.timestamp
+```
+
+### Algorithm: Two-Pointer + Binary Search
+
+```
+Left (trades):  [t=100, t=200, t=300]  symbol=1
+Right (quotes): [t=50,  t=150, t=250]  symbol=1
+
+ASOF matching:
+  trade(t=100) → quote(t=50)   ← most recent where t ≤ 100
+  trade(t=200) → quote(t=150)  ← most recent where t ≤ 200
+  trade(t=300) → quote(t=250)  ← most recent where t ≤ 300
+```
+
+The implementation groups the right table by symbol, then uses `upper_bound` for O(log m) matching per left row. Total complexity: O(n log m).
+
+| Data Size | Time |
+|-----------|------|
+| 1,000 rows | 149μs |
+| 10,000 rows | 1.5ms |
+| 1,000,000 rows | 53ms |
+
+---
+
+## ClickHouse-Compatible HTTP API
+
+The HTTP server runs on port 8123 — the same port ClickHouse uses. This means existing Grafana dashboards, client libraries, and `curl` scripts work without modification.
+
+```
+POST /      — SQL query execution (body = SQL string)
+GET  /      — SQL query (query parameter)
+GET  /ping  — health check → "Ok"
+GET  /stats — pipeline statistics (JSON)
+```
+
+Response format:
+
+```json
+{
+  "columns": ["price", "volume"],
+  "data": [[15000, 100], [15010, 200]],
+  "rows": 2,
+  "rows_scanned": 100000,
+  "execution_time_us": 52.30
+}
+```
+
+No HTTP layer changes were needed for subsequent features (INSERT, DDL, etc.) — everything routes through `executor_.execute(sql)`.
+
+---
+
+## SQL Overhead vs Direct C++ API
+
+| Operation | SQL | Direct C++ |
+|-----------|-----|-----------|
+| VWAP (100K rows) | 112μs | 50μs |
+| COUNT | 13μs | 0.12μs |
+| SUM (100K rows) | 52μs | N/A |
+
+The SQL overhead is parsing (~2μs) + AST interpretation + function pointer dispatch. For analytical queries on large datasets, this is negligible. For micro-benchmarks on tiny data, the C++ API is faster — but nobody runs `COUNT(*)` on 10 rows in production.
+
+<CardGrid>
+  <Card title="Zero dependencies" icon="approve-check">
+    Pure C++ recursive descent parser. No flex, bison, or ANTLR — full control, sub-5μs parse times.
+  </Card>
+  <Card title="ClickHouse compatible" icon="rocket">
+    Port 8123, same response format. Existing Grafana dashboards and client libraries work unchanged.
+  </Card>
+  <Card title="ASOF JOIN" icon="list-format">
+    O(n log m) trade-to-quote alignment. The fundamental operation for financial time-series analysis.
+  </Card>
+  <Card title="Partition routing" icon="setting">
+    Symbol filters route to partitions directly — O(1) lookup, not O(n) scan.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [How ASOF JOIN Works →](/blog/how-asof-join-works/) · [Financial Functions →](/blog/financial-functions/) · [Lock-Free Ingestion →](/blog/lock-free-ingestion/)

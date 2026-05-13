@@ -1,0 +1,144 @@
+---
+title: "Cluster Integrity and Split-Brain Defense"
+description: "How ZeptoDB prevents data corruption during network partitions using fencing tokens, epoch-based RPC validation, and Kubernetes lease integration."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+A distributed database that can't handle network partitions is a distributed database that will corrupt your data. ZeptoDB's cluster integrity layer addresses four structural issues: router synchronization, stale coordinator writes, standby promotion gaps, and distributed query merge correctness.
+
+---
+
+## The Four Problems
+
+<CardGrid>
+  <Card title="Split Routers" icon="warning">
+    ClusterNode and QueryCoordinator each had independent PartitionRouter copies — no sync.
+  </Card>
+  <Card title="Stale Writes" icon="error">
+    After failover, the old coordinator could still write to data nodes.
+  </Card>
+  <Card title="Empty Promotion" icon="warning">
+    Standby→Active promotion left the coordinator's endpoint list empty.
+  </Card>
+  <Card title="Wrong Aggregates" icon="error">
+    Naive concat of distributed GROUP BY results produced incorrect values.
+  </Card>
+</CardGrid>
+
+---
+
+## Unified PartitionRouter
+
+`QueryCoordinator` now accepts an external router via shared pointer:
+
+```cpp
+coordinator.set_shared_router(&cluster_node.router(), &cluster_node.router_mutex());
+```
+
+When set, the coordinator reads from the same router as `ClusterNode`. When not set, it falls back to its own internal router (backward compatible). Read/write access is protected by `shared_mutex` — reads use `shared_lock`, ring mutations use `unique_lock`.
+
+---
+
+## Fencing Tokens in the RPC Protocol
+
+The core defense against split-brain. Every write RPC now carries an epoch:
+
+```
+RpcHeader (24 bytes):
+┌──────────┬──────────┬────────────┬─────────────┬──────────┐
+│ magic(4) │ type(4)  │ req_id(4)  │ payload(4)  │ epoch(8) │
+└──────────┴──────────┴────────────┴─────────────┴──────────┘
+         (was 16 bytes)                    (new field)
+```
+
+Server-side validation in `TcpRpcServer`:
+
+```cpp
+void set_fencing_token(FencingToken* token);
+// On TICK_INGEST or WAL_REPLICATE:
+//   if header.epoch < token->last_seen() → REJECT
+//   else → token->validate(header.epoch) → ACCEPT
+```
+
+| Epoch value | Behavior |
+|-------------|----------|
+| `0` | Bypass fencing (legacy client compatibility) |
+| `< last_seen` | **Rejected** — stale coordinator |
+| `≥ last_seen` | Accepted, `last_seen` updated |
+
+Read operations (`SQL_QUERY`) have no fencing — reads are safe by design.
+
+---
+
+## Split-Brain Prevention Flow
+
+```
+Timeline:
+─────────────────────────────────────────────────────────
+
+Coordinator A (epoch=1)     Network Partition     Coordinator B
+       │                         ╳                      │
+       │  writes OK (epoch=1)    ╳                      │
+       │                         ╳   lease acquired     │
+       │                         ╳   epoch bumped to 2  │
+       │                         ╳   writes OK (epoch=2)│
+       │                         ╳                      │
+       │  partition heals ───────╳──────────────────────│
+       │                                                │
+       │  tries write (epoch=1)                         │
+       │  → REJECTED (last_seen=2)                      │
+       │                                                │
+       ▼  data integrity preserved                      ▼
+```
+
+---
+
+## K8s Lease Integration
+
+In production, `CoordinatorHA` uses Kubernetes leases for leader election:
+
+```cpp
+CoordinatorHAConfig config;
+config.require_lease = true;
+config.lease_config.namespace_ = "zeptodb";
+config.lease_config.lease_name = "coordinator-leader";
+```
+
+On standby→active promotion:
+1. `lease_->try_acquire()` — must succeed
+2. `fencing_token_.advance()` — epoch bump
+3. `peer_rpc_->set_epoch(new_epoch)` — propagate to all RPC clients
+4. Re-register all known nodes with the coordinator
+
+On lease loss (e.g., another node acquires it):
+- Automatic demotion: `ACTIVE → STANDBY`
+- All subsequent writes from this node will be rejected by data nodes
+
+---
+
+## CoordinatorHA Auto Re-registration
+
+When a standby is promoted, it now iterates `registered_nodes_` and calls `coordinator_.add_remote_node()` for each. Without this, the promoted coordinator would have an empty endpoint list and couldn't route queries.
+
+---
+
+## Verification Tests
+
+| Test | What It Proves |
+|------|---------------|
+| `StaleCoordinatorWriteRejected` | Coordinator A (epoch=1) writes succeed. B promoted (epoch=2). A retries → rejected. |
+| `StaleWalReplicationRejected` | New coordinator (epoch=3) replicates WAL. Old (epoch=1) tries → rejected. |
+| `K8sLeasePreventsDualLeader` | Lease holder A loses to B via `force_holder()`. A cannot re-acquire. |
+| `LegacyClientBypass` | Client with epoch=0 bypasses fencing (backward compat). |
+| `PromotionReRegistersNodes` | Remote nodes available immediately after promotion. |
+
+---
+
+## Remaining Gaps
+
+- `epoch=0` bypass should be disabled in production (`set_require_epoch(true)`)
+- CoordinatorHA doesn't auto-wire FencingToken on promotion — caller must connect the `K8sLease → FencingToken → TcpRpcClient.set_epoch` chain
+- No fencing on SQL reads (by design — reads don't mutate state)
+
+These are acceptable trade-offs: the fencing layer prevents data corruption, which is the critical invariant. Read consistency is handled at the query layer.

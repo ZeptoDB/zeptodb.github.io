@@ -1,0 +1,163 @@
+---
+title: "GROUP BY Optimization with Timestamp Range Index"
+description: "How ZeptoDB exploits sorted timestamps and partition-per-symbol structure to make GROUP BY and time range queries orders of magnitude faster."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Time-series data has two properties that most databases ignore: timestamps are always sorted, and data is naturally partitioned by symbol. ZeptoDB exploits both to make `GROUP BY` and `WHERE timestamp BETWEEN` dramatically faster.
+
+---
+
+## The Problem with Full Scans
+
+A naive `WHERE timestamp BETWEEN X AND Y` scans every row:
+
+```cpp
+// O(n) — reads all 1M rows even if only 1% match
+for (size_t i = 0; i < num_rows; ++i) {
+    if (data[i] >= lo && data[i] <= hi)
+        result.push_back(i);
+}
+```
+
+For a 1M-row partition where only 10K rows match the time range, this wastes 99% of the work.
+
+---
+
+## Timestamp Range Index: O(log n) Binary Search
+
+Since ZeptoDB appends data in timestamp order (monotonically increasing), every partition's timestamp column is already sorted. Binary search finds the exact range boundaries:
+
+```cpp
+std::pair<size_t, size_t> timestamp_range(int64_t from_ts, int64_t to_ts) const {
+    auto span = ts_col->as_span<int64_t>();
+    auto begin = std::lower_bound(span.begin(), span.end(), from_ts);
+    auto end   = std::upper_bound(span.begin(), span.end(), to_ts);
+    return {begin - span.begin(), end - span.begin()};
+}
+```
+
+This returns a `[start, end)` index range in O(log n). For 1M rows, that's ~20 comparisons instead of 1M.
+
+### Partition-Level Pruning: O(1)
+
+Before even binary-searching within a partition, we can skip entire partitions by checking only the first and last timestamp:
+
+```cpp
+bool overlaps_time_range(int64_t lo, int64_t hi) const {
+    auto span = ts_col->as_span<int64_t>();
+    return span.front() <= hi && span.back() >= lo;
+}
+```
+
+Two comparisons. If the partition's time range doesn't overlap the query range, skip it entirely.
+
+### Query Execution Flow
+
+```
+For each partition:
+  ├── O(1): overlaps_time_range? → NO → skip entirely
+  ├── O(log n): timestamp_range → [start, end)
+  └── eval WHERE only on [start, end) rows
+```
+
+At 1% selectivity, this is roughly **99x faster** than a full scan — the binary search finds the 10K matching rows directly, and partition pruning eliminates non-overlapping partitions without touching their data.
+
+---
+
+## GROUP BY Symbol: Zero-Cost Partitioning
+
+ZeptoDB stores data in per-symbol partitions. Each partition has a `PartitionKey` containing the `symbol_id`. For `GROUP BY symbol`, this means the grouping is already done:
+
+```cpp
+if (is_symbol_group) {
+    // O(1) — read symbol_id from partition key, not from row data
+    int64_t symbol_gkey = static_cast<int64_t>(part->key().symbol_id);
+    // aggregate all rows in this partition under this key
+}
+```
+
+No hash table. No per-row symbol column reads. No hash collisions. Each partition *is* a group.
+
+For non-symbol GROUP BY columns, a pre-allocated hash map handles the general case:
+
+```cpp
+std::unordered_map<int64_t, std::vector<GroupState>> groups;
+groups.reserve(1024);  // pre-allocate for typical cardinality
+```
+
+---
+
+## ORDER BY + LIMIT: Top-N Partial Sort
+
+When a query has both `ORDER BY` and `LIMIT`, full sorting is wasteful. `std::partial_sort` gives O(n log k) instead of O(n log n):
+
+```cpp
+if (limit < result.rows.size()) {
+    // Top-N: O(n log k) — only sort the top k elements
+    std::partial_sort(begin, begin + limit, end, comparator);
+    result.rows.resize(limit);
+} else {
+    // Full sort: O(n log n)
+    std::sort(begin, end, comparator);
+}
+```
+
+For `ORDER BY price DESC LIMIT 10` on 1M rows, this is ~50x faster than full sort.
+
+A subtle bug was caught during implementation: applying `LIMIT` during data collection (before `ORDER BY`) truncates the wrong rows. The fix ensures `LIMIT` is only applied after sorting when `ORDER BY` is present.
+
+---
+
+## Benchmark Results
+
+Environment: Amazon Linux 2023, Clang 19, `-O3 -march=native`, 100K rows (10 symbols × 10K each).
+
+```
+group_by_symbol_sum          min=331μs  avg=360μs  p99=412μs
+group_by_symbol_multi_agg    min=1592μs avg=1960μs p99=2117μs
+group_by_symbol_order_limit  min=489μs  avg=535μs  p99=559μs
+```
+
+<CardGrid>
+  <Card title="Timestamp binary search" icon="rocket">
+    ~99x faster at 1% selectivity. O(log n) vs O(n) — 20 comparisons vs 1M.
+  </Card>
+  <Card title="Partition pruning" icon="approve-check">
+    O(1) per partition. Two comparisons skip entire partitions that don't overlap the query range.
+  </Card>
+  <Card title="Symbol GROUP BY" icon="star">
+    Zero-cost grouping. Partition key = group key. No hash table needed.
+  </Card>
+  <Card title="Top-N sort" icon="list-format">
+    O(n log k) partial sort for ORDER BY + LIMIT. ~50x faster for small k.
+  </Card>
+</CardGrid>
+
+---
+
+## When This Matters
+
+These optimizations compound. A query like:
+
+```sql
+SELECT symbol, avg(price), sum(volume)
+FROM trades
+WHERE timestamp BETWEEN '2026-03-01' AND '2026-03-02'
+GROUP BY symbol
+ORDER BY sum(volume) DESC
+LIMIT 10
+```
+
+Hits all four optimizations:
+1. Partition pruning skips symbols with no data in the time range
+2. Binary search narrows to the exact row range within each partition
+3. GROUP BY uses partition keys directly — no hash table
+4. Top-N partial sort returns only the top 10
+
+The result is a query that touches only the data it needs, at every level of the execution pipeline.
+
+---
+
+Related: [Parallel Query Engine →](/blog/parallel-query-engine/) · [Cost-Based Query Planner →](/blog/cost-based-query-planner/) · [FlatHashMap JOINs →](/blog/flat-hash-map-joins/)

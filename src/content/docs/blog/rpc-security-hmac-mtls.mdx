@@ -1,0 +1,141 @@
+---
+title: "Internal RPC Security: Shared-Secret HMAC and mTLS"
+description: "How ZeptoDB secures inter-node RPC communication with FNV-1a HMAC authentication, nonce-based replay protection, and a path toward mutual TLS."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Cluster-internal TCP RPC is the nervous system of a distributed database. In ZeptoDB, every tick ingest, WAL replication, and distributed query flows through it. Without authentication, an attacker with network access can execute arbitrary SQL, inject ticks, or manipulate WAL segments. Here's how we locked it down.
+
+---
+
+## Threat Model
+
+<CardGrid>
+  <Card title="Arbitrary SQL" icon="error">
+    Unauthenticated RPC lets any network peer execute queries on data nodes.
+  </Card>
+  <Card title="Tick Injection" icon="error">
+    Fake TICK_INGEST messages can corrupt real-time market data streams.
+  </Card>
+  <Card title="WAL Manipulation" icon="warning">
+    Forged WAL_REPLICATE messages can poison replicas with bad data.
+  </Card>
+  <Card title="Replay Attacks" icon="warning">
+    Captured RPC payloads can be replayed to re-execute operations.
+  </Card>
+</CardGrid>
+
+---
+
+## Authentication Design
+
+The solution uses a shared-secret HMAC with nonce-based replay protection. No OpenSSL dependency — the HMAC uses a 4-round FNV-1a hash producing a 256-bit digest.
+
+### Configuration
+
+```cpp
+RpcSecurityConfig config;
+config.enabled       = true;
+config.shared_secret = "my-cluster-secret-key";
+// mTLS fields prepared for future use:
+config.cert_path     = "/etc/zeptodb/node.crt";
+config.key_path      = "/etc/zeptodb/node.key";
+config.ca_cert_path  = "/etc/zeptodb/ca.crt";
+```
+
+### Auth Payload Structure
+
+```
+Auth payload (40 bytes):
+┌──────────────────┬──────────────────────────────┐
+│  nonce (8 bytes) │  HMAC-FNV1a-256 (32 bytes)   │
+└──────────────────┴──────────────────────────────┘
+```
+
+- `rpc_generate_nonce()` — 8 bytes of cryptographic randomness
+- `rpc_compute_hmac(secret, nonce)` — 4-round FNV-1a over secret + nonce
+- `rpc_build_auth(secret)` — combines nonce + HMAC into 40-byte payload
+- `rpc_validate_auth(secret, payload)` — server-side verification
+
+---
+
+## Protocol Flow
+
+Authentication happens once per connection, before any data messages:
+
+```
+Client                              Server
+  │                                   │
+  ├── connect() ─────────────────────→│
+  ├── AUTH_HANDSHAKE {nonce + HMAC} ─→│
+  │                                   ├── recompute HMAC from nonce + secret
+  │                                   │   ├── match    → AUTH_OK
+  │←── AUTH_OK ───────────────────────┤   └── mismatch → AUTH_REJECT + close
+  │                                   │
+  ├── SQL_QUERY ─────────────────────→│  (normal traffic)
+  │←── SQL_RESULT ────────────────────┤
+  ├── TICK_INGEST ───────────────────→│
+  │←── TICK_ACK ──────────────────────┤
+```
+
+Three new message types were added to the RPC protocol:
+
+| Type ID | Name | Direction |
+|---------|------|-----------|
+| 15 | `AUTH_HANDSHAKE` | Client → Server |
+| 16 | `AUTH_OK` | Server → Client |
+| 17 | `AUTH_REJECT` | Server → Client |
+
+---
+
+## Server and Client Integration
+
+On the server side, `TcpRpcServer` enforces authentication as the first message:
+
+```cpp
+TcpRpcServer server;
+server.set_security(config);
+// handle_connection() now:
+//   1. Waits for AUTH_HANDSHAKE as first message
+//   2. Validates HMAC → AUTH_OK or AUTH_REJECT + close
+//   3. Enters normal message loop only after AUTH_OK
+```
+
+On the client side, `TcpRpcClient` authenticates new connections automatically:
+
+```cpp
+TcpRpcClient client;
+client.set_security(config);
+// acquire() now:
+//   1. Sends AUTH_HANDSHAKE on new connections
+//   2. Waits for AUTH_OK (closes on AUTH_REJECT)
+//   3. Pooled connections skip re-authentication
+```
+
+---
+
+## Backward Compatibility
+
+When `security_.enabled = false` (the default), no handshake occurs. Existing clients and servers continue to work without any protocol changes. This means rolling upgrades are safe — enable security on servers first, then clients.
+
+---
+
+## mTLS Roadmap
+
+The `RpcSecurityConfig` already carries `cert_path`, `key_path`, and `ca_cert_path` fields. The plan:
+
+1. **Current** — HMAC shared-secret authentication (deployed)
+2. **Next** — OpenSSL `SSL_CTX` wrapping of TCP sockets for full mTLS
+3. **Defense in depth** — HMAC authentication will be retained even after mTLS, providing two independent authentication layers
+
+The HMAC layer is lightweight (no TLS handshake overhead) and serves as a fast-fail mechanism before the more expensive TLS negotiation.
+
+---
+
+## Key Takeaways
+
+- Zero external dependencies — FNV-1a HMAC avoids OpenSSL for the auth layer
+- Per-connection authentication with nonce prevents replay attacks
+- Backward compatible — disabled by default, safe for rolling upgrades
+- mTLS-ready config structure for future hardening

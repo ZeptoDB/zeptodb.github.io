@@ -1,0 +1,184 @@
+---
+title: "Bare-Metal Performance Tuning for Microsecond Latency"
+description: "A practical guide to CPU pinning, NUMA, huge pages, io_uring, and compiler optimizations — with real benchmark numbers from ZeptoDB on Intel Xeon."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB reduced xbar query latency from 45.2ms to 12.4ms — a 73% improvement — through systematic bare-metal tuning. This post is the practical guide: what we tuned, what worked, what didn't, and why.
+
+Hardware: Intel Xeon 6975P-C, 8 cores, 31GB RAM, single NUMA node, Amazon Linux 2023.
+
+---
+
+## The Smoking Gun: IPC 0.31
+
+Before any tuning, `perf stat` revealed the root cause:
+
+```
+cycles:       4,857,773,539
+instructions: 1,506,218,500
+IPC:          0.31           ← CPU spends 70% of cycles stalling
+```
+
+Normal compute-bound code runs at IPC 2-4+. An IPC of 0.31 means the CPU is waiting on memory almost all the time. Two culprits: TLB pressure from missing huge pages, and per-row heap allocations in the GROUP BY path.
+
+---
+
+## Huge Pages: The Single Biggest Win
+
+ZeptoDB allocates 278 partitions with 32MB arenas each (~8.9GB total). Without huge pages, every `mmap` with `MAP_HUGETLB` failed silently, falling back to 4KB pages:
+
+```
+4KB pages:  8.9GB / 4KB  = ~2.2M TLB entries needed
+2MB pages:  8.9GB / 2MB  = ~4,448 TLB entries needed
+                            ─────────────────────────
+                            512x fewer TLB entries
+```
+
+The fix is one command:
+
+```bash
+echo 4608 > /proc/sys/vm/nr_hugepages   # pre-allocate 9GB of 2MB pages
+```
+
+Huge pages must be allocated **before** the process starts. The kernel needs contiguous physical memory, which fragments over time.
+
+---
+
+## Kernel Tuning
+
+Parameters that helped:
+
+```bash
+# Reduce VM overhead
+sysctl -w vm.swappiness=1
+sysctl -w vm.stat_interval=120        # reduce vmstat timer interrupts
+sysctl -w vm.dirty_ratio=80           # delay writeback
+sysctl -w vm.min_free_kbytes=262144   # keep 256MB free to avoid reclaim stalls
+
+# Disable noise sources
+sysctl -w kernel.watchdog=0
+sysctl -w kernel.nmi_watchdog=0
+sysctl -w kernel.timer_migration=0
+
+# NUMA (for multi-socket systems)
+sysctl -w vm.numa_balancing=0         # disable automatic page migration
+sysctl -w vm.zone_reclaim_mode=0      # don't reclaim from local zone
+```
+
+### What Didn't Work
+
+**Disabling ASLR** (`randomize_va_space=0`): Made xbar **4ms slower**. Deterministic virtual addresses cause L3 cache set aliasing — multiple hot pages map to the same cache sets, causing evictions. Keep ASLR enabled.
+
+**CPU governor tuning**: Not accessible on AWS EC2. The hypervisor controls CPU frequency. On bare-metal hardware, set `performance` governor.
+
+**C-state disabling**: Marginal improvement. Disabled states 2-9 to avoid wakeup latency, but the effect was within noise on this workload.
+
+---
+
+## Allocator: tcmalloc Wins
+
+The xbar GROUP BY path allocates `std::vector<int64_t>` per row as a group key — 1M heap allocations for 1M rows. Different allocators handle this pattern very differently:
+
+| Allocator | Xbar 1M | vs. glibc |
+|-----------|---------|-----------|
+| glibc malloc | 53.2ms | baseline |
+| jemalloc | 51.6ms | +3% |
+| **tcmalloc_minimal** | **47.5ms** | **+12%** |
+
+tcmalloc's per-thread caches handle the pattern of many small, short-lived allocations far better than glibc's arena approach. Enable it with a CMake flag:
+
+```bash
+cmake .. -DAPEX_USE_TCMALLOC=ON
+```
+
+---
+
+## Compiler Optimization Stack
+
+Tested systematically, each layer on top of the previous:
+
+| Build Configuration | Xbar 1M | Cumulative |
+|---------------------|---------|------------|
+| O3 + march=native | 53ms | baseline |
+| + tcmalloc | 48ms | -9% |
+| + PGO | 47.3ms | -11% |
+| **+ LTO** | **43.7ms** | **-18%** |
+
+**PGO** (Profile-Guided Optimization) collects runtime profiles to guide inlining and branch layout:
+
+```bash
+# Step 1: Instrument
+cmake .. -DCMAKE_CXX_FLAGS="-O3 -march=native -fprofile-generate=/tmp/pgo"
+ninja && ./zepto_tests --gtest_filter="Benchmark.*:SqlExecutor*"
+
+# Step 2: Optimize with profile
+cmake .. -DCMAKE_CXX_FLAGS="-O3 -march=native -flto -fprofile-use=/tmp/pgo"
+```
+
+**LTO** (Link-Time Optimization) enables cross-translation-unit inlining. The hot path spans `executor.cpp → partition_manager → arena` — LTO lets the compiler inline across these boundaries.
+
+---
+
+## The Real Bottleneck: Application-Level
+
+After all OS and compiler tuning, profiling revealed the true bottleneck: `make_group_key()` allocating a `std::vector<int64_t>` per row.
+
+```cpp
+// Before: heap allocation per row (1M mallocs for 1M rows)
+auto make_group_key = [&](const Partition& part, uint32_t idx)
+    -> std::vector<int64_t> { ... }
+
+// After: flat int64_t key for single-column GROUP BY
+std::unordered_map<int64_t, std::vector<GroupState>> groups;
+// Zero per-row heap allocations
+```
+
+This single change: **53ms → 13.3ms** (-75%). Combined with LTO+PGO+tcmalloc: **12.4ms** (-73% from original).
+
+---
+
+## Complete Results
+
+| Benchmark | Original | Final | Improvement |
+|-----------|----------|-------|-------------|
+| Xbar 1M rows | 45.2ms | **12.4ms** | **-73%** |
+| EMA 1M rows | 2.15ms | 2.23ms | ~flat |
+| Window JOIN 100K² | ~12ms | 11.58ms | ~flat |
+
+EMA and Window JOIN were already efficient — their hot paths don't hit the GROUP BY allocation pattern or TLB pressure.
+
+---
+
+## Recommended Production Build
+
+```bash
+cmake .. \
+  -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_CXX_FLAGS="-O3 -march=native -flto \
+    -fprofile-use=/path/to/pgo -fprofile-correction" \
+  -DAPEX_USE_TCMALLOC=ON \
+  -DAPEX_USE_LTO=ON
+```
+
+<CardGrid>
+  <Card title="Huge pages" icon="rocket">
+    512x fewer TLB entries. Pre-allocate before process start. Single biggest OS-level win.
+  </Card>
+  <Card title="tcmalloc" icon="setting">
+    12% faster for allocation-heavy workloads. Per-thread caches eliminate contention.
+  </Card>
+  <Card title="LTO + PGO" icon="puzzle">
+    18% combined. Cross-TU inlining + profile-guided branch layout.
+  </Card>
+  <Card title="Application-level" icon="star">
+    75% from eliminating per-row vector allocation. Always profile the application first.
+  </Card>
+</CardGrid>
+
+**Lesson**: OS and compiler tuning gave 18%. Fixing the application-level allocation pattern gave 75%. Always profile the application before tuning the kernel.
+
+---
+
+Related: [SIMD/JIT Optimization →](/blog/simd-jit-optimization/) · [Parallel Query Engine →](/blog/parallel-query-engine/) · [FlatHashMap JOINs →](/blog/flat-hash-map-joins/)

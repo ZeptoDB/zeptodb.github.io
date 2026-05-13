@@ -1,0 +1,161 @@
+---
+title: "RingConsensus: Lightweight Partition Ownership Protocol"
+description: "Why ZeptoDB chose epoch broadcast over Raft for partition router synchronization, and how the pluggable consensus interface keeps the door open for stronger guarantees."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Every node in a ZeptoDB cluster holds a copy of the `PartitionRouter` — the consistent hash ring that maps symbols to nodes. When a node joins or leaves, all copies must converge. We needed a synchronization protocol, and we chose not to use Raft. Here's why.
+
+---
+
+## The Problem
+
+Each `ClusterNode`, `QueryCoordinator`, and `ComputeNode` maintains an independent `PartitionRouter`. Without synchronization, a node addition on the coordinator doesn't propagate — other nodes route ticks to stale destinations.
+
+---
+
+## Why Not Raft?
+
+<CardGrid>
+  <Card title="Infrequent Changes" icon="information">
+    Ring changes happen only on node failure or addition — not on every tick.
+  </Card>
+  <Card title="Small State" icon="document">
+    The full ring state is a node list — a few KB at most.
+  </Card>
+  <Card title="Existing Infrastructure" icon="puzzle">
+    CoordinatorHA + FencingToken already provide leader election and epoch ordering.
+  </Card>
+  <Card title="Latency Budget" icon="rocket">
+    Raft consensus latency on the tick path is unacceptable for HFT workloads.
+  </Card>
+</CardGrid>
+
+ZeptoDB's target domains (HFT, IoT, observability) are fine with eventual consistency for routing metadata. The data path has its own correctness guarantees via fencing tokens.
+
+---
+
+## Epoch Broadcast Design
+
+The coordinator is the single source of truth for ring mutations. On a topology change, it:
+
+1. Mutates its local router
+2. Bumps the fencing token epoch
+3. Broadcasts a `RING_UPDATE` RPC to all peers
+4. Peers validate the epoch and rebuild their routers
+
+```
+Coordinator:
+  on_node_state_change(ACTIVE)
+    → consensus_->propose_add(node_id)
+      → router_.add_node(node_id)
+      → fencing_token_.advance()          // epoch N → N+1
+      → broadcast RING_UPDATE to all peers
+        → peers: validate(epoch) → router rebuild
+        → peers: respond RING_ACK
+
+Follower receives RING_UPDATE:
+  → FencingToken::validate(epoch)
+    → if epoch < last_seen: REJECT (stale)
+    → else: deserialize RingSnapshot → rebuild router
+  → respond RING_ACK
+```
+
+---
+
+## Wire Protocol
+
+Two new RPC message types:
+
+| Type | ID | Payload |
+|------|-----|---------|
+| `RING_UPDATE` | 13 | `RingSnapshot` (epoch + serialized node list) |
+| `RING_ACK` | 14 | Empty (acknowledgment) |
+
+`RingSnapshot` serialization:
+
+```cpp
+struct RingSnapshot {
+    uint64_t epoch;
+    std::vector<NodeId> nodes;
+
+    std::vector<uint8_t> serialize() const;
+    static RingSnapshot deserialize(const uint8_t* data, size_t len);
+};
+```
+
+---
+
+## The Pluggable Interface
+
+The consensus mechanism is abstracted behind `RingConsensus`:
+
+```cpp
+class RingConsensus {
+public:
+    virtual ~RingConsensus() = default;
+    virtual bool propose_add(NodeId id) = 0;
+    virtual bool propose_remove(NodeId id) = 0;
+    virtual bool apply_update(const RingSnapshot& snap) = 0;
+};
+```
+
+`EpochBroadcastConsensus` is the default implementation. Swapping to Raft is a one-line change:
+
+```cpp
+// Default: epoch broadcast (eventual consistency)
+node.join_cluster(seeds);
+
+// Future: Raft (strong consistency for banking/healthcare)
+node.set_consensus(std::make_unique<RaftConsensus>(raft_config));
+node.join_cluster(seeds);
+```
+
+---
+
+## Integration with ClusterNode
+
+`ClusterNode::join_cluster()` automatically initializes consensus and registers the RPC callback:
+
+```
+join_cluster(seeds):
+  1. Transport init (shm_open or ucp_init)
+  2. Register self + seeds in PartitionRouter
+  3. Connect to seed node
+  4. Start HealthMonitor (UDP thread)
+  5. Initialize EpochBroadcastConsensus     ← new
+  6. Register RING_UPDATE RPC callback       ← new
+  7. Start local pipeline (drain thread)
+```
+
+The `is_coordinator` flag in `ClusterConfig` determines behavior:
+- Coordinator: proposes changes through consensus (broadcast to peers)
+- Follower: applies changes received via `RING_UPDATE` RPC
+
+---
+
+## Consistency Guarantees
+
+| Property | Guarantee |
+|----------|-----------|
+| Convergence | All nodes converge after broadcast completes |
+| Ordering | Epoch monotonicity prevents stale updates |
+| Partition tolerance | Nodes that miss an update get corrected on next change |
+| Split-brain | FencingToken rejects updates from stale coordinators |
+
+The epoch acts as a logical clock. A follower that receives epoch 5 after seeing epoch 7 rejects it — the fencing token validation catches this automatically.
+
+---
+
+## Trade-offs
+
+| Epoch Broadcast | Raft |
+|----------------|------|
+| ✅ Zero latency on tick path | ❌ Consensus round-trip on every mutation |
+| ✅ Simple implementation (~200 LOC) | ❌ Complex (leader election, log replication) |
+| ✅ Reuses existing FencingToken infra | ❌ Separate leader election mechanism |
+| ⚠️ Eventual consistency | ✅ Strong consistency |
+| ⚠️ Single coordinator as source of truth | ✅ Any node can propose |
+
+For ZeptoDB's use cases, eventual consistency with epoch ordering is the right trade-off. The interface is ready for Raft when stronger guarantees are needed.

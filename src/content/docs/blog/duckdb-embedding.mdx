@@ -1,0 +1,152 @@
+---
+title: "Embedding DuckDB for Analytical Offload via Arrow"
+description: "How ZeptoDB embeds DuckDB as an in-process analytical engine for Parquet queries — with Arrow columnar bridging and a duckdb() table function."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB is optimized for hot, real-time time-series data. But what about cold data sitting in Parquet files on S3? Rather than building a full Parquet query engine, we embedded DuckDB as an in-process analytical offload — connected via columnar data conversion.
+
+---
+
+## Why Embed DuckDB?
+
+ZeptoDB's execution engine is built for streaming columnar data in memory — append-only partitions, SIMD aggregation, microsecond latency. Parquet files are a different beast: compressed, row-group-based, potentially gigabytes on remote storage.
+
+Building a Parquet query engine from scratch would mean reimplementing predicate pushdown on row groups, dictionary decoding, delta encoding, and dozens of compression codecs. DuckDB already does all of this extremely well.
+
+The architecture:
+
+```
+Hot data (real-time)          Cold data (historical)
+─────────────────────         ──────────────────────
+ZeptoDB Column Store          Parquet files (S3/local)
+     │                              │
+     ▼                              ▼
+ZeptoDB Execution Engine      DuckDB (embedded, in-process)
+     │                              │
+     └──────────┬───────────────────┘
+                ▼
+         QueryResultSet
+```
+
+---
+
+## The Arrow Bridge
+
+ZeptoDB and DuckDB both work with columnar data, but in different formats. The Arrow bridge converts between them:
+
+### ZeptoDB → Arrow (for DuckDB ingestion)
+
+```cpp
+// Convert ZeptoDB ColumnStore columns to flat vectors
+ArrowData columns_to_arrow_data(const ColumnStore& store, 
+                                 const vector<string>& columns);
+```
+
+Supported types: `INT64`, `FLOAT64`, `TIMESTAMP_NS`, `INT32`, `FLOAT32`, `SYMBOL`.
+
+### Arrow → ZeptoDB (for result consumption)
+
+```cpp
+// Convert column data back to QueryResultSet
+QueryResultSet arrow_columns_to_result(const ArrowData& data);
+```
+
+This is a columnar-to-columnar conversion — no row-by-row serialization. The data stays in contiguous arrays throughout.
+
+---
+
+## DuckDB Engine Wrapper
+
+The `DuckDBEngine` class wraps DuckDB with a pimpl pattern to isolate its headers from the rest of the codebase:
+
+```cpp
+class DuckDBEngine {
+    std::unique_ptr<Impl> impl_;  // DuckDB headers only in .cpp
+public:
+    QueryResult execute(const std::string& sql);
+    void register_parquet(const std::string& name, const std::string& path);
+};
+```
+
+Key design decisions:
+
+- **Pimpl pattern**: DuckDB headers are large and slow to compile. The pimpl keeps them out of consumer translation units.
+- **Lazy initialization**: DuckDB is created on first use, not at startup. If no Parquet queries are issued, zero overhead.
+- **Memory isolation**: DuckDB gets its own memory budget (default 256MB), separate from ZeptoDB's arena allocator.
+- **Thread safety**: One DuckDB connection per query. No shared mutable state.
+
+---
+
+## Query Routing
+
+The executor routes queries to DuckDB in two ways:
+
+### 1. Explicit: duckdb() Table Function
+
+```sql
+SELECT * FROM duckdb('/data/historical/trades_2025.parquet')
+WHERE symbol = 'AAPL' AND price > 150
+ORDER BY timestamp DESC
+LIMIT 100;
+```
+
+The `duckdb('path')` syntax explicitly tells the executor to route to DuckDB. The path can be local or S3.
+
+### 2. Automatic: Parquet Offload (configurable)
+
+```cpp
+// In executor config
+enable_duckdb_offload = true;
+duckdb_memory_limit_mb = 256;
+```
+
+When enabled, queries targeting registered Parquet tables are automatically routed to DuckDB. The routing happens in `exec_select()` after CTE resolution but before partition scanning.
+
+---
+
+## Conditional Compilation
+
+DuckDB is a large dependency (~50MB compiled). It's optional:
+
+```cmake
+option(ZEPTO_ENABLE_DUCKDB "Enable DuckDB embedding for Parquet offload" ON)
+```
+
+All DuckDB code is behind `#ifdef ZEPTO_ENABLE_DUCKDB`. When disabled, the `duckdb()` table function returns an error message, and automatic offload is skipped. The rest of ZeptoDB is unaffected.
+
+DuckDB v1.2.1 is pulled via CMake `FetchContent` — includes the Parquet extension by default.
+
+---
+
+## When to Use This
+
+| Scenario | Engine | Why |
+|----------|--------|-----|
+| Real-time streaming queries | ZeptoDB | Microsecond latency, SIMD, in-memory |
+| Last N minutes of data | ZeptoDB | Hot partitions, already in column store |
+| Historical analysis (days/months) | DuckDB | Parquet predicate pushdown, compression |
+| Ad-hoc exploration of cold data | DuckDB | Full SQL, no need to load into memory |
+| JOIN hot + cold data | Both | ZeptoDB for hot side, DuckDB for cold side |
+
+The typical pattern: real-time dashboards hit ZeptoDB directly. End-of-day analytics and backtesting queries use `duckdb()` to scan Parquet archives without loading them into memory.
+
+<CardGrid>
+  <Card title="Zero overhead when unused" icon="rocket">
+    Lazy init + conditional compilation. No DuckDB cost if you don't query Parquet.
+  </Card>
+  <Card title="Columnar bridge" icon="right-arrow">
+    Arrow-style conversion between ZeptoDB and DuckDB. No row-by-row serialization.
+  </Card>
+  <Card title="Memory isolation" icon="setting">
+    DuckDB gets its own budget. Won't compete with ZeptoDB's arena allocator.
+  </Card>
+  <Card title="Full SQL on Parquet" icon="open-book">
+    DuckDB's Parquet engine handles predicate pushdown, dictionary decoding, and compression.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Lock-Free Ingestion →](/blog/lock-free-ingestion/) · [Cost-Based Query Planner →](/blog/cost-based-query-planner/) · [Bare-Metal Tuning →](/blog/bare-metal-tuning/)

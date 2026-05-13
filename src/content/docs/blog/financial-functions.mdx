@@ -1,0 +1,156 @@
+---
+title: "Financial Functions for Time-Series: xbar, EMA, VWAP, and Window JOIN"
+description: "Implementing kdb+-style financial analysis in SQL — xbar time bucketing, exponential moving averages, delta/ratio calculations, and Window JOIN for real-time analytics."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Financial time-series databases need more than SELECT and GROUP BY. Traders need candlestick bars, moving averages, and windowed aggregations — all at microsecond latency. This post covers the kdb+-inspired functions that make ZeptoDB a practical tool for quantitative finance.
+
+---
+
+## xbar: Time Bar Aggregation
+
+`xbar` is kdb+'s operator for flooring values to bucket boundaries. In ZeptoDB, it's the foundation for OHLCV candlestick generation:
+
+```sql
+SELECT xbar(timestamp, 300000000000) AS bar,
+       first(price) AS open, max(price) AS high,
+       min(price) AS low, last(price) AS close,
+       sum(volume) AS volume
+FROM trades WHERE symbol = 1
+GROUP BY xbar(timestamp, 300000000000)
+```
+
+The implementation is integer division floor: `xbar(value, n) = (value / n) * n`. Nanosecond timestamps divided by 300,000,000,000 (5 minutes in ns) produce 5-minute bar boundaries.
+
+`first()` and `last()` aggregate functions track the first and last values seen in each group — essential for Open and Close prices.
+
+**Performance:** 1M rows → 3,334 five-minute bars in **24ms**.
+
+---
+
+## EMA: Exponential Moving Average
+
+The core technical analysis indicator. Single-pass O(n) computation:
+
+```
+ema[0] = data[0]
+ema[i] = α × data[i] + (1 - α) × ema[i-1]
+```
+
+```sql
+SELECT EMA(price, 0.1) OVER (PARTITION BY symbol ORDER BY timestamp) AS ema_slow,
+       EMA(price, 20)  OVER (PARTITION BY symbol ORDER BY timestamp) AS ema20
+FROM trades
+```
+
+Alpha can be specified directly (float, e.g. `0.1`) or as a period (integer, e.g. `20` → `α = 2/(20+1)`). PARTITION BY ensures independent calculation per symbol — trivially parallelizable across partitions.
+
+**Performance:** 1M rows EMA in **2.2ms**.
+
+---
+
+## DELTA and RATIO: Row-to-Row Changes
+
+kdb+'s `deltas` and `ratios` as window functions:
+
+```sql
+SELECT price,
+       DELTA(price) OVER (ORDER BY timestamp) AS price_change,
+       RATIO(price) OVER (ORDER BY timestamp) AS price_ratio
+FROM trades
+```
+
+| Function | Formula | First Row |
+|----------|---------|-----------|
+| DELTA | `x[i] - x[i-1]` | `x[0]` |
+| RATIO | `x[i] / x[i-1]` | `1.0` (×1,000,000 fixed-point) |
+
+RATIO uses 6-digit fixed-point scaling (×1,000,000) to avoid floating-point arithmetic entirely. A ratio of 1.005 is stored as 1,005,000. This preserves exact integer arithmetic throughout the pipeline.
+
+---
+
+## LEFT JOIN
+
+Standard SQL LEFT JOIN with NULL sentinel handling:
+
+```sql
+SELECT t.price, t.volume, r.risk_score
+FROM trades t
+LEFT JOIN risk_factors r ON t.symbol = r.symbol
+```
+
+Left rows with no match produce `INT64_MIN` as the NULL sentinel for right-side columns. ZeptoDB uses `INT64_MIN` universally — the probability of this value appearing in real financial data is effectively zero.
+
+---
+
+## Window JOIN: kdb+-Style wj
+
+The most complex operator. For each left row, aggregate all right rows within a time window:
+
+```sql
+SELECT t.price,
+       wj_avg(q.bid) AS avg_bid,
+       wj_count(q.bid) AS quote_count
+FROM trades t
+WINDOW JOIN quotes q
+ON t.symbol = q.symbol
+AND q.timestamp BETWEEN t.timestamp - 5000000000
+                  AND t.timestamp + 5000000000
+```
+
+### Algorithm
+
+```
+For each left row (trade):
+  1. Find right group by symbol         → O(1) hash lookup
+  2. Binary search for time window      → O(log m)
+  3. Aggregate rows in [t-before, t+after] range
+Total: O(n × log m)
+```
+
+Supported window aggregates: `wj_avg()`, `wj_sum()`, `wj_count()`, `wj_min()`, `wj_max()`. The `wj_` prefix distinguishes these from regular aggregates — a Window JOIN SUM operates on a per-row sliding window, not a GROUP BY bucket.
+
+---
+
+## Parser Changes
+
+The SQL parser gained several new token types and parsing paths:
+
+| Token | Usage |
+|-------|-------|
+| `XBAR` | `xbar(col, bucket)` in SELECT and GROUP BY |
+| `EMA`, `DELTA`, `RATIO` | Window functions with OVER clause |
+| `WINDOW` | `WINDOW JOIN ... ON ... BETWEEN` |
+| `PLUS`, `MINUS` | Arithmetic in time window expressions |
+
+A subtle parsing challenge: distinguishing negative literals (`-5000`) from the MINUS operator (`t.timestamp - 5000`). The parser uses context — if MINUS follows a column reference, it's an operator; if it follows `(` or `,`, it's a negative literal.
+
+---
+
+## Design Decisions
+
+1. **Integer fixed-point for RATIO** — no floating-point in the hot path. ×1,000,000 scaling gives 6 decimal places of precision.
+2. **EMA single-pass** — one forward O(n) scan per partition. Independent partitions enable future GPU/SIMD parallelization.
+3. **Window JOIN binary search** — O(log m) per left row on sorted timestamps. A sliding-window O(n+m) optimization is possible when both sides are sorted (future work).
+4. **NULL sentinel = INT64_MIN** — consistent across LEFT JOIN, Window JOIN, and all aggregate paths.
+
+<CardGrid>
+  <Card title="xbar candlesticks" icon="rocket">
+    1M rows → 3,334 OHLCV bars in 24ms. Integer floor division, zero allocation.
+  </Card>
+  <Card title="EMA in 2.2ms" icon="approve-check">
+    Single-pass O(n) exponential moving average. Per-partition parallelism built in.
+  </Card>
+  <Card title="Window JOIN" icon="list-format">
+    kdb+-style wj with O(n log m) binary search. Five aggregate functions per window.
+  </Card>
+  <Card title="Fixed-point arithmetic" icon="setting">
+    RATIO uses ×1,000,000 integer scaling. No floating-point rounding in the pipeline.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SQL Parser and HTTP API →](/blog/sql-parser-http-join/) · [SIMD Window JOIN →](/blog/simd-window-join/) · [How ASOF JOIN Works →](/blog/how-asof-join-works/)

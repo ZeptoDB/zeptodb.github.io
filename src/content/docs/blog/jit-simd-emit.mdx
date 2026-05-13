@@ -1,0 +1,168 @@
+---
+title: "JIT SIMD Emit: Generating AVX2 Vector IR in LLVM"
+description: "How ZeptoDB's JIT engine generates explicit <4 x i64> SIMD vector IR instead of relying on LLVM auto-vectorization — with mask extraction via cttz."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+LLVM's auto-vectorizer is good, but not always reliable. Missing `noalias` attributes, complex control flow, or indirect memory access can prevent vectorization silently. ZeptoDB's `compile_simd()` takes a different approach: generate explicit `<4 x i64>` vector IR directly, guaranteeing SIMD execution regardless of LLVM's optimization decisions.
+
+---
+
+## The Problem with Auto-Vectorization
+
+In a previous optimization round, we generated a bulk filter loop in LLVM IR and relied on the O3 pass pipeline to vectorize it. It was **4.7x slower** than the scalar per-row version. The root cause: missing `noalias` on pointer parameters made LLVM assume potential aliasing, blocking all loop vectorization.
+
+Auto-vectorization is fragile. It depends on:
+- Correct `noalias` / `restrict` annotations
+- Simple loop structure (no complex control flow)
+- Provably independent memory accesses
+- The right cost model thresholds
+
+If any condition fails, LLVM silently falls back to scalar code. You don't get an error — you get slow code.
+
+---
+
+## Explicit Vector IR
+
+`compile_simd()` generates LLVM IR that uses `<4 x i64>` vector types directly:
+
+```llvm
+; Vector load: 4 elements at once
+%vec = load <4 x i64>, ptr %prices_ptr, align 8
+
+; Splat threshold to vector
+%thresh = insertelement <4 x i64> undef, i64 100, i32 0
+%thresh_vec = shufflevector <4 x i64> %thresh, ..., <0, 0, 0, 0>
+
+; Vector compare: 4 comparisons in one instruction
+%mask = icmp sgt <4 x i64> %vec, %thresh_vec
+
+; For AND/OR conditions: vector logic on masks
+%mask_and = and <4 x i1> %mask_a, %mask_b
+```
+
+This compiles to AVX2 `vpcmpgtq` + `vpand` instructions — guaranteed, regardless of optimization level.
+
+---
+
+## Loop Structure
+
+The generated function processes arrays in two phases:
+
+```
+┌─────────┐
+│  entry   │
+└────┬─────┘
+     ▼
+┌─────────────┐     ┌──────────────┐
+│  vec_cond    │────▶│  scalar_cond  │  (remainder: n % 4)
+│  i < n-3?    │     │  j < n?       │
+└────┬─────┘     └────┬──────┘
+     ▼                    ▼
+┌─────────────┐     ┌──────────────┐
+│  vec_body    │     │  scalar_body  │
+│  load <4xi64>│     │  load i64     │
+│  compare     │     │  compare      │
+│  extract mask│     │  store index  │
+└────┬─────┘     └────┬──────┘
+     ▼                    ▼
+┌─────────────┐     ┌──────────────┐
+│  ext_loop    │     │  scalar_inc   │──▶ exit
+│  cttz mask   │     └──────────────┘
+│  store index │
+└────┬─────┘
+     ▼
+┌─────────────┐
+│  vec_inc     │──▶ vec_cond
+│  i += 4      │
+└─────────────┘
+```
+
+The main loop processes 4 elements per iteration. The scalar tail handles the remainder (`n % 4`) using the existing `codegen_node()` scalar path — zero code duplication.
+
+---
+
+## Mask Extraction: cttz Loop
+
+After the vector compare, we have a `<4 x i1>` mask. To extract matching indices, the mask is converted to an integer and scanned with `cttz` (count trailing zeros):
+
+```llvm
+; Convert <4 x i1> mask to integer
+%mask_i4 = bitcast <4 x i1> %mask to i4
+%mask_i32 = zext i4 %mask_i4 to i32
+
+; Extract matching indices via cttz loop
+loop:
+  %bit = call i32 @llvm.cttz.i32(%mask_i32, true)  ; find lowest set bit
+  %idx = add i32 %base, %bit                        ; global index
+  store i32 %idx, ptr %out                           ; write to output
+  %mask_next = and i32 %mask_i32, sub(%mask_i32, 1)  ; clear lowest bit
+  br %mask_next != 0, loop, done
+```
+
+This is the same bit-manipulation pattern used in the BitMask filter — `cttz` + clear-lowest-bit. On modern x86, `cttz` maps to the `TZCNT` instruction (single cycle with BMI1).
+
+---
+
+## Supported Operations
+
+The vector codegen handles the full expression AST:
+
+| AST Node | Vector IR | Instruction |
+|----------|-----------|-------------|
+| `price > 100` | `icmp sgt <4 x i64>` | `vpcmpgtq` |
+| `price >= 100` | `icmp sge <4 x i64>` | `vpcmpgtq` + adjust |
+| `A AND B` | `and <4 x i1>` | `vpand` |
+| `A OR B` | `or <4 x i1>` | `vpor` |
+| `volume * 10` | `mul <4 x i64>` | `vpmullq` (AVX-512) or emulated |
+| `price = 100` | `icmp eq <4 x i64>` | `vpcmpeqq` |
+
+The recursive `codegen_node_vec()` function mirrors the scalar `codegen_node()` but operates on vector types throughout. The parser and AST are completely unchanged — vector codegen is purely a backend concern.
+
+---
+
+## Alignment
+
+Vector loads use `align 8` (not the default `align 32`):
+
+```llvm
+%vec = load <4 x i64>, ptr %p, align 8
+```
+
+Input arrays are standard `int64_t*` with 8-byte alignment. Using `align 32` would be a lie — LLVM might generate aligned load instructions (`vmovdqa`) that fault on misaligned addresses. With `align 8`, LLVM generates unaligned loads (`vmovdqu`) which handle any address correctly, with negligible performance difference on modern CPUs.
+
+---
+
+## Integration
+
+`compile_simd()` returns the same `BulkFilterFn` type as `compile_bulk()`:
+
+```cpp
+using BulkFilterFn = void(*)(const int64_t* prices, const int64_t* volumes,
+                              int64_t n, int32_t* out_indices, int64_t* out_count);
+
+BulkFilterFn fn = jit.compile_simd("price > 100 AND volume > 50");
+fn(prices, volumes, n, indices, &count);
+```
+
+Same function signature, same calling convention. The caller doesn't know whether the function uses scalar or vector instructions internally. The O3 optimization pass (registered on the IR transform layer) runs on the vector IR as well, enabling further optimizations like constant folding and dead code elimination.
+
+<CardGrid>
+  <Card title="Guaranteed SIMD" icon="rocket">
+    Explicit &lt;4 x i64&gt; vector types. No dependence on auto-vectorization heuristics.
+  </Card>
+  <Card title="Zero parser changes" icon="approve-check">
+    Same AST, same expression language. Vector codegen is purely a backend swap.
+  </Card>
+  <Card title="Scalar tail handling" icon="setting">
+    Remainder elements use existing scalar codegen. No edge-case bugs.
+  </Card>
+  <Card title="cttz mask extraction" icon="star">
+    Hardware TZCNT for efficient bit scanning. Same pattern as BitMask filter.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SIMD/JIT Optimization →](/blog/simd-jit-optimization/) · [SIMD Window JOIN →](/blog/simd-window-join/) · [Lock-Free Ingestion →](/blog/lock-free-ingestion/)

@@ -1,0 +1,153 @@
+---
+title: "Arrow Flight Server: High-Throughput Data Streaming"
+description: "How ZeptoDB's Arrow Flight server enables remote Python, Polars, and DuckDB clients to stream query results over gRPC with near-zero-copy efficiency using the Arrow IPC protocol."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB's zero-copy path works great for local C++ and Python bindings, but remote clients were stuck with HTTP JSON — serialization overhead, no columnar streaming, no type fidelity. Arrow Flight fixes this by exposing query results as Arrow RecordBatch streams over gRPC.
+
+---
+
+## Architecture
+
+```
+Python Client                       ZeptoDB
+─────────────                       ───────
+pyarrow.flight.connect()   ──→   FlightServer (gRPC :8815)
+  DoGet(Ticket="SQL")      ──→     QueryExecutor.execute(sql)
+  ←── RecordBatchStream    ←──     QueryResultSet → Arrow RecordBatch
+```
+
+The Flight server runs alongside the HTTP server on a separate port (default 8815). Clients send SQL as a `Ticket`, and results stream back as Arrow RecordBatches — columnar, typed, and ready for direct consumption by pandas, Polars, or DuckDB.
+
+---
+
+## Implemented RPCs
+
+| RPC | Purpose |
+|-----|---------|
+| `GetFlightInfo` | Schema + row count for a SQL query |
+| `DoGet` | Execute SQL, stream results as Arrow RecordBatches |
+| `DoPut` | Ingest Arrow RecordBatches into a table |
+| `ListFlights` | List available tables |
+| `DoAction` | `"ping"`, `"healthcheck"` |
+| `ListActions` | List supported actions |
+
+`DoGet` is the primary path for analytics. `DoPut` enables remote ingestion — a Jupyter notebook can push DataFrames directly into ZeptoDB without HTTP JSON serialization.
+
+---
+
+## Type Mapping
+
+| ZeptoDB ColumnType | Arrow Type |
+|-------------------|------------|
+| INT64 | int64 |
+| FLOAT32 | float32 |
+| FLOAT64 | float64 |
+| STRING | utf8 |
+
+Types are preserved end-to-end. No JSON string conversion, no precision loss on floats, no timestamp truncation.
+
+---
+
+## Python Client Example
+
+```python
+import pyarrow.flight as fl
+
+client = fl.connect("grpc://localhost:8815")
+
+# Query — results stream as Arrow RecordBatches
+reader = client.do_get(fl.Ticket("SELECT * FROM trades LIMIT 10"))
+table = reader.read_all()
+
+# Direct to pandas
+df = table.to_pandas()
+print(df)
+
+# Direct to Polars (zero-copy from Arrow)
+import polars as pl
+pl_df = pl.from_arrow(table)
+
+# Health check
+results = list(client.do_action(fl.Action("ping")))
+print(results[0].body.to_pybytes())  # b"pong"
+```
+
+### Ingestion via DoPut
+
+```python
+import pyarrow as pa
+import pyarrow.flight as fl
+
+client = fl.connect("grpc://localhost:8815")
+
+# Build Arrow table
+table = pa.table({
+    "symbol": pa.array([1, 1, 2, 2], type=pa.int64()),
+    "price":  pa.array([150.25, 150.30, 42.10, 42.15], type=pa.float64()),
+    "volume": pa.array([100, 200, 50, 75], type=pa.float64()),
+})
+
+# Push to ZeptoDB
+writer, _ = client.do_put(
+    fl.FlightDescriptor.for_path("trades"),
+    table.schema
+)
+writer.write_table(table)
+writer.close()
+```
+
+---
+
+## Build and Run
+
+```bash
+# Build with Arrow Flight support
+cmake .. -G Ninja -DZEPTO_USE_FLIGHT=ON
+ninja zepto_flight_server
+
+# Run dual server (HTTP + Flight)
+LD_LIBRARY_PATH=$(python3 -c "import pyarrow; print(pyarrow.get_library_dirs()[0])"):$LD_LIBRARY_PATH \
+  ./zepto_flight_server --flight-port 8815 --http-port 8123
+```
+
+---
+
+## Stub Mode
+
+When built without Arrow Flight (`-DZEPTO_USE_FLIGHT=OFF`), all methods are no-ops. The `FlightServerStub` compiles and links cleanly — no conditional compilation scattered through the codebase.
+
+---
+
+## Why Arrow Flight over HTTP JSON
+
+| Aspect | HTTP JSON | Arrow Flight |
+|--------|-----------|--------------|
+| Serialization | JSON encode/decode | Arrow IPC (near zero-copy) |
+| Type fidelity | Strings only | Native int64, float64, timestamp |
+| Streaming | Full response buffered | RecordBatch streaming |
+| Client support | Any HTTP client | pyarrow, Polars, DuckDB, Spark |
+| Throughput | Limited by JSON parsing | Limited by network bandwidth |
+
+For a 1M-row query result, Arrow Flight eliminates the JSON serialization bottleneck entirely. The client receives columnar Arrow buffers that can be consumed by pandas or Polars without any conversion.
+
+<CardGrid>
+  <Card title="Near-zero-copy streaming" icon="rocket">
+    Arrow IPC over gRPC. Results stream as RecordBatches — columnar, typed, ready for direct consumption.
+  </Card>
+  <Card title="Standard protocol" icon="approve-check">
+    pyarrow.flight, Polars, DuckDB, and Spark all speak Arrow Flight natively. No custom client needed.
+  </Card>
+  <Card title="Bidirectional" icon="star">
+    DoGet for queries, DoPut for ingestion. Remote Jupyter notebooks can push DataFrames directly into ZeptoDB.
+  </Card>
+  <Card title="Graceful fallback" icon="setting">
+    Stub mode when built without Flight. No conditional compilation in application code.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Python Ecosystem Integration →](/blog/python-ecosystem-integration/) · [Zero-Copy Python →](/blog/zero-copy-python/) · [HTTP Server Observability →](/blog/http-observability/)

@@ -1,0 +1,177 @@
+---
+title: "SQL DML: INSERT, UPDATE, DELETE for Time-Series Data"
+description: "Implementing mutation operations on columnar time-series data — INSERT with auto-timestamp, in-place UPDATE, and compaction-based DELETE."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Time-series databases are traditionally append-only. But real-world use cases demand corrections (UPDATE wrong prices), purges (DELETE test data), and standard SQL ingestion (INSERT). This post covers how ZeptoDB implements all three DML operations on its columnar storage.
+
+---
+
+## INSERT: ClickHouse-Compatible Ingestion
+
+```sql
+-- Basic (default column order: symbol, price, volume, timestamp)
+INSERT INTO trades VALUES (1, 15000, 100, 1000000000)
+
+-- Multi-row batch
+INSERT INTO trades VALUES
+  (1, 15050, 200, 2000000000),
+  (2, 16000, 300, 3000000000)
+
+-- Column specification (timestamp auto-generated if omitted)
+INSERT INTO trades (symbol, price, volume) VALUES (1, 15100, 150)
+```
+
+### Implementation Path
+
+```
+SQL INSERT → Parser → InsertStmt AST → Executor
+  → pipeline_.ingest_tick(msg)    // into ring buffer
+  → pipeline_.drain_sync()        // flush to column store
+  → SELECT immediately available
+```
+
+The key design decision: `drain_sync()` is called after INSERT to guarantee read-after-write consistency. Without it, a subsequent SELECT might not see the just-inserted rows (they'd still be in the ring buffer).
+
+When the column list omits `timestamp`, the executor generates one via `std::chrono::system_clock::now()` in nanoseconds — matching the behavior users expect from `INSERT INTO trades (symbol, price, volume) VALUES (...)`.
+
+### HTTP Compatibility
+
+No HTTP server changes were needed. The existing `POST /` → `executor_.execute(sql)` path handles INSERT identically to SELECT:
+
+```bash
+curl -X POST http://localhost:8123/ \
+  -d "INSERT INTO trades VALUES (1, 15000, 100, 1000000000)"
+```
+
+This means ClickHouse migration customers can point existing INSERT pipelines at ZeptoDB without code changes.
+
+---
+
+## UPDATE: In-Place Span Modification
+
+```sql
+UPDATE trades SET price = 15200 WHERE symbol = 1 AND price > 15100
+UPDATE trades SET price = 15200, volume = 500 WHERE symbol = 1
+```
+
+### Zero-Copy In-Place Write
+
+UPDATE doesn't allocate new storage. It writes directly into the existing column spans:
+
+```cpp
+auto span = col_vec.as_span<int64_t>();
+span[row_idx] = new_value;  // direct memory write
+```
+
+The executor:
+1. Extracts the symbol condition → routes to matching partitions only
+2. Evaluates the WHERE clause to find matching row indices
+3. Writes new values directly into column spans
+
+Cost: O(matched rows). No copying, no reallocation, no new partition creation.
+
+### Multi-Column Updates
+
+Multiple SET assignments are applied in a single pass over the matched rows. Each assignment maps a column name to a literal value — the executor resolves column names to `ColumnVector` pointers once, then iterates.
+
+---
+
+## DELETE: Compaction + Shrink
+
+```sql
+DELETE FROM trades WHERE symbol = 1 AND price < 15000
+DELETE FROM trades WHERE symbol = 1  -- all rows for a symbol
+```
+
+### Compaction Strategy
+
+DELETE can't just zero out rows — that would leave gaps in the columnar arrays that every subsequent scan would need to skip. Instead, it compacts:
+
+```
+Before: [A, B, C, D, E]  — delete B and D
+         ↓
+Shift:  [A, C, E, _, _]
+         ↓
+Shrink: [A, C, E]  — set_size(3)
+```
+
+For each column in the partition:
+1. Identify rows to keep (WHERE condition is false)
+2. Shift kept rows forward to fill gaps
+3. Call `set_size(new_count)` to shrink the logical size
+
+Arena memory from deleted rows is not reclaimed — the arena allocator is append-only. This is acceptable because:
+- Partitions are time-bounded (TTL eviction reclaims entire partitions)
+- DELETE is an infrequent correction operation, not a hot path
+- The memory will be reclaimed when the partition is evicted or flushed to disk
+
+---
+
+## Symbol as Partition Key
+
+A recurring theme across all three DML operations: `symbol` is a partition key, not a column. The executor extracts symbol conditions via `has_where_symbol()` and routes to the correct partition(s) before scanning any data.
+
+```
+INSERT: symbol value → partition routing via ingest_tick()
+UPDATE: WHERE symbol = N → scan only that partition
+DELETE: WHERE symbol = N → compact only that partition
+```
+
+Without this optimization, every DML operation would scan all partitions — O(total rows) instead of O(partition rows).
+
+---
+
+## Parser Additions
+
+| Token | Statement |
+|-------|-----------|
+| `INSERT`, `INTO`, `VALUES` | `INSERT INTO table VALUES (...)` |
+| `UPDATE`, `SET` | `UPDATE table SET col = val WHERE ...` |
+| `DELETE_KW` | `DELETE FROM table WHERE ...` |
+
+A subtle conflict: adding the `SET` token broke `ALTER TABLE SET TTL` parsing, because the parser expected an `IDENT` token with value "SET" but now received `TokenType::SET`. Fixed by accepting both token types in the ALTER TABLE parser.
+
+---
+
+## Distributed DML Routing
+
+In a multi-node cluster, the `QueryCoordinator` routes DML based on the symbol:
+
+| Operation | Routing |
+|-----------|---------|
+| INSERT | Route to node owning the symbol |
+| UPDATE with symbol filter | Route to owning node |
+| UPDATE without symbol | Broadcast to all nodes |
+| DELETE with symbol filter | Route to owning node |
+| DELETE without symbol | Broadcast to all nodes |
+| DDL | Broadcast to all nodes |
+
+---
+
+## What's NOT Here
+
+- **Transactions**: No BEGIN/COMMIT/ROLLBACK. Each DML statement is atomic but there's no multi-statement transaction support.
+- **RETURNING clause**: UPDATE and DELETE don't return affected rows (yet).
+- **Batch UPDATE with expressions**: `SET price = price * 1.01` isn't supported — only literal values.
+
+<CardGrid>
+  <Card title="Read-after-write" icon="rocket">
+    drain_sync() after INSERT guarantees immediate SELECT visibility. No eventual consistency.
+  </Card>
+  <Card title="Zero-copy UPDATE" icon="approve-check">
+    Direct span writes — no allocation, no copying. O(matched rows) cost.
+  </Card>
+  <Card title="Compaction DELETE" icon="list-format">
+    Shift + shrink preserves dense columnar layout. Arena memory reclaimed at partition eviction.
+  </Card>
+  <Card title="ClickHouse compatible" icon="setting">
+    Same INSERT syntax, same HTTP endpoint. Migration customers need zero code changes.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [DDL Schema Management →](/blog/ddl-schema-management/) · [Storage Tiering →](/blog/storage-tiering-materialized-views/) · [SQL Parser →](/blog/sql-parser-http-join/)

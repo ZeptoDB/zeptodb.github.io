@@ -1,0 +1,151 @@
+---
+title: "HDB Tiered Storage: From Memory to Parquet to S3"
+description: "How ZeptoDB manages the hot/warm/cold data lifecycle with tiered storage — in-memory RDB for real-time queries, LZ4-compressed HDB on NVMe, and Parquet on S3 for long-term archival."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Time-series databases face a fundamental tension: real-time queries need data in memory, but storing everything in RAM is prohibitively expensive. ZeptoDB solves this with a three-tier storage architecture that moves data through hot, warm, and cold stages automatically.
+
+---
+
+## The Three Tiers
+
+```
+┌──────────────────────────────────────────────────────┐
+│  HOT   │  RDB (In-Memory)    │ Active + recent data  │
+│        │  ArenaAllocator      │ Sub-microsecond reads  │
+├────────┼─────────────────────┼───────────────────────┤
+│  WARM  │  HDB (NVMe)         │ Sealed partitions      │
+│        │  mmap + LZ4          │ ~678µs reads           │
+├────────┼─────────────────────┼───────────────────────┤
+│  COLD  │  S3 (Parquet)       │ Historical archive     │
+│        │  SNAPPY/ZSTD         │ DuckDB/Polars query    │
+└──────────────────────────────────────────────────────┘
+```
+
+Data flows downward automatically. The `FlushManager` runs a background thread that checks for sealed partitions every second and flushes them to disk — no mutex on the hot ingestion path.
+
+---
+
+## Storage Modes
+
+ZeptoDB supports three modes, configured per-deployment:
+
+| Mode | Description | Query Target |
+|------|-------------|--------------|
+| `PURE_IN_MEMORY` | Extreme HFT tick processing | RDB only |
+| `TIERED` | RDB (today) + HDB (history), async merge | RDB + HDB |
+| `PURE_ON_DISK` | Backtesting / deep learning feature generation | HDB only |
+
+---
+
+## HDB File Format
+
+Inspired by kdb+'s splayed table approach, each column is stored as an independent binary file:
+
+```
+hdb_data/
+  {symbol_id}/
+    {hour_epoch}/
+      timestamp.bin    ← per-column binary
+      price.bin
+      volume.bin
+      msg_type.bin
+```
+
+Each file starts with a 32-byte header — exactly half a cache line:
+
+| Field | Size | Description |
+|-------|------|-------------|
+| magic | 5B | `APEXH` |
+| version | 1B | Format version (v1) |
+| col_type | 1B | ColumnType enum |
+| compression | 1B | 0=None, 1=LZ4 |
+| row_count | 8B | Number of rows |
+| data_size | 8B | Compressed data size |
+| uncompressed_size | 8B | Original size |
+
+Per-column separation means queries only mmap the columns they need. A `SELECT avg(price) FROM trades` never touches the `volume.bin` file.
+
+---
+
+## LZ4 Compression
+
+LZ4 block compression is applied automatically, with a smart fallback: if the compressed result is larger than the original (e.g., random data), the raw bytes are stored instead.
+
+Time-series data compresses exceptionally well — sequential timestamps and correlated prices yield a **0.31 compression ratio** (69% savings):
+
+| Metric | Value |
+|--------|-------|
+| Compression ratio | 0.31 (69% savings) |
+| Compression throughput | ~1,128 MB/sec |
+| Decompression | Near memory bandwidth |
+
+---
+
+## mmap Read Strategy
+
+HDB reads use `mmap(MAP_PRIVATE)` with `madvise(MADV_SEQUENTIAL)`:
+
+- **Uncompressed data**: zero-copy direct pointer return — the OS page cache does all the work
+- **LZ4 compressed data**: decompress to buffer, then return pointer
+- **RAII cleanup**: `MappedColumn` destructor calls `munmap` + `close` automatically
+
+---
+
+## Benchmark Results
+
+| Metric | Value |
+|--------|-------|
+| Write throughput (1M rows, uncompressed) | **4,785 MB/sec** — near NVMe theoretical bandwidth |
+| Write throughput (1M rows, LZ4) | 1,128 MB/sec — includes compression CPU cost |
+| In-memory COUNT (1M rows) | **1.11 µs** |
+| Tiered HDB COUNT (1M rows) | 677.60 µs (~600× slower, still sub-ms) |
+| In-memory VWAP (1M rows) | 44.84 µs |
+
+---
+
+## Comparison with kdb+
+
+| Aspect | kdb+ | ZeptoDB |
+|--------|------|---------|
+| Flush throughput | ~1–2 GB/sec | **~4.7 GB/sec** |
+| Partition granularity | Day | **Hour** (better for HFT) |
+| Compression | Separate gzip step | **LZ4 built-in** |
+| Header size | 8 bytes | 32 bytes (magic + version + metadata) |
+| Memory management | Reference counting | **RAII mmap** |
+
+<CardGrid>
+  <Card title="4.7 GB/sec flush" icon="rocket">
+    Uncompressed writes approach NVMe SSD theoretical bandwidth with direct write() and custom binary format.
+  </Card>
+  <Card title="69% disk savings" icon="star">
+    LZ4 block compression is highly effective on time-series data — sequential timestamps and correlated prices.
+  </Card>
+  <Card title="Zero-copy reads" icon="approve-check">
+    mmap with MADV_SEQUENTIAL lets the OS page cache handle prefetching. Uncompressed columns return direct pointers.
+  </Card>
+  <Card title="Hour-level partitions" icon="setting">
+    Finer than kdb+'s day-level partitioning — better suited for HFT data with millions of ticks per hour.
+  </Card>
+</CardGrid>
+
+---
+
+## Partition Lifecycle
+
+The `FlushManager` drives the state machine:
+
+```
+ACTIVE  →  SEALED  →  FLUSHING  →  FLUSHED
+  │           │           │            │
+  │ ingestion │ bg check  │ write disk │ reclaim arena
+  │ (no lock) │ (1s poll) │ (async)    │ (reset())
+```
+
+Single background thread, no locking on the hot path. After flush completes, `ArenaAllocator::reset()` reclaims memory immediately.
+
+---
+
+Related: [Parquet on S3 →](/blog/parquet-s3-historical/) · [Storage Tiering & Materialized Views →](/blog/storage-tiering-materialized-views/) · [Bare Metal Tuning →](/blog/bare-metal-tuning/)

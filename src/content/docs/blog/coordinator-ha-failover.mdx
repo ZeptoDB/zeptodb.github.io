@@ -1,0 +1,160 @@
+---
+title: "Coordinator HA and Automatic Failover Recovery"
+description: "How ZeptoDB combines Kubernetes lease-based leader election with automatic re-replication to survive coordinator failures and data node losses without manual intervention."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+A distributed database needs two things to survive node failures: a way to elect a new leader, and a way to recover the data that was on the failed node. ZeptoDB handles both — lease-based coordinator HA with fencing, and automatic re-replication on data node failure.
+
+---
+
+## Part 1: Coordinator HA with Lease-Based Fencing
+
+### The Problem
+
+`CoordinatorHA` used ping-based failover without Kubernetes lease integration. During a network partition, two coordinators could both believe they were active — classic split-brain.
+
+### The Solution
+
+<CardGrid>
+  <Card title="K8s Lease" icon="setting">
+    Only the lease holder can be the active coordinator. Lease loss triggers automatic demotion.
+  </Card>
+  <Card title="Fencing Token" icon="approve-check">
+    Every promotion bumps the epoch. Data nodes reject writes from stale epochs.
+  </Card>
+</CardGrid>
+
+### Configuration
+
+```cpp
+CoordinatorHAConfig config;
+config.require_lease = true;  // false = legacy ping-based (backward compat)
+config.lease_config.namespace_ = "zeptodb";
+config.lease_config.lease_name = "coordinator-leader";
+```
+
+### Promotion Flow
+
+```
+Standby detects Active is down:
+  1. lease_->try_acquire()           // must succeed
+  2. fencing_token_.advance()        // epoch N → N+1
+  3. peer_rpc_->set_epoch(N+1)       // propagate to RPC client
+  4. Re-register all known nodes     // coordinator can route immediately
+  5. Fire promotion callback
+```
+
+### Demotion on Lease Loss
+
+When another node acquires the lease (or the current holder's lease expires):
+
+```
+on_lost callback fires:
+  → state_ = STANDBY
+  → all subsequent writes carry stale epoch
+  → data nodes reject them via FencingToken
+```
+
+This is automatic — no operator intervention needed.
+
+### Split-Brain Timeline
+
+```
+Coordinator A (epoch=5)     ──X── network partition
+                                   Coordinator B acquires lease
+                                   fencing_token_.advance() → epoch=6
+                                   peer_rpc_.set_epoch(6)
+                                   writes succeed (epoch=6)
+
+Partition heals:
+Coordinator A tries write (epoch=5)
+  → Data node: validate(5) fails (last_seen=6)
+  → REJECTED — no data corruption
+```
+
+---
+
+## Part 2: Automatic Failover Re-Replication
+
+### The Problem
+
+`FailoverManager` removed failed nodes from the router but had no procedure for recovering unreplicated data. If callbacks weren't registered, data was silently lost.
+
+### The Solution
+
+`FailoverManager` now embeds a `PartitionMigrator` and automatically re-replicates data when a node fails:
+
+```
+Node 2 goes DEAD (HealthMonitor):
+  → FailoverManager::trigger_failover(2)
+    1. router_.remove_node(2)
+    2. coordinator_.remove_node(2)
+    3. Calculate re-replication targets:
+       [{new_primary=1, new_replica=3}]
+    4. migrator has registered nodes?
+       YES → async: migrate_symbol(1 → 3)
+             → SELECT * FROM trades on node 1
+             → replicate_wal() to node 3
+             → callback with results
+       NO  → callback immediately (graceful fallback)
+```
+
+### Configuration
+
+```cpp
+struct FailoverConfig {
+    bool auto_re_replicate  = true;   // enable automatic re-replication
+    bool async_re_replicate = true;   // run in background thread
+};
+```
+
+### Key Design Decisions
+
+| Decision | Rationale |
+|----------|-----------|
+| Embedded `PartitionMigrator` | Self-contained — no external dependencies for re-replication |
+| Async by default | Don't block the failover path; re-replication can take time |
+| Graceful fallback | If `register_node()` wasn't called, skip re-replication silently |
+| Statistics tracking | `re_replication_count()` for monitoring |
+
+---
+
+## Combined Flow: Coordinator + Data Node Failure
+
+```
+Cluster: Coordinator A (active), Coordinator B (standby), Data Nodes 1-3
+
+Scenario: Coordinator A and Data Node 2 fail simultaneously
+
+1. B detects A is down
+   → lease_->try_acquire() succeeds
+   → fencing_token_.advance() → epoch=6
+   → Re-register nodes 1, 3 (node 2 already gone)
+   → B is now active coordinator
+
+2. HealthMonitor detects Node 2 is DEAD
+   → FailoverManager::trigger_failover(2)
+   → router_.remove_node(2)
+   → Re-replication: migrate data from Node 1 → Node 3
+   → Ring broadcast via RingConsensus
+
+3. Cluster stabilized with 2 data nodes
+   → All queries route correctly
+   → No data loss (re-replicated from surviving replicas)
+```
+
+---
+
+## Backward Compatibility
+
+Both features are backward compatible with existing deployments:
+
+| Feature | Default | Legacy Behavior |
+|---------|---------|----------------|
+| `require_lease` | `false` | Ping-based failover (no K8s dependency) |
+| `auto_re_replicate` | `true` | If `register_node()` not called, callbacks only |
+| `async_re_replicate` | `true` | Non-blocking failover path |
+
+Existing tests pass without modification — the new behavior activates only when explicitly configured.

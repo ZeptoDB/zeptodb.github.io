@@ -1,0 +1,184 @@
+---
+title: "Dictionary-Encoded String Columns for Time-Series"
+description: "How ZeptoDB implements kdb+-style symbol interning with dictionary encoding — enabling WHERE symbol = 'AAPL' while maintaining integer-speed query performance."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+The #1 user-facing gap in ZeptoDB: every demo required explaining "symbol 1 means AAPL." This post covers the dictionary-encoded string column implementation that lets users write `WHERE symbol = 'AAPL'` while keeping storage and query performance identical to integer columns.
+
+---
+
+## The Problem
+
+kdb+ uses symbols (interned strings) natively. For ZeptoDB to be a credible kdb+ replacement, users need to write:
+
+```sql
+INSERT INTO trades VALUES ('AAPL', 15025, 100, 1711900800000000000)
+SELECT * FROM trades WHERE symbol = 'AAPL'
+```
+
+Not:
+
+```sql
+INSERT INTO trades VALUES (1, 15025, 100, 1711900800000000000)
+SELECT * FROM trades WHERE symbol = 1  -- "1 means AAPL, trust me"
+```
+
+Low-cardinality columns (symbol, exchange, side, currency) cover 95%+ of string use cases in HFT — dictionary encoding is the right approach.
+
+---
+
+## Architecture
+
+```
+INSERT ... VALUES ('AAPL', 150.25, 100)
+         │
+         ▼
+   ┌─────────────┐
+   │ Parser       │  TokenType::STRING → InsertValue::STRING
+   └──────┬──────┘
+          ▼
+   ┌─────────────┐
+   │ Executor     │  StringDictionary::intern("AAPL") → uint32 code
+   └──────┬──────┘
+          ▼
+   ┌─────────────┐
+   │ ColumnStore  │  Stored as uint32 (same as integer columns)
+   └──────┬──────┘
+          ▼
+   ┌─────────────┐
+   │ HTTP Output  │  symbol_dict->lookup(code) → "AAPL" in JSON
+   └─────────────┘
+```
+
+Strings are interned at INSERT time and resolved at output time. Everything in between — storage, filtering, aggregation, JOIN — operates on integer codes.
+
+---
+
+## StringDictionary: Intern and Lookup
+
+```cpp
+class StringDictionary {
+    std::unordered_map<std::string, uint32_t> index_;  // string → code
+    std::vector<std::string> strings_;                  // code → string
+
+public:
+    uint32_t intern(const std::string& s);   // get-or-create code
+    const std::string& lookup(uint32_t c);   // code → string
+    std::optional<uint32_t> find(const std::string& s);  // lookup without creating
+};
+```
+
+- `intern()`: O(1) amortized hash insert. Same string always returns same code.
+- `lookup()`: O(1) vector index. Used only at output time.
+- `find()`: O(1) hash lookup. Used in WHERE evaluation — returns empty if string not found (→ empty result set, no scan needed).
+
+### The Dangling Pointer Bug
+
+The initial implementation used `string_view` as hash map keys, pointing into the `strings_` vector. When the vector grew and reallocated, all existing keys became dangling pointers. The same string inserted twice would get different codes.
+
+Fix: use `std::string` keys (owned copies). The memory overhead is negligible for low-cardinality columns — 10,000 unique symbols × ~10 bytes = ~100KB.
+
+---
+
+## Global Dictionary Per Pipeline
+
+The dictionary is global (per `ZeptoPipeline`), not per-partition. This is critical:
+
+- Same string always maps to same code across all partitions
+- Partition routing by `symbol_id` works correctly
+- Cross-partition queries (GROUP BY symbol) produce consistent results
+
+```cpp
+class ZeptoPipeline {
+    StringDictionary symbol_dict_;  // global, shared across all partitions
+};
+```
+
+---
+
+## Query Path: Zero Overhead
+
+WHERE evaluation with string predicates:
+
+```sql
+SELECT * FROM trades WHERE symbol = 'AAPL'
+```
+
+1. Parser produces `Expr` with `is_string = true`, `value_str = "AAPL"`
+2. Executor calls `symbol_dict.find("AAPL")` → `uint32_t code`
+3. If not found → return empty result immediately (no scan)
+4. If found → compare against integer column as before
+
+The find() call happens once per query, not per row. After resolution, the scan operates on integer comparisons — identical performance to `WHERE symbol = 42`.
+
+---
+
+## HTTP Output Resolution
+
+The HTTP server resolves codes back to strings in JSON responses:
+
+```json
+{
+  "columns": ["symbol", "price", "volume"],
+  "data": [["AAPL", 15025, 100], ["GOOG", 28100, 50]]
+}
+```
+
+`QueryResultSet` carries a `symbol_dict` pointer. The HTTP serializer checks each column — if it's a SYMBOL type, it calls `lookup(code)` to produce the string representation.
+
+---
+
+## Backward Compatibility
+
+Integer symbol IDs still work:
+
+```sql
+-- Both work, can coexist in the same database
+SELECT * FROM trades WHERE symbol = 'AAPL'
+SELECT * FROM trades WHERE symbol = 1
+```
+
+Legacy `TickMessage`-based ingestion (integer symbol IDs) and new SQL INSERT (string symbols) can coexist. The dictionary simply maps strings to codes; integer-only workflows bypass it entirely.
+
+---
+
+## Distributed: Scatter-Gather for String WHERE
+
+In a multi-node cluster, `extract_symbol_filter()` can't resolve string → code without a global registry. String WHERE queries fall back to scatter-gather: the coordinator broadcasts to all nodes, each resolves locally.
+
+Future optimization: a global symbol registry would enable direct routing (Tier A) for string predicates.
+
+---
+
+## Performance
+
+Zero regression — benchmarks unchanged:
+
+| Benchmark | Time |
+|-----------|------|
+| xbar GROUP BY 1M rows | 11.20ms |
+| EMA 1M rows | 2.15ms |
+| Window JOIN 100K×100K | 11.00ms |
+
+Dictionary lookup is O(1) hash. Intern is O(1) amortized. Stored codes are `uint32` — same width as before. The only new work is the one-time `find()` call per string predicate per query.
+
+<CardGrid>
+  <Card title="Write 'AAPL', store uint32" icon="rocket">
+    Dictionary encoding: human-readable SQL, integer-speed storage and queries.
+  </Card>
+  <Card title="Global dictionary" icon="approve-check">
+    One dictionary per pipeline. Consistent codes across all partitions and queries.
+  </Card>
+  <Card title="Zero query overhead" icon="list-format">
+    String → code resolution happens once per query. Scan operates on integer comparisons.
+  </Card>
+  <Card title="Backward compatible" icon="setting">
+    Integer symbol IDs still work. Legacy and new ingestion paths coexist.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SQL Parser →](/blog/sql-parser-http-join/) · [DDL Schema Management →](/blog/ddl-schema-management/) · [SQL DML →](/blog/sql-dml-insert-update-delete/)

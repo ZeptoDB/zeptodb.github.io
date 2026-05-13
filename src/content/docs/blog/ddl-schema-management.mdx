@@ -1,0 +1,166 @@
+---
+title: "DDL and Schema Management in a Time-Series Database"
+description: "Implementing CREATE TABLE, DROP TABLE, ALTER TABLE, and TTL-based retention in ZeptoDB — from schema registry to automatic partition eviction."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB started with hardcoded 4-column partitions (timestamp, price, volume, msg_type) and no concept of "tables." For production use, operators need to define schemas, evolve column sets, and enforce retention policies. This post covers the DDL implementation — from the schema registry to TTL eviction.
+
+---
+
+## SchemaRegistry: Thread-Safe Metadata Store
+
+A header-only, `shared_mutex`-protected registry mapping table names to schemas:
+
+```cpp
+struct ColumnDef {
+    std::string name;
+    ColumnType  type;   // INT64, FLOAT64, TIMESTAMP, SYMBOL, STRING
+};
+
+struct TableSchema {
+    std::string            table_name;
+    std::vector<ColumnDef> columns;
+    int64_t                ttl_ns = 0;  // 0 = no retention limit
+};
+```
+
+API: `create()`, `drop()`, `exists()`, `get()`, `add_column()`, `drop_column()`, `set_ttl()`, `list_tables()`. The registry lives as a member of `ZeptoPipeline`, accessible via `pipeline.schema_registry()`.
+
+---
+
+## DDL Grammar
+
+```sql
+CREATE TABLE [IF NOT EXISTS] trades (
+    time TIMESTAMP, sym SYMBOL, price INT64, size INT64
+);
+
+ALTER TABLE trades ADD COLUMN venue SYMBOL;
+ALTER TABLE trades DROP COLUMN venue;
+ALTER TABLE trades SET TTL 30 DAYS;
+
+DROP TABLE [IF EXISTS] trades;
+```
+
+### Parser Design: Keywords as Identifiers
+
+A common trap: adding `CREATE`, `TABLE`, `COLUMN` as tokenizer keywords breaks user queries that use these as column names. ZeptoDB avoids this by checking `to_upper(current().value)` on `IDENT` tokens in context — the parser recognizes DDL by the first token's value, not its type.
+
+```
+parse_statement()
+  ├── first token = "CREATE" → parse_create_table()
+  ├── first token = "DROP"   → parse_drop_table()
+  ├── first token = "ALTER"  → parse_alter_table()
+  └── otherwise              → parse_select() (backward compatible)
+```
+
+The existing `Parser::parse()` method is preserved — it wraps `parse_statement()` and extracts the `SelectStmt`, throwing if DDL is given. Zero breaking changes for existing callers.
+
+---
+
+## DDL Execution
+
+DDL results use the same `QueryResultSet::string_rows` format as EXPLAIN:
+
+```json
+{"columns": ["result"], "data": [["Table 'trades' created"]], "rows": 1}
+```
+
+This means HTTP clients and zepto-cli display DDL results without any special handling.
+
+### Type Mapping
+
+Types are stored as strings in the AST (`DdlColumnDef::type_str`) to avoid coupling the parser layer to `storage::ColumnType`. The executor converts at execution time via `ddl_type_from_str()` — keeping the parser/AST layer dependency-free.
+
+---
+
+## TTL Retention: Two-Phase Eviction
+
+### Immediate Eviction
+
+When `ALTER TABLE SET TTL` executes, old partitions are evicted immediately:
+
+```sql
+ALTER TABLE trades SET TTL 6 HOURS;
+-- Partitions older than 6 hours are deleted right now
+```
+
+`exec_alter_table()` calls `pipeline_.evict_older_than_ns(now - ttl_ns)`, which removes partitions from `PartitionManager` and rebuilds the `partition_index_` cache.
+
+### Continuous Eviction
+
+`FlushManager` runs a background loop that checks TTL on every flush interval:
+
+```
+flush_loop():
+  if ttl_ns_ > 0:
+    cutoff = now() - ttl_ns_
+    partition_manager.evict_older_than(cutoff)
+```
+
+The TTL value is stored as an `atomic<int64_t>` — runtime changes via SQL take effect on the next flush cycle with no restart required.
+
+### The Critical Bug: Dangling Pointers
+
+`partition_index_` is a raw-pointer cache for fast partition lookups. Evicting partitions from `PartitionManager` without rebuilding this cache leaves dangling pointers — `total_stored_rows()` would dereference freed memory (UAF).
+
+The fix: `evict_older_than_ns()` always rebuilds `partition_index_` after eviction. Discovered during test development, not in production — exactly why we write tests.
+
+---
+
+## SQL Examples
+
+```sql
+-- Create with schema
+CREATE TABLE trades (time TIMESTAMP, sym SYMBOL, price INT64, size INT64);
+
+-- Idempotent creation
+CREATE TABLE IF NOT EXISTS trades (time TIMESTAMP);
+
+-- Schema evolution
+ALTER TABLE trades ADD COLUMN venue SYMBOL;
+ALTER TABLE trades DROP COLUMN venue;
+
+-- Retention policies
+ALTER TABLE trades SET TTL 30 DAYS;    -- 30-day retention
+ALTER TABLE trades SET TTL 6 HOURS;    -- ultra-recent only
+
+-- Cleanup
+DROP TABLE IF EXISTS trades;
+```
+
+---
+
+## Test Coverage
+
+| Test | Verifies |
+|------|----------|
+| `CreateTable_Basic` | Schema stored; 4 columns; table visible |
+| `CreateTable_IfNotExists` | Idempotent; without IF NOT EXISTS → error |
+| `DropTable_Basic` | Table removed from registry |
+| `DropTable_IfExists` | Idempotent; without IF EXISTS → error |
+| `AlterTable_AddColumn` | Column count 2 → 3 |
+| `AlterTable_DropColumn` | Column removed; double-drop → error |
+| `AlterTable_SetTTL_Days` | TTL = 30 × 86400 × 1e9 nanoseconds |
+| `AlterTable_SetTTL_Evicts` | Epoch-0 partition evicted; current-day survives |
+
+<CardGrid>
+  <Card title="Schema registry" icon="rocket">
+    Thread-safe metadata store with shared_mutex. Header-only, zero external dependencies.
+  </Card>
+  <Card title="Context-sensitive DDL" icon="approve-check">
+    DDL keywords parsed as identifiers in context — no conflicts with user column names.
+  </Card>
+  <Card title="TTL eviction" icon="list-format">
+    Immediate + continuous eviction. Atomic TTL updates, no restart required.
+  </Card>
+  <Card title="Cache invalidation" icon="setting">
+    partition_index_ rebuilt after every eviction. Raw-pointer caches demand explicit invalidation.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [SQL DML: INSERT, UPDATE, DELETE →](/blog/sql-dml-insert-update-delete/) · [Storage Tiering →](/blog/storage-tiering-materialized-views/) · [SQL Parser →](/blog/sql-parser-http-join/)

@@ -1,0 +1,133 @@
+---
+title: "Building an Edition System: License Validation and Feature Gates"
+description: "How ZeptoDB implements a two-tier edition system with JWT license tokens, offline RS256 validation, feature bitmask gating, HTTP 402 responses, and a trial key workflow."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Monetizing an open-core database requires a clean boundary between free and paid features. ZeptoDB's edition system uses RS256-signed JWT license tokens, a two-tier model (Community/Enterprise), and a bitmask-based feature gate pattern that integrates at both the HTTP and engine layers.
+
+---
+
+## Two-Tier Model
+
+We started with three tiers (Community/Pro/Enterprise) and quickly consolidated to two. Simpler sales motion, no mid-tier confusion, aligned with industry practice (kdb+, ClickHouse, TimescaleDB).
+
+| Edition | Cost | Features |
+|---------|------|----------|
+| Community | Free | Core engine, SQL, basic RBAC, single-node |
+| Enterprise | Licensed | SSO, cluster, Kafka, migration, audit export, advanced RBAC |
+
+Old JWT keys with `"edition": "pro"` are automatically mapped to `Enterprise`.
+
+---
+
+## JWT License Token
+
+```json
+{
+  "sub": "license",
+  "edition": "enterprise",
+  "company": "Acme Trading",
+  "features": 255,
+  "max_nodes": 16,
+  "iat": 1713139200,
+  "exp": 1744675200
+}
+```
+
+Key loading priority: `ZEPTODB_LICENSE_KEY` env var → `/etc/zeptodb/license.key` file → direct string via `POST /admin/license`. No phone-home — public key embedded at compile time, reuses existing `JwtValidator` RS256 infrastructure.
+
+---
+
+## Expiry and Grace Period
+
+```
+License Timeline:
+────────────────────────────────────────────────────
+│  Licensed (full features)  │  Grace (30d)  │  Community  │
+─────────────────────────────┼───────────────┼─────────────
+                          exp date        exp+30d
+```
+
+- 30-day grace keeps production running during renewal
+- 7-day warning log before expiry
+- After grace: automatic downgrade to Community (no crash, no data loss)
+- No key = Community with zero log noise
+
+---
+
+## Feature Gate Pattern
+
+Features are controlled by a bitmask in the `features` JWT claim:
+
+```cpp
+enum class Feature : uint32_t {
+    SSO            = 1 << 0,  CLUSTER        = 1 << 1,
+    KAFKA          = 1 << 2,  MIGRATION      = 1 << 3,
+    AUDIT_EXPORT   = 1 << 4,  ADVANCED_RBAC  = 1 << 5,
+    ROLLING_UPGRADE= 1 << 6,
+};
+```
+
+### HTTP Layer — 402 Response
+
+```json
+{
+  "error": "enterprise_required",
+  "message": "Feature 'multi-node cluster' requires Enterprise edition",
+  "upgrade_url": "https://zeptodb.com/pricing"
+}
+```
+
+### Engine Layer — Warning + Return False
+
+```cpp
+bool KafkaConsumer::start() {
+    if (!license().hasFeature(Feature::KAFKA)) {
+        ZEPTO_WARN("Kafka consumer requires Enterprise license");
+        return false;
+    }
+    // ... normal startup
+}
+```
+
+---
+
+## What's Gated
+
+<CardGrid>
+  <Card title="SSO/OIDC" icon="approve-check">
+    Login, callback, session, refresh return 402. Logout and /auth/me remain open.
+  </Card>
+  <Card title="Cluster" icon="approve-check">
+    Node management, all 6 rebalance endpoints, and join_cluster() in the engine.
+  </Card>
+  <Card title="Kafka/Migration" icon="approve-check">
+    KafkaConsumer::start(), ClickHouseMigrator::run(), HDBLoader::scan() gated.
+  </Card>
+  <Card title="Advanced RBAC" icon="approve-check">
+    Per-tenant isolation and tenant admin endpoints. Basic RBAC remains free.
+  </Card>
+</CardGrid>
+
+| Feature | Gate Location | Community Behavior |
+|---------|--------------|-------------------|
+| SSO/OIDC | 4 HTTP routes | 402 |
+| Audit export | `GET /admin/audit` | 402 |
+| Cluster | HTTP + engine | 402 / runtime_error |
+| Rebalancing | 6 HTTP routes | 402 |
+| Rolling upgrade | 1 HTTP route | 402 |
+| Tenant rate limiting | 3 HTTP routes | 402 |
+| Kafka/Pulsar | Engine | WARN + false |
+| Migration | Engine | WARN + false |
+
+---
+
+## Trial Keys
+
+`generate_trial_key(company)` creates an unsigned JWT (`alg:none`) with all features, single-node, 30-day expiry. Available via `POST /admin/license/trial`.
+
+## Public License Endpoint
+
+`GET /api/license` (no auth) returns edition, features, trial status — useful for UI feature toggles and client SDK capability detection.

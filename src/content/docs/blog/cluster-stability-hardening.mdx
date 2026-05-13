@@ -1,0 +1,154 @@
+---
+title: "Cluster Stability Hardening: 15 Fixes for Production Readiness"
+description: "A batch of critical fixes across ZeptoDB's distributed layer — thread pools, connection limits, 2PC snapshots, deadlock elimination, and state machine migrations — closing the gap between 'works in tests' and 'survives in production'."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+There's a well-known gap between a distributed system that passes tests and one that survives production. This post covers a batch of 15 stability fixes across ZeptoDB's cluster layer — each addressing a specific failure mode that would eventually surface under real-world load: resource exhaustion, concurrency bugs, connection leaks, and inconsistent snapshots.
+
+---
+
+## TcpRpcServer: Resource Management
+
+The RPC server had four resource management gaps, each a potential production incident.
+
+### Thread Pool Conversion
+
+The original `accept_loop()` called `std::thread(...).detach()` for every incoming connection — unbounded thread creation under load. The fix introduces a fixed-size worker pool with a task queue:
+
+```cpp
+server.set_thread_pool_size(std::thread::hardware_concurrency());
+// Workers pull from std::queue<int> task queue
+// Bounded concurrency, predictable memory usage
+```
+
+### Payload Size Limit
+
+No upper bound on RPC payload size meant a single malformed request could exhaust memory:
+
+```cpp
+size_t max_payload_size_ = 64 * 1024 * 1024;  // 64MB default
+
+// handle_connection() validates before allocation
+if (payload_size > max_payload_size_) {
+    ZEPTO_WARN("Payload {} exceeds limit {}", payload_size, max_payload_size_);
+    // Connection closed, no allocation
+}
+```
+
+### Graceful Drain
+
+`stop()` now follows a 5-phase shutdown sequence:
+
+1. Close listen socket (no new connections)
+2. Drain task queue (finish queued work)
+3. Wait up to `drain_timeout_ms` (default 30s) for in-flight requests
+4. Force shutdown remaining connections
+5. Join/detach worker threads
+
+This ensures in-flight queries complete during rolling upgrades rather than being killed mid-execution.
+
+### Connection Limit
+
+A hard cap (default 1024) on concurrent connections prevents thread pool starvation and file descriptor exhaustion. Connections beyond the limit are immediately closed with a warning.
+
+---
+
+## PartitionRouter: Concurrent Access
+
+The `PartitionRouter` manages symbol-to-node mapping. Under concurrent access from query threads (reads) and cluster membership changes (writes), the original implementation had no synchronization.
+
+```cpp
+// Writers (add_node, remove_node): exclusive lock
+std::unique_lock lock(ring_mutex_);
+
+// Readers (route, route_replica, node_count): shared lock
+std::shared_lock lock(ring_mutex_);
+```
+
+Concurrent query routing (the hot path) proceeds in parallel while membership changes (the rare path) are serialized.
+
+---
+
+## Connection Leak in TcpRpcClient::ping()
+
+`ping()` was calling `connect_to_server()` + `close()` — creating a new TCP connection for every health check. Over time, this leaked connections in TIME_WAIT state. The fix switches to `acquire()` + `release()` pool reuse.
+
+## GossipNodeRegistry: Atomic Running Flag
+
+`bool running_` accessed from multiple threads without synchronization — a textbook data race. Fixed with `std::atomic<bool> running_{false}`.
+
+## K8sNodeRegistry: Deadlock + Real Implementation
+
+Two fixes in one. First, `register_node()` held a lock while calling `fire_event()`, which could call back into the registry — classic lock-reentrance deadlock. The fix releases the lock before firing events.
+
+Second, the K8s registry was previously a stub. Now it polls the actual Kubernetes Endpoints API:
+
+```cpp
+// poll_loop() → HTTP GET on K8s Endpoints API
+// Auto-detects KUBERNETES_SERVICE_HOST/PORT env vars
+// Service account token authentication
+// parse_endpoints_json(): extract IP/port, stable NodeId via IP hash
+// reconcile(): diff current map → JOINED/LEFT events
+```
+
+Non-K8s environments retain the manual `register_node()` fallback.
+
+---
+
+## SnapshotCoordinator: Single-Phase → 2PC
+
+The original snapshot coordinator sent a single command to all nodes. If one failed mid-snapshot, the cluster ended up inconsistent.
+
+```
+Phase 1: PREPARE
+  → Send SNAPSHOT PREPARE <id> to all nodes
+  → Each node pauses ingestion, prepares snapshot
+  → All succeed? → Phase 2a
+  → Any fail?   → Phase 2b
+
+Phase 2a: COMMIT
+  → Send SNAPSHOT COMMIT <id> → finalize + resume
+
+Phase 2b: ABORT
+  → Send SNAPSHOT ABORT <id> → discard + resume
+```
+
+`take_snapshot_legacy()` is retained for single-node backward compatibility.
+
+---
+
+## PartitionMigrator: State Machine
+
+Partition migration was previously fire-and-forget. The new implementation tracks each move:
+
+```
+PENDING → DUAL_WRITE → COPYING → COMMITTED
+                                → FAILED (retry up to 3x)
+```
+
+`MigrationCheckpoint` tracks state per move. `resume_plan()` retries only FAILED moves, making migration resumable after transient failures.
+
+## ClusterNode: Seed Connection Handling
+
+Partial seed failures were silently ignored. Now: zero successful seeds → cleanup + `std::runtime_error`. Partial success is allowed. Bootstrap mode (no seeds) works normally.
+
+<CardGrid>
+  <Card title="Bounded resources" icon="setting">
+    Thread pool, payload limits, connection caps. No unbounded allocation under load.
+  </Card>
+  <Card title="2PC snapshots" icon="approve-check">
+    PREPARE/COMMIT/ABORT protocol ensures cluster-wide snapshot consistency.
+  </Card>
+  <Card title="Zero deadlocks" icon="rocket">
+    Lock ordering fixes in K8sNodeRegistry. Atomic flags in GossipNodeRegistry. shared_mutex in PartitionRouter.
+  </Card>
+  <Card title="803+ tests passing" icon="star">
+    15 new targeted tests covering payload limits, connection caps, concurrent routing, drain behavior, and 2PC abort.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Cluster Integrity & Split Brain →](/blog/cluster-integrity-split-brain/) · [Failover Data Recovery →](/blog/failover-data-recovery/) · [Ring Consensus →](/blog/ring-consensus/)

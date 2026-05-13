@@ -1,0 +1,159 @@
+---
+title: "Helm Chart and Zero-Downtime Rolling Upgrades"
+description: "How ZeptoDB's Helm chart enables zero-downtime rolling upgrades for an in-memory database — with PodDisruptionBudgets, config checksum annotations, canary deployments, and instant rollback."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Upgrading an in-memory database in production is nerve-wracking. Losing a pod means losing cached state. ZeptoDB's Helm chart is designed around one principle: **never reduce capacity during a rollout**.
+
+---
+
+## Helm Chart Structure
+
+The chart lives in `helm/zeptodb/` and converts the previous monolithic `deployment.yaml` into parameterized templates:
+
+| Template | Purpose |
+|----------|---------|
+| `deployment.yaml` | Rolling update strategy, pod anti-affinity, config checksum |
+| `service.yaml` | LoadBalancer + headless service |
+| `configmap.yaml` | Server configuration from values |
+| `pvc.yaml` | Persistent storage (conditional) |
+| `hpa.yaml` | Horizontal Pod Autoscaler (conditional) |
+| `pdb.yaml` | PodDisruptionBudget (conditional) |
+| `servicemonitor.yaml` | Prometheus Operator integration (conditional) |
+
+A single `values.yaml` drives both standalone and distributed mode via the `cluster.enabled` toggle. Cluster ports (RPC, heartbeat) are only exposed when clustering is on.
+
+---
+
+## Zero-Downtime Strategy
+
+The core of the rolling update configuration:
+
+```yaml
+strategy:
+  type: RollingUpdate
+  rollingUpdate:
+    maxSurge: 1
+    maxUnavailable: 0
+```
+
+`maxUnavailable: 0` is the key. Kubernetes must bring up a new pod and confirm it's ready before terminating an old one. Combined with `preStop` sleep, this ensures in-flight queries complete before the old pod shuts down.
+
+### Why This Matters for In-Memory Databases
+
+- Losing a pod = losing cached state (RDB partitions, active queries)
+- HFT workloads cannot tolerate even brief capacity reduction
+- `maxSurge: 1` means at most one extra pod during rollout — controlled resource usage
+
+---
+
+## PodDisruptionBudget
+
+```yaml
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+spec:
+  minAvailable: 2
+  selector:
+    matchLabels:
+      app: zeptodb
+```
+
+Without a PDB, `kubectl drain` during node maintenance can kill quorum. With `minAvailable: 2`, Kubernetes blocks eviction if it would drop below two healthy pods. This is critical for in-memory databases where state loss has real consequences.
+
+---
+
+## Config Checksum Annotation
+
+Kubernetes doesn't restart pods when a ConfigMap changes. This is a common source of "I changed the config but nothing happened" issues.
+
+The Helm chart solves this with a checksum annotation:
+
+```yaml
+template:
+  metadata:
+    annotations:
+      checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+```
+
+When the ConfigMap content changes, the checksum changes, which triggers a rolling restart. Config-only updates get the same zero-downtime treatment as image upgrades.
+
+---
+
+## Four Upgrade Strategies
+
+### 1. Standard Release
+
+```bash
+helm upgrade zeptodb helm/zeptodb/ \
+  --set image.tag=v1.2.0 \
+  --wait --timeout 5m
+```
+
+Routine releases. Helm handles the rolling update automatically.
+
+### 2. Config-Only Update
+
+Change values in `values.yaml` and run `helm upgrade`. The checksum annotation detects the ConfigMap change and triggers a rolling restart — no image change needed.
+
+### 3. Canary Deployment
+
+For high-risk changes, deploy a separate Helm release:
+
+```bash
+# Deploy canary alongside production
+helm install zeptodb-canary helm/zeptodb/ \
+  --set image.tag=v2.0.0-rc1 \
+  --set replicaCount=1
+
+# Test canary, then promote
+helm upgrade zeptodb helm/zeptodb/ --set image.tag=v2.0.0
+helm uninstall zeptodb-canary
+```
+
+### 4. Cluster Mode Upgrade
+
+Extended grace period for WAL replay and state recovery:
+
+```bash
+helm upgrade zeptodb helm/zeptodb/ \
+  --set image.tag=v1.2.0 \
+  --set cluster.enabled=true \
+  --set terminationGracePeriodSeconds=120 \
+  --wait --timeout 10m
+```
+
+---
+
+## Instant Rollback
+
+```bash
+# Check revision history
+helm history zeptodb
+
+# Rollback to previous revision
+helm rollback zeptodb 3
+```
+
+Helm maintains revision history, so rollback is a single command. The same zero-downtime rolling update strategy applies in reverse.
+
+<CardGrid>
+  <Card title="Zero downtime" icon="approve-check">
+    maxUnavailable: 0 ensures a new pod is ready before the old one terminates. No capacity reduction during rollout.
+  </Card>
+  <Card title="PDB protection" icon="star">
+    PodDisruptionBudget prevents node drain from killing quorum. minAvailable: 2 guarantees service continuity.
+  </Card>
+  <Card title="Auto config reload" icon="setting">
+    ConfigMap checksum annotation triggers rolling restart on config changes — no manual pod deletion needed.
+  </Card>
+  <Card title="Instant rollback" icon="rocket">
+    Helm revision history enables single-command rollback with the same zero-downtime guarantees.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Kubernetes Compatibility and HA Testing →](/blog/k8s-compatibility-ha/) · [Cluster Integrity & Split-Brain →](/blog/cluster-integrity-split-brain/) · [WAL Replicator Reliability →](/blog/wal-replicator-reliability/)

@@ -1,0 +1,133 @@
+---
+title: "Vault-Backed API Key Store: Secrets Management for Databases"
+description: "How ZeptoDB integrates HashiCorp Vault as a write-through backend for API keys, enabling multi-node key sharing and centralized secrets management."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+API keys stored in flat files don't scale across a cluster. ZeptoDB now supports HashiCorp Vault as a write-through backend for its API key store — local files remain the primary store, Vault acts as a sync target for multi-node key sharing and centralized lifecycle management.
+
+---
+
+## Architecture
+
+<CardGrid>
+  <Card title="Write-Through" icon="approve-check">
+    Every create, revoke, and update is written to Vault (best-effort, never blocks the operation).
+  </Card>
+  <Card title="Sync-on-Load" icon="approve-check">
+    On startup, keys in Vault but not in the local file are merged into the local store.
+  </Card>
+  <Card title="Graceful Degradation" icon="approve-check">
+    If Vault is unavailable, the local file store continues to work independently.
+  </Card>
+  <Card title="Multi-Node Sharing" icon="approve-check">
+    Keys created on node A appear on node B after restart via Vault sync.
+  </Card>
+</CardGrid>
+
+---
+
+## Data Flow
+
+```
+                    ┌─────────────┐
+                    │  Vault KV v2 │
+                    │  (sync target)│
+                    └──────┬──────┘
+                           │
+              write-through│sync-on-load
+                           │
+┌──────────┐        ┌──────┴──────┐        ┌──────────┐
+│  Node A  │───────→│ ApiKeyStore │←───────│  Node B  │
+│          │        │ (keys.conf) │        │          │
+└──────────┘        └─────────────┘        └──────────┘
+```
+
+### Vault Path Layout
+
+```
+{mount}/data/zeptodb/keys/{key_id}    → JSON with all key entry fields
+{mount}/data/zeptodb/keys/_index      → comma-separated list of all key IDs
+```
+
+The `_index` key enables enumeration without Vault `list` permissions (which require a different policy).
+
+---
+
+## Configuration
+
+```cpp
+AuthManager::Config cfg;
+cfg.vault_keys_enabled = true;
+cfg.vault_keys.addr    = "https://vault.internal:8200";
+cfg.vault_keys.token   = std::getenv("VAULT_TOKEN");
+cfg.vault_keys.mount   = "secret";
+cfg.vault_keys.prefix  = "zeptodb/keys";
+```
+
+Or auto-detected from environment variables: `VAULT_ADDR` + `VAULT_TOKEN`.
+
+---
+
+## The SecretsProvider Chain
+
+`VaultKeyBackend` is the first implementation of a pluggable secrets backend. The design supports chaining:
+
+```
+SecretsProvider chain (planned):
+┌──────────────┐    ┌──────────────┐    ┌──────────────┐
+│ Vault KV v2  │───→│ AWS Secrets  │───→│ Local File   │
+│ (primary)    │    │ Manager      │    │ (fallback)   │
+└──────────────┘    └──────────────┘    └──────────────┘
+```
+
+Currently only Vault and local file are implemented. The chain pattern means adding AWS Secrets Manager or GCP Secret Manager is a matter of implementing the same interface.
+
+---
+
+## Key Lifecycle with Vault
+
+| Operation | Local File | Vault |
+|-----------|-----------|-------|
+| `create_key()` | Written immediately | Written (best-effort) |
+| `validate()` | Read from memory | Not consulted |
+| `revoke()` | Removed from file | Removed (best-effort) |
+| `update_key()` | Updated in file | Updated (best-effort) |
+| Startup | Loaded from file | Merged (keys in Vault but not local are added) |
+
+The "best-effort" pattern is critical — a Vault outage should never prevent key operations on a running node. Consistency is eventual, not strict.
+
+---
+
+## Vault HTTP Integration
+
+The `VaultKeyBackend` communicates with Vault via its HTTP API:
+
+```
+PUT  /v1/{mount}/data/{prefix}/{key_id}
+     Headers: X-Vault-Token: {token}
+     Body: {"data": {<key entry fields>}}
+
+GET  /v1/{mount}/data/{prefix}/{key_id}
+     Headers: X-Vault-Token: {token}
+
+DELETE /v1/{mount}/data/{prefix}/{key_id}
+       Headers: X-Vault-Token: {token}
+```
+
+JSON serialization handles all `ApiKeyEntry` fields including the granular control fields (symbols, tables, tenant_id, expires_at_ns) from the previous release.
+
+---
+
+## Test Coverage
+
+| Test | What It Verifies |
+|------|-----------------|
+| `VaultAvailabilityNoConfig` | No Vault config → backend reports unavailable |
+| `VaultAvailabilityPartialConfig` | Missing token → unavailable |
+| `VaultAvailabilityFullConfig` | Full config → available |
+| `GracefulDegradation` | Vault unreachable → operations succeed via local file |
+| `ApiKeyStoreWithUnavailableVault` | Store works normally when Vault is down |
+
+The tests validate the degradation path — Vault is a convenience, not a dependency.

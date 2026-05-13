@@ -1,0 +1,152 @@
+---
+title: "SQL Phase 2-3: Arithmetic, CASE WHEN, Date/Time, and Set Operations"
+description: "Extending ZeptoDB's SQL with expression evaluation, CASE WHEN branching, temporal functions, LIKE pattern matching, and UNION/INTERSECT/EXCEPT set operations."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+A SQL parser that only handles `SELECT col FROM table WHERE col = N` isn't useful for real analytics. This post covers three rounds of enhancements that brought ZeptoDB's SQL to practical parity with ClickHouse for time-series workloads: arithmetic expressions, CASE WHEN, date/time functions, LIKE, and set operations.
+
+---
+
+## Arithmetic Expressions: ArithExpr Trees
+
+SELECT-list expressions like `price * volume` require a recursive expression evaluator. The AST gained an `ArithExpr` node:
+
+```cpp
+struct ArithExpr {
+    enum class Kind { COLUMN, LITERAL, BINARY, FUNC };
+    Kind kind;
+    ArithOp arith_op;  // ADD / SUB / MUL / DIV
+    std::shared_ptr<ArithExpr> left, right;
+    // ... column, literal, func fields
+};
+```
+
+The parser uses standard precedence climbing: `parse_arith_expr_node()` → `parse_arith_term()` → `parse_arith_primary()`. The executor evaluates recursively via `eval_arith(node, partition, row_idx)`.
+
+```sql
+SELECT price * volume AS notional FROM trades WHERE symbol = 1
+SELECT (close - open) / open AS ret FROM trades
+SELECT AVG(price - 15000) AS avg_premium FROM trades WHERE symbol = 1
+```
+
+Arithmetic works inside aggregates too — `SUM(price * volume)` evaluates the expression per-row before accumulating.
+
+---
+
+## CASE WHEN: Conditional Logic
+
+```sql
+SELECT CASE WHEN price > 15050 THEN 1 ELSE 0 END AS is_high FROM trades
+```
+
+Each branch has a full WHERE-style condition tree (reusing the existing `Expr` evaluator) and a full arithmetic expression for the result:
+
+```cpp
+struct CaseWhenBranch {
+    std::shared_ptr<Expr>      when_cond;  // WHERE-style condition
+    std::shared_ptr<ArithExpr> then_val;   // arithmetic expression
+};
+```
+
+`eval_case_when()` calls `eval_expr_single()` for each WHEN condition (scalar version of the batch filter), then `eval_arith()` for the matching THEN value. If no branch matches, ELSE fires (default: 0).
+
+---
+
+## Date/Time Functions
+
+Four built-in temporal functions, all operating on nanosecond timestamps:
+
+| Function | Behavior | Example |
+|----------|----------|---------|
+| `DATE_TRUNC('unit', col)` | Floor to unit boundary | `DATE_TRUNC('min', timestamp)` |
+| `NOW()` | Current nanosecond timestamp | `WHERE timestamp > NOW() - 60000000000` |
+| `EPOCH_S(col)` | Nanoseconds → seconds | `SELECT EPOCH_S(timestamp)` |
+| `EPOCH_MS(col)` | Nanoseconds → milliseconds | `SELECT EPOCH_MS(timestamp)` |
+
+`DATE_TRUNC` supports: `ns`, `us`, `ms`, `s`, `min`, `hour`, `day`, `week`. The implementation is the same integer floor as xbar: `(val / bucket) * bucket`.
+
+```sql
+SELECT DATE_TRUNC('min', timestamp) AS minute, SUM(volume) AS vol
+FROM trades WHERE symbol = 1
+GROUP BY DATE_TRUNC('min', timestamp)
+```
+
+These functions work anywhere an `ArithExpr` is valid — SELECT list, GROUP BY keys, WHERE comparisons, ORDER BY.
+
+---
+
+## LIKE Pattern Matching
+
+```sql
+SELECT * FROM trades WHERE price LIKE '150%'     -- prefix match
+SELECT * FROM trades WHERE price NOT LIKE '%9'    -- suffix exclusion
+SELECT * FROM trades WHERE price LIKE '1500_'     -- single-char wildcard
+```
+
+Since ZeptoDB stores all values as `int64_t`, LIKE converts column values to their decimal string representation before matching. `%` matches any substring, `_` matches any single character. The matching uses O(n×m) DP — standard wildcard matching.
+
+LIKE was added to three evaluation sites: batch WHERE (`eval_expr`), single-row CASE WHEN (`eval_expr_single`), and post-aggregation HAVING (`apply_having_filter`).
+
+---
+
+## Set Operations: UNION / INTERSECT / EXCEPT
+
+```sql
+SELECT price FROM trades WHERE symbol = 1
+UNION ALL
+SELECT price FROM trades WHERE symbol = 2
+```
+
+The parser chains set operations after `parse_select()` — if it sees UNION/INTERSECT/EXCEPT, it recursively parses the right-hand SELECT and links it via `SelectStmt::rhs`.
+
+| Operation | Implementation |
+|-----------|---------------|
+| UNION ALL | Execute both, concatenate rows |
+| UNION DISTINCT | Both sides through `std::set<vector<int64_t>>` |
+| INTERSECT | Build set from left; keep right rows present in left |
+| EXCEPT | Build set from right; keep left rows not in right |
+
+---
+
+## Multi-Column GROUP BY
+
+A subtle bug fix: the single-column `symbol` GROUP BY fast path was firing even for multi-column keys (missing `columns.size() == 1` guard). Multi-column keys now build a composite `vector<int64_t>` key with `VectorHash` for O(1) average lookup:
+
+```sql
+SELECT symbol, xbar(timestamp, 300000000000) AS bar, sum(volume)
+FROM trades
+GROUP BY symbol, xbar(timestamp, 300000000000)
+```
+
+Both serial and parallel execution paths were updated to handle composite keys consistently.
+
+---
+
+## Bugs Found Along the Way
+
+1. **Symbol column returns 0 in arithmetic** — `symbol` is a partition key, not a per-row column. `get_col_data("symbol")` returns nullptr. Fixed with explicit `if (column == "symbol")` branch returning `partition.key().symbol_id`.
+
+2. **UNION DISTINCT not deduplicating within left side** — Initial implementation only deduped right against left. Fixed to run both sides through `std::set`.
+
+3. **Parallel path out of sync** — `exec_agg_parallel` and `exec_group_agg_parallel` were missing ArithExpr support. Updated both to check `arith_expr` first, fall back to direct column read.
+
+<CardGrid>
+  <Card title="Expression trees" icon="rocket">
+    Recursive ArithExpr evaluation with standard operator precedence. Works inside aggregates.
+  </Card>
+  <Card title="Temporal functions" icon="approve-check">
+    DATE_TRUNC, NOW(), EPOCH_S/MS — all on nanosecond timestamps with integer floor arithmetic.
+  </Card>
+  <Card title="Set operations" icon="list-format">
+    UNION ALL/DISTINCT, INTERSECT, EXCEPT — chained via recursive parser with set-based dedup.
+  </Card>
+  <Card title="53 new tests" icon="setting">
+    Full coverage across tokenizer, parser, and executor for all Phase 2-3 features.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Financial Functions →](/blog/financial-functions/) · [XBAR Sorted-Scan →](/blog/xbar-explain-null/) · [DDL Schema Management →](/blog/ddl-schema-management/)

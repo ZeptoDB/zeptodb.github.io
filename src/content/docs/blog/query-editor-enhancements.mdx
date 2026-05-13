@@ -1,0 +1,167 @@
+---
+title: "Query Editor: Charts, Multi-Tab, Multi-Statement"
+description: "Three enhancements to ZeptoDB's web query editor — interactive chart visualization with Recharts, multi-tab editing with localStorage persistence, and sequential multi-statement execution."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+A database is only as useful as its query interface. ZeptoDB's web UI started as a single text box that returned a table. This post covers three enhancements that bring it closer to a real analytical workbench: chart visualization, multi-tab editing, and multi-statement execution — all implemented in a single pass.
+
+---
+
+## Chart View Toggle
+
+Query results are most useful when you can see them. The editor now supports toggling between table and chart views, with line and bar chart types powered by Recharts.
+
+### How It Works
+
+The user selects:
+- **X column**: any column from the result set (typically timestamp or category)
+- **Y columns**: one or more numeric columns (multi-select)
+- **Chart type**: line or bar
+
+```tsx
+// ResultChart.tsx — core rendering
+<ResponsiveContainer width="100%" height={400}>
+  {chartType === 'line' ? (
+    <LineChart data={chartData}>
+      <XAxis dataKey={xColumn} />
+      <YAxis />
+      {yColumns.map(col => (
+        <Line key={col} dataKey={col} dot={false} />
+      ))}
+    </LineChart>
+  ) : (
+    <BarChart data={chartData}>
+      <XAxis dataKey={xColumn} />
+      <YAxis />
+      {yColumns.map(col => (
+        <Bar key={col} dataKey={col} />
+      ))}
+    </BarChart>
+  )}
+</ResponsiveContainer>
+```
+
+### 500 Row Cap
+
+Recharts renders SVG elements — one `<circle>` or `<rect>` per data point per series. At 10,000 rows with 3 Y columns, that's 30,000 SVG elements, which tanks browser performance. The chart view caps at 500 rows, which keeps rendering smooth while showing enough data for visual analysis.
+
+### Design Decision: Global Toggle
+
+The view mode (table vs chart) is a global toggle, not per-result-tab. This is simpler UX — when a user switches to chart mode, they typically want to see all results as charts, not manage view state per tab.
+
+---
+
+## Multi-Tab Editor
+
+The editor now supports multiple tabs, each with independent code and results.
+
+### Tab Management
+
+- **Add tab**: "+" button creates a new tab with empty editor
+- **Close tab**: "×" button on each tab (at least one tab always remains)
+- **Rename**: double-click the tab name to edit inline
+- **Switch**: click to switch between tabs, each preserving its own editor content and results
+
+### localStorage Persistence
+
+Tab state persists across page reloads via localStorage:
+
+```typescript
+// Saved to localStorage on every change
+interface TabState {
+  id: string;
+  name: string;
+  code: string;
+  // results intentionally excluded
+}
+```
+
+Results are not persisted — they can be large (thousands of rows) and would bloat localStorage. On reload, tabs restore their code but results are cleared. This is the right tradeoff: code is small and valuable, results are large and reproducible.
+
+---
+
+## Multi-Statement Execution
+
+The editor now supports executing multiple SQL statements in a single run. Statements are split on `;` and executed sequentially.
+
+### Statement Splitting
+
+```typescript
+// Split on ; while respecting single-quoted strings
+function splitStatements(sql: string): string[] {
+  const statements: string[] = [];
+  let current = '';
+  let inQuote = false;
+
+  for (const ch of sql) {
+    if (ch === "'" && !inQuote) inQuote = true;
+    else if (ch === "'" && inQuote) inQuote = false;
+    else if (ch === ';' && !inQuote) {
+      if (current.trim()) statements.push(current.trim());
+      current = '';
+      continue;
+    }
+    current += ch;
+  }
+  if (current.trim()) statements.push(current.trim());
+  return statements;
+}
+```
+
+### Sequential Execution with Per-Statement Errors
+
+Each statement executes independently. Results appear as sub-tabs in the results area:
+
+```
+┌─────────────────────────────────────────────┐
+│ Tab: "Analysis"                              │
+├─────────────────────────────────────────────┤
+│ SELECT * FROM trades WHERE sym='AAPL';       │
+│ SELECT avg(price) FROM trades GROUP BY sym;  │
+│ SELECT count(*) FROM orders;                 │
+├─────────────────────────────────────────────┤
+│ Results: [Statement 1] [Statement 2] [3]     │
+│                                              │
+│  sym  │ avg_price                            │
+│  AAPL │ 152.34                               │
+│  MSFT │ 287.91                               │
+└─────────────────────────────────────────────┘
+```
+
+If statement 2 fails, statements 1 and 3 still show their results. The error is displayed inline for the failed statement — not all-or-nothing.
+
+### Design Decision: Simple Splitting
+
+The `;` splitter handles single-quoted strings but does not handle `$$` dollar-quoting or `--` comments containing semicolons. This is sufficient for ZeptoDB's SQL dialect, which doesn't use dollar-quoting. A full SQL-aware parser would add complexity for an edge case that doesn't exist in practice.
+
+---
+
+## Files Changed
+
+| File | Change |
+|------|--------|
+| `web/src/app/query/page.tsx` | Rewritten: tab state, multi-statement `run()`, result sub-tabs, chart/table toggle |
+| `web/src/components/ResultChart.tsx` | New: line/bar chart with X/Y column selectors |
+
+The existing `query.test.ts` (3 tests) passes unchanged — the `loadHistory` export was preserved through the rewrite.
+
+<CardGrid>
+  <Card title="Interactive charts" icon="rocket">
+    Line and bar charts with column selectors. Powered by Recharts, capped at 500 rows for smooth SVG rendering.
+  </Card>
+  <Card title="Multi-tab editing" icon="setting">
+    Independent code and results per tab. localStorage persistence for code, cleared results on reload.
+  </Card>
+  <Card title="Multi-statement run" icon="approve-check">
+    Split on semicolons, execute sequentially, per-statement error handling. No all-or-nothing failures.
+  </Card>
+  <Card title="Zero build errors" icon="star">
+    next build passes with zero TypeScript errors. Existing tests unchanged.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [HTTP Observability →](/blog/http-observability/) · [SQL Parser & HTTP JOIN →](/blog/sql-parser-http-join/) · [Python Ecosystem Integration →](/blog/python-ecosystem-integration/)

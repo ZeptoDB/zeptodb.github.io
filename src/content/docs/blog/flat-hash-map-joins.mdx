@@ -1,0 +1,157 @@
+---
+title: "FlatHashMap: Why We Replaced std::unordered_map for JOINs"
+description: "How a custom open-addressing hash map with CRC32 hardware hashing eliminated pointer chasing and cache misses in ZeptoDB's JOIN operators."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Every JOIN in ZeptoDB — ASOF, Hash, Window — builds a hash map on the critical path. `std::unordered_map` was the bottleneck. This post explains why, and how a custom `FlatHashMap` with hardware-accelerated hashing fixed it.
+
+---
+
+## The Problem with std::unordered_map
+
+`std::unordered_map` is node-based. Every bucket is a heap-allocated linked list node:
+
+```
+Bucket 0 → [Node*] → [Node*] → nullptr
+Bucket 1 → nullptr
+Bucket 2 → [Node*] → nullptr
+...
+```
+
+Three problems for JOIN workloads:
+
+1. **Pointer chasing**: Every lookup follows a pointer to a heap-allocated node. Each pointer dereference is a potential cache miss (~100 cycles to DRAM).
+2. **Poor locality**: Nodes are scattered across the heap. Building a map of 100K entries creates 100K separate allocations at random addresses.
+3. **Hash overhead**: `std::hash<int64_t>` is typically an identity function or a multi-cycle computation. Neither is ideal.
+
+For a hash JOIN that builds on 100K rows and probes with 1M rows, these costs add up to millions of cache misses.
+
+---
+
+## FlatHashMap Design
+
+The replacement is a flat, open-addressing hash map specialized for `int64_t` keys:
+
+```
+┌─────────┬─────────┬─────────┬─────────┬─────────┐
+│ key|val  │ key|val  │  empty   │ key|val  │  empty   │
+└─────────┴─────────┴─────────┴─────────┴─────────┘
+  slot 0     slot 1     slot 2     slot 3     slot 4
+```
+
+All entries live in a single contiguous array. No pointers, no linked lists, no per-entry heap allocations.
+
+### Hash: Hardware CRC32
+
+```cpp
+static uint64_t hash_key(int64_t key) noexcept {
+    return _mm_crc32_u64(0, static_cast<uint64_t>(key));  // SSE4.2
+}
+```
+
+`_mm_crc32_u64` is a single-cycle hardware instruction on x86 (SSE4.2). It produces excellent distribution for integer keys. On non-x86 platforms, a splitmix64 fallback provides equivalent quality.
+
+### Probing: Linear with Power-of-2
+
+```cpp
+size_t idx = hash_key(key) & mask_;  // bitwise AND, not modulo
+while (occupied_[idx]) {
+    if (keys_[idx] == key) return &values_[idx];  // found
+    idx = (idx + 1) & mask_;                       // linear probe
+}
+```
+
+Linear probing is cache-friendly — sequential slots are adjacent in memory, so the CPU prefetcher helps. Power-of-2 capacity means the modulo is a single bitwise AND.
+
+### Load Factor: ≤ 75%
+
+```cpp
+capacity_ = next_power_of_2(entries * 4 / 3);
+```
+
+At 75% load, the expected probe length is less than 2. This means most lookups check 1-2 slots — and those slots are likely in the same cache line.
+
+### No Erase
+
+JOIN maps are **build-once, probe-many**. The build phase inserts all entries; the probe phase only reads. No tombstones, no deletion logic, no complexity.
+
+---
+
+## API
+
+Minimal, purpose-built for JOIN operators:
+
+```cpp
+template<typename V>
+class FlatHashMap {
+    V& operator[](int64_t key);           // insert or access
+    V* find(int64_t key) noexcept;        // nullptr on miss
+    void for_each(auto&& fn) const;       // iterate all entries
+    size_t size() const noexcept;
+};
+```
+
+Specialized for `int64_t` keys — the only key type used in JOIN operators (symbol IDs, timestamps).
+
+---
+
+## Where It's Used
+
+All three JOIN operators were updated:
+
+| Operator | Usage | Pattern |
+|----------|-------|---------|
+| `AsofJoinOperator` | Symbol grouping | Build: group right rows by symbol. Probe: find matching group per left row. |
+| `HashJoinOperator` | INNER/LEFT/RIGHT/FULL | Build: index one side by join key. Probe: match each row from the other side. |
+| `WindowJoinOperator` | Symbol + time range | Build: group by symbol. Probe: find group, then scan time window within group. |
+
+The build/probe pattern is identical across all three — only the match logic differs.
+
+---
+
+## Why This Matters for Time-Series JOINs
+
+Time-series JOINs have a specific access pattern:
+
+1. **Build side** is typically the smaller table (reference data, or the right side of an ASOF JOIN)
+2. **Probe side** streams through the larger table sequentially
+3. **Keys are integers** — symbol IDs and timestamps, not strings
+
+FlatHashMap is optimized for exactly this pattern:
+- Contiguous memory layout means the build phase fills cache lines sequentially
+- Integer keys use hardware CRC32 — one cycle per hash
+- Linear probing keeps probe-phase accesses cache-local
+- No erase means zero overhead from tombstone management
+
+<CardGrid>
+  <Card title="Single-cycle hash" icon="rocket">
+    CRC32 hardware instruction. One cycle per key, excellent distribution for integers.
+  </Card>
+  <Card title="Cache-friendly probing" icon="approve-check">
+    Linear probing on contiguous array. CPU prefetcher helps. Expected probe length &lt; 2.
+  </Card>
+  <Card title="Zero allocation overhead" icon="star">
+    One contiguous allocation for the entire map. No per-entry heap nodes.
+  </Card>
+  <Card title="Build-once, probe-many" icon="setting">
+    No erase support needed. Simpler code, no tombstone overhead.
+  </Card>
+</CardGrid>
+
+---
+
+## Regression Safety
+
+The replacement was validated against all existing JOIN tests:
+
+- 9 new FlatHashMap unit tests (insert, find, collision, iteration, capacity)
+- 23 existing HashJoin tests: all pass unchanged
+- 52 total join/window-related tests: zero regressions
+
+The API surface is small enough that the entire implementation fits in a single header file (~120 lines).
+
+---
+
+Related: [How ASOF JOIN Works →](/blog/how-asof-join-works/) · [SIMD Window JOIN →](/blog/simd-window-join/) · [Cost-Based Query Planner →](/blog/cost-based-query-planner/)

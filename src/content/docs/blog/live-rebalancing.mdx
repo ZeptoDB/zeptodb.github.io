@@ -1,0 +1,166 @@
+---
+title: "Live Rebalancing: Zero-Downtime Partition Migration"
+description: "How ZeptoDB moves partitions between nodes without data loss using dual-write ingestion, a state machine for migration lifecycle, and crash-recoverable checkpoints."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Adding a node to a running cluster should be boring. No downtime, no data loss, no manual intervention. ZeptoDB's live rebalancing system achieves this through dual-write ingestion during migration, a `RebalanceManager` with pause/resume/cancel support, and automatic ring broadcast on completion.
+
+---
+
+## The Dual-Write Problem
+
+Before this fix, `ClusterNode::ingest_tick()` never checked `migration_target()` — the API existed but was dead code. During partition migration, ticks routed to the source node were never forwarded to the destination:
+
+```
+Migration in progress (sym moving from A → B):
+
+  ingest_tick(sym)
+    → route(sym) → Node A        // still routes to source
+    → tick written to A only
+    → Node B never sees it        // DATA LOSS WINDOW
+```
+
+---
+
+## The Fix: Dual-Write During Migration
+
+```
+ingest_tick(sym):
+  target = router_.migration_target(sym)
+  if target.has_value():
+    send_to_node(target.from, tick)   // source gets it
+    send_to_node(target.to, tick)     // destination gets it too
+  else:
+    owner = router_.route(sym)        // normal single-node path
+    send_to_node(owner, tick)
+```
+
+`migration_target()` is an O(1) hash map lookup under `cache_mutex_` — independent from the `ring_mutex_` used by `route()`. No lock ordering dependency.
+
+| Path | Overhead |
+|------|----------|
+| No migration active | ~50 ns (cache miss check) |
+| Migration active (dual-write) | ~2× ingest latency |
+| Migration just ended | ~50 ns (returns nullopt) |
+
+---
+
+## RebalanceManager State Machine
+
+```
+         start_add_node() / start_remove_node()
+IDLE ──────────────────────────────────────────▶ RUNNING
+  ▲                                                │  │
+  │              all moves done                    │  │
+  └────────────────────────────────────────────────┘  │
+                                                      │
+RUNNING ──pause()──▶ PAUSED ──resume()──▶ RUNNING     │
+    │                   │                              │
+    └──cancel()──▶ CANCELLING ◀──cancel()──────────────┘
+                       │
+                       └──worker exits──▶ IDLE
+```
+
+State transitions use `std::atomic<RebalanceState>` with `compare_exchange_strong` — no locks needed.
+
+---
+
+## Scale-Out Flow (Add Node)
+
+```
+Admin: start_add_node(Node4)
+  1. PartitionRouter::plan_add(Node4)
+     → MigrationPlan: [{sym1: N1→N4}, {sym2: N2→N4}, ...]
+
+  2. For each move (sequential):
+     a. begin_migration(sym, Nx, N4)    // dual-write starts
+     b. SELECT * FROM trades on Nx      // copy historical data
+     c. replicate_wal(rows) to N4       // send to destination
+     d. end_migration(sym)              // dual-write stops, routing switches
+     e. Save checkpoint
+
+  3. RingConsensus::propose_add(Node4)   // broadcast to all nodes
+```
+
+---
+
+## Per-Move Lifecycle
+
+Each partition move follows its own state machine:
+
+```
+PENDING ──begin_migration()──▶ DUAL_WRITE ──start transfer──▶ COPYING
+                                                                  │
+                                              success + end_migration()
+                                                  │           │
+                                              COMMITTED    FAILED
+                                                          │
+                                                  retry (≤3) → PENDING
+                                                  max retries → give up
+```
+
+On failure: `DELETE FROM trades WHERE symbol=X` on the destination, then `end_migration()` to stop dual-write. The source still has the data — no loss.
+
+---
+
+## Crash Recovery
+
+`RebalanceManager` saves a checkpoint after each move:
+
+```json
+[
+  {"symbol":42, "from":1, "to":4, "state":3, "rows":15000, "attempts":1},
+  {"symbol":99, "from":2, "to":4, "state":0, "rows":0, "attempts":0}
+]
+```
+
+On coordinator restart:
+- COMMITTED moves are skipped (already done)
+- PENDING and FAILED moves are retried
+- Source nodes still have the data — safe to re-run
+
+---
+
+## Load-Based Auto-Trigger
+
+`RebalancePolicy` monitors cluster load imbalance and triggers rebalancing automatically:
+
+```cpp
+struct RebalancePolicy {
+    bool     enabled            = false;
+    double   imbalance_ratio    = 2.0;     // trigger if max/min > 2×
+    uint32_t check_interval_sec = 60;
+    uint32_t cooldown_sec       = 300;     // min time between auto-rebalances
+};
+```
+
+The policy thread calls a `LoadProvider` callback (returns per-node partition counts) and triggers `start_remove_node()` on the most loaded node when the imbalance ratio exceeds the threshold.
+
+---
+
+## Admin HTTP API
+
+Five REST endpoints for rebalance management: `GET /admin/rebalance/status` (current state and progress), `POST /admin/rebalance/start` (begin add/remove node), `POST /admin/rebalance/pause`, `POST /admin/rebalance/resume`, and `POST /admin/rebalance/cancel`. All require admin role.
+
+---
+
+## Ring Broadcast on Completion
+
+After all moves complete, `RebalanceManager` calls `RingConsensus::propose_add()` or `propose_remove()` to synchronize the hash ring across all cluster nodes. Without this, only the coordinator's local router would be updated — other nodes would keep routing to stale destinations.
+
+---
+
+## Test Coverage
+
+| Test | Verifies |
+|------|----------|
+| `DualWriteIngestTest` | Ticks reach both nodes during migration |
+| `DualWriteNormalPath` | Single-node routing when no migration |
+| `RebalanceAddNode` | Plan generation + execution for scale-out |
+| `RebalanceRemoveNode` | Plan generation + execution for scale-in |
+| `RebalancePauseResume` | Pause/resume state transitions |
+| `RebalanceCancel` | Clean cancellation mid-rebalance |
+| `RebalanceAlreadyRunning` | Rejection of concurrent rebalance |
+| `RebalanceStatusTracking` | Progress reporting accuracy |

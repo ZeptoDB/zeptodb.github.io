@@ -1,0 +1,157 @@
+---
+title: "Storage Tiering and Materialized Views"
+description: "Automatic hot/warm/cold/drop storage tiering and incremental materialized views for pre-computed aggregations in ZeptoDB."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Two features that transform ZeptoDB from a fast in-memory engine into a production-grade system: storage tiering that automatically manages data lifecycle, and materialized views that pre-compute aggregations at ingest time.
+
+---
+
+## Storage Tiering: Hot → Warm → Cold → Drop
+
+Financial data has a clear access pattern: the last few minutes are queried constantly, yesterday's data occasionally, and last year's data almost never. Storage tiering matches data placement to access frequency.
+
+```sql
+ALTER TABLE trades SET STORAGE POLICY
+  HOT 1 HOURS WARM 24 HOURS COLD 30 DAYS DROP 365 DAYS
+```
+
+### Tier Behavior
+
+| Tier | Age Threshold | Storage | Query Latency | Action |
+|------|--------------|---------|---------------|--------|
+| HOT | < warm | In-memory | μs | Default — no action |
+| WARM | ≥ warm | LZ4 → SSD | ms | Seal + compress + flush, memory reclaimed |
+| COLD | ≥ cold | Parquet → S3 | 100ms+ | Convert to Parquet, upload, delete local |
+| DROP | ≥ drop | Deleted | — | Partition fully removed |
+
+### Implementation
+
+`FlushManager::do_tiering()` runs in the existing flush loop. On each cycle, it checks partition ages against the policy thresholds:
+
+```
+flush_loop():
+  for each partition:
+    age = now() - partition.timestamp
+    if age ≥ drop_after  → delete partition
+    if age ≥ cold_after  → parquet + S3 upload
+    if age ≥ warm_after  → LZ4 compress + SSD flush
+```
+
+The policy is set at runtime via SQL — no restart required. `FlushConfig::TieringPolicy` stores the nanosecond thresholds for each tier transition.
+
+### Why This Matters
+
+Without tiering, operators must choose between:
+- Keep everything in memory → unbounded cost
+- Manual archival scripts → operational burden
+- Fixed TTL → lose historical data entirely
+
+Tiering gives the best of all worlds: microsecond queries on recent data, millisecond queries on warm data, and cheap S3 storage for compliance/audit requirements.
+
+---
+
+## Materialized Views: Pre-Computed Aggregations
+
+Materialized views compute aggregations incrementally as data arrives — no batch job, no scheduled refresh.
+
+```sql
+CREATE MATERIALIZED VIEW ohlcv_5min AS
+  SELECT symbol, xbar(timestamp, 300000000000) AS bar,
+         first(price) AS open, max(price) AS high,
+         min(price) AS low, last(price) AS close,
+         sum(volume) AS vol
+  FROM trades
+  GROUP BY symbol, xbar(timestamp, 300000000000)
+```
+
+### Incremental Aggregation
+
+Every `store_tick()` call triggers `MaterializedViewManager::on_tick()`:
+
+```
+INSERT tick → store_tick() → on_tick(tick)
+  → hash(symbol, xbar_bucket) → MVBucket
+  → update SUM, COUNT, MIN, MAX, FIRST, LAST
+```
+
+Each `MVBucket` maintains running aggregation state. When a new tick arrives:
+- SUM: `+= value`
+- COUNT: `+= 1`
+- MIN: `= min(current, value)`
+- MAX: `= max(current, value)`
+- FIRST: set once (first tick in bucket)
+- LAST: always overwrite (most recent tick)
+
+### Querying Materialized Views
+
+```sql
+SELECT * FROM ohlcv_5min WHERE symbol = 1
+```
+
+The executor detects that `ohlcv_5min` is a materialized view (not a base table) and calls `MaterializedViewManager::query()` directly — returning pre-computed buckets without scanning any raw partitions.
+
+**Cost comparison:**
+- Without MV: scan all partitions → O(n) where n = total rows
+- With MV: lookup pre-computed buckets → O(buckets)
+
+For 1M rows with 3,334 five-minute bars, that's a 300× reduction in work.
+
+### Dropping Views
+
+```sql
+DROP MATERIALIZED VIEW ohlcv_5min
+```
+
+Removes the view definition and all accumulated state. New ticks no longer trigger aggregation for this view.
+
+---
+
+## Overhead Analysis
+
+Materialized views add O(registered_views) work per INSERT:
+
+```
+Per tick: hash lookup + aggregation update per view
+  ≈ 50-100ns per view (hash + branch + arithmetic)
+```
+
+At 5M ticks/sec with 3 registered views, that's ~150-300ns overhead per tick — less than 0.1% of the ingestion budget. The query-time savings (O(n) → O(buckets)) far outweigh the ingest-time cost.
+
+---
+
+## Supported Aggregations
+
+| SQL Function | MV Aggregation | Incremental? |
+|-------------|---------------|-------------|
+| `SUM(col)` | Running sum | ✓ O(1) per tick |
+| `COUNT(*)` | Running count | ✓ O(1) per tick |
+| `MIN(col)` | Running min | ✓ O(1) per tick |
+| `MAX(col)` | Running max | ✓ O(1) per tick |
+| `FIRST(col)` | First value | ✓ Set once |
+| `LAST(col)` | Last value | ✓ Overwrite |
+| `AVG(col)` | SUM/COUNT | ✓ Derived at query time |
+| `VWAP(p,v)` | — | ✗ Not yet supported |
+
+AVG is computed at query time as `SUM/COUNT` — both are maintained incrementally, so the division is the only query-time work.
+
+<CardGrid>
+  <Card title="Automatic tiering" icon="rocket">
+    Hot → Warm → Cold → Drop. SQL-configurable, no restart. Memory reclaimed automatically.
+  </Card>
+  <Card title="Incremental MVs" icon="approve-check">
+    Aggregations updated per-tick at ingest time. O(1) per tick, O(buckets) at query time.
+  </Card>
+  <Card title="Zero-config lifecycle" icon="list-format">
+    One ALTER TABLE statement replaces cron jobs, archival scripts, and manual partition management.
+  </Card>
+  <Card title="OHLCV in SQL" icon="setting">
+    CREATE MATERIALIZED VIEW with xbar + first/last/min/max/sum — standard candlestick generation.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [DDL Schema Management →](/blog/ddl-schema-management/) · [SQL DML →](/blog/sql-dml-insert-update-delete/) · [MV Query Rewrite →](/blog/materialized-view-query-rewrite/)

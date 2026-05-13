@@ -1,0 +1,155 @@
+---
+title: "HTTP Server Observability: Structured Logging and Request Tracing"
+description: "How ZeptoDB's HTTP server provides production-grade observability — structured JSON access logs, slow query detection, X-Request-Id tracing, and Prometheus metrics."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+ZeptoDB's HTTP server had zero request-level logging. No way to trace individual requests, identify slow queries, or correlate client-side errors with server-side events. This post covers the observability layer that fixes all of that.
+
+---
+
+## The Five Pillars
+
+### 1. Structured JSON Access Log
+
+Every HTTP request produces a structured JSON log entry:
+
+```json
+{
+  "request_id": "r0001a3",
+  "method": "POST",
+  "path": "/",
+  "status": 200,
+  "duration_us": 532,
+  "request_bytes": 42,
+  "response_bytes": 1024,
+  "remote_addr": "10.0.1.5",
+  "subject": "algo-service"
+}
+```
+
+Emitted via `zeptodb::util::Logger` (async JSON, rotating file). Log level is determined by status code:
+
+| Status Range | Log Level |
+|-------------|-----------|
+| 2xx, 3xx | INFO |
+| 4xx | WARN |
+| 5xx | ERROR |
+
+Component tag: `"http"`. This makes it trivial to filter access logs from other server events in log aggregation tools.
+
+---
+
+### 2. Slow Query Log
+
+Queries exceeding 100ms (or returning errors) get a dedicated log entry:
+
+```json
+{
+  "query_id": "q_a1b2c3",
+  "subject": "algo-service",
+  "duration_us": 150234,
+  "rows": 50000,
+  "ok": true,
+  "sql": "SELECT vwap(price, volume) FROM trades WHERE ..."
+}
+```
+
+SQL is truncated to 200 characters for log safety — no risk of multi-megabyte log entries from large queries. Component tag: `"query"`.
+
+This is the fastest way to find performance problems in production. Sort by `duration_us`, and the worst offenders surface immediately.
+
+---
+
+### 3. X-Request-Id Response Header
+
+Every HTTP response includes a unique request identifier:
+
+```
+HTTP/1.1 200 OK
+X-Request-Id: r0001a3
+Content-Type: application/json
+```
+
+The ID uses a monotonic counter (`r<hex>`), ensuring uniqueness within a process. Clients can log this value and use it to correlate their errors with server-side access log entries.
+
+Typical debugging workflow:
+
+```
+Client log:  "Query failed, request_id=r0001a3"
+    ↓
+Server log:  grep "r0001a3" /var/log/zeptodb/access.json
+    ↓
+Result:      {"request_id":"r0001a3","status":500,"duration_us":30012,...}
+```
+
+---
+
+### 4. Server Lifecycle Events
+
+Startup and shutdown are logged as structured events:
+
+```json
+{"event": "server_start", "port": 8123, "tls": false, "auth": true, "async": true}
+{"event": "server_stop", "port": 8123}
+```
+
+These are essential for operations — knowing exactly when a server started, with what configuration, and when it stopped.
+
+---
+
+### 5. Prometheus Metrics
+
+Two metrics are exposed for monitoring dashboards:
+
+| Metric | Type | Description |
+|--------|------|-------------|
+| `zepto_http_requests_total` | Counter | Total HTTP requests served |
+| `zepto_http_active_sessions` | Gauge | Current active sessions |
+
+These integrate with the existing Prometheus ServiceMonitor in the Helm chart. Combined with the access log, you get both real-time dashboards and detailed per-request forensics.
+
+---
+
+## Architecture
+
+```
+HTTP Request
+    │
+    ├─→ Generate X-Request-Id (monotonic counter)
+    │
+    ├─→ Execute handler (query, admin, health, etc.)
+    │
+    ├─→ Measure duration
+    │
+    ├─→ Access log entry (util::Logger, async JSON)
+    │     └─→ Log level based on status code
+    │
+    ├─→ Slow query log (if duration > 100ms or error)
+    │
+    ├─→ Prometheus counter increment
+    │
+    └─→ Response with X-Request-Id header
+```
+
+The logging is async — `util::Logger` buffers entries and writes them in a background thread. No blocking on the request hot path.
+
+<CardGrid>
+  <Card title="Structured JSON logs" icon="approve-check">
+    Every request logged as JSON with request ID, duration, status, and client identity. Machine-parseable, grep-friendly.
+  </Card>
+  <Card title="Slow query detection" icon="star">
+    Queries over 100ms automatically logged with SQL, duration, and row count. Sort by duration to find bottlenecks.
+  </Card>
+  <Card title="Request tracing" icon="setting">
+    X-Request-Id in every response. Clients log it, operators grep for it. End-to-end correlation in seconds.
+  </Card>
+  <Card title="Prometheus metrics" icon="rocket">
+    Request counter and active session gauge for real-time dashboards. Integrates with existing Helm ServiceMonitor.
+  </Card>
+</CardGrid>
+
+---
+
+Related: [Helm Chart and Rolling Upgrades →](/blog/helm-rolling-upgrade/) · [Health Monitor Resilience →](/blog/health-monitor-resilience/) · [Kubernetes Compatibility and HA Testing →](/blog/k8s-compatibility-ha/)

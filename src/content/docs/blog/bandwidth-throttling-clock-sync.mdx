@@ -1,0 +1,175 @@
+---
+title: "Bandwidth Throttling and PTP Clock Sync for Distributed Clusters"
+description: "How ZeptoDB prevents network saturation during rebalancing with a sliding-window rate limiter, and ensures ASOF JOIN correctness with PTP clock synchronization detection."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Two features that seem unrelated but share a common theme: protecting cluster correctness under real-world conditions. Bandwidth throttling prevents rebalancing from starving production traffic. PTP clock sync detection prevents ASOF JOINs from returning wrong results when node clocks diverge.
+
+---
+
+## Part 1: Bandwidth Throttling for Rebalancing
+
+### The Problem
+
+Live rebalancing (partition migration) copies historical data between nodes. Without throttling, a large partition migration can saturate the network and degrade production ingestion and query latency.
+
+### BandwidthThrottler Design
+
+A lightweight, thread-safe rate limiter using a sliding 1-second window:
+
+```cpp
+class BandwidthThrottler {
+    std::atomic<uint64_t> bytes_in_window_{0};
+    std::atomic<uint64_t> window_start_us_{0};
+    std::atomic<uint32_t> limit_mbps_{0};  // 0 = unlimited
+
+public:
+    void record(size_t bytes);       // blocks if over limit
+    void set_limit_mbps(uint32_t);   // runtime adjustable
+    void reset();                    // clear counters
+};
+```
+
+### Integration
+
+```
+RebalanceManager
+  ├── owns BandwidthThrottler (member)
+  ├── initializes from RebalanceConfig::max_bandwidth_mbps
+  ├── set_max_bandwidth_mbps() for runtime changes
+  └── passes &throttler_ to PartitionMigrator
+
+PartitionMigrator::migrate_symbol()
+  └── throttler_->record(batch_size * 64) after each chunk
+```
+
+### Configuration
+
+```cpp
+struct RebalanceConfig {
+    uint32_t max_bandwidth_mbps = 0;  // 0 = unlimited
+    // ...
+};
+```
+
+Runtime adjustable via `RebalanceManager::set_max_bandwidth_mbps()` or the `/admin/rebalance/status` endpoint (which reports the current limit).
+
+### Key Properties
+
+| Property | Detail |
+|----------|--------|
+| Thread-safe | Atomic counters — no mutex on the hot path |
+| Zero overhead when disabled | `record()` returns immediately when limit = 0 |
+| Runtime adjustable | `set_limit_mbps()` takes effect immediately |
+| Sliding window | 1-second window with automatic reset |
+
+---
+
+## Part 2: PTP Clock Sync Detection
+
+### The Problem
+
+Distributed ASOF JOINs match rows by timestamp proximity. If node clocks are skewed by more than the tolerance window, the join produces incorrect matches — silently returning wrong data.
+
+```
+Node A clock: 10:00:00.000000
+Node B clock: 10:00:00.000050  (50μs ahead)
+
+ASOF JOIN with tolerance=1μs:
+  → Node A's tick at 10:00:00.000000
+  → Node B's tick at 10:00:00.000050 (appears 50μs later)
+  → Should match, but clock skew makes them appear 50μs apart
+  → WRONG RESULT in strict mode
+```
+
+### PtpClockDetector
+
+Detects PTP hardware and clock synchronization status:
+
+```cpp
+class PtpClockDetector {
+public:
+    enum class PtpSyncStatus { SYNCED, DEGRADED, UNSYNC, UNAVAILABLE };
+
+    PtpSyncStatus status() const;
+    int64_t       offset_ns() const;
+    bool          ptp_available() const;
+};
+```
+
+### Sync States and Strict Mode
+
+```
+SYNCED      offset_ns < max_offset_ns (default 1μs)
+DEGRADED    offset_ns between 1× and 10× threshold
+UNSYNC      offset_ns > 10× threshold or sync lost
+UNAVAILABLE no PTP hardware or daemon detected
+```
+
+### Strict Mode
+
+When `strict_mode = true`, distributed ASOF JOINs check clock sync before execution:
+
+```cpp
+struct PtpConfig {
+    int64_t  max_offset_ns = 1000;  // 1μs default
+    bool     strict_mode   = false; // reject ASOF JOIN on bad sync
+};
+```
+
+| Sync Status | `strict_mode = false` | `strict_mode = true` |
+|-------------|----------------------|---------------------|
+| SYNCED | Execute normally | Execute normally |
+| DEGRADED | Execute with warning | Execute with warning |
+| UNSYNC | Execute (may be wrong) | **REJECT with error** |
+| UNAVAILABLE | Execute (no PTP) | Execute (graceful degradation) |
+
+`UNAVAILABLE` is not an error — many development and test environments don't have PTP hardware. Strict mode only rejects when PTP is available but out of sync.
+
+### HTTP Endpoint
+
+```
+GET /admin/clock
+
+{
+  "status": "SYNCED",
+  "offset_ns": 42,
+  "ptp_available": true,
+  "max_offset_ns": 1000,
+  "strict_mode": true
+}
+```
+
+---
+
+## When to Use Each Feature
+
+<CardGrid>
+  <Card title="Bandwidth Throttling" icon="setting">
+    Enable when rebalancing large partitions (>1GB) on shared networks. Start with 100 MB/s and adjust based on production traffic impact.
+  </Card>
+  <Card title="PTP Strict Mode" icon="approve-check">
+    Enable for HFT workloads where ASOF JOIN accuracy at microsecond granularity is critical. Requires PTP hardware on all nodes.
+  </Card>
+</CardGrid>
+
+### Recommended Production Settings
+
+```cpp
+// Rebalance config
+RebalanceConfig rebalance_cfg;
+rebalance_cfg.max_bandwidth_mbps = 100;  // 100 MB/s cap
+
+// PTP config
+PtpConfig ptp_cfg;
+ptp_cfg.max_offset_ns = 1000;   // 1μs threshold
+ptp_cfg.strict_mode   = true;   // reject bad ASOF JOINs
+```
+
+---
+
+## Test Coverage
+
+Bandwidth throttler: 10 tests covering unlimited mode, throttle enforcement, runtime limit changes, and concurrent access (4 threads, no data race). PTP clock detector: 22 tests covering status transitions, threshold configuration, concurrent access, systems without PTP, and zero threshold edge cases.

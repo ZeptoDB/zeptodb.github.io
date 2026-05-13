@@ -1,0 +1,167 @@
+---
+title: "Health Monitor: DEAD Recovery and UDP Fault Tolerance"
+description: "How ZeptoDB's HealthMonitor handles DEAD node recovery via the REJOINING state, consecutive miss counting, TCP heartbeat fallback, and fatal bind failure detection."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Two operational stability issues plagued the original `HealthMonitor`: a DEAD node could never rejoin the cluster (even after recovery), and UDP packet loss alone could trigger false DEAD determinations. This post covers both fixes.
+
+---
+
+## Problem 1: DEAD Is Forever
+
+The original state machine had no recovery path from DEAD:
+
+```
+JOINING → ACTIVE → SUSPECT → DEAD → (nothing)
+```
+
+Once a node was marked DEAD, it stayed DEAD — even if it came back online and started sending heartbeats again. The only fix was a full cluster restart.
+
+---
+
+## Problem 2: UDP Is Unreliable
+
+UDP packet loss is normal. A burst of 3 lost packets could push a healthy node through `ACTIVE → SUSPECT → DEAD`, triggering unnecessary failover and re-replication.
+
+---
+
+## The New State Machine
+
+```
+JOINING ──heartbeat──▶ ACTIVE
+ACTIVE  ──3 consecutive misses──▶ SUSPECT
+SUSPECT ──heartbeat──▶ ACTIVE  (recovery)
+SUSPECT ──TCP probe fails──▶ DEAD  (confirmed unreachable)
+DEAD    ──heartbeat──▶ REJOINING
+REJOINING ──resync callback returns true──▶ ACTIVE
+REJOINING ──resync callback returns false──▶ REJOINING (retry next heartbeat)
+```
+
+<CardGrid>
+  <Card title="REJOINING State" icon="rocket">
+    New state between DEAD and ACTIVE. Allows data resynchronization before the node accepts traffic.
+  </Card>
+  <Card title="Consecutive Misses" icon="warning">
+    3 consecutive heartbeat misses required before SUSPECT — not just a single timeout.
+  </Card>
+  <Card title="TCP Probe" icon="approve-check">
+    Before SUSPECT → DEAD, a TCP connect probe confirms the node is truly unreachable.
+  </Card>
+  <Card title="Fatal Bind" icon="error">
+    UDP socket bind failure is now fatal by default — no more silent degradation.
+  </Card>
+</CardGrid>
+
+---
+
+## DEAD Recovery: The REJOINING Protocol
+
+When a DEAD node resumes sending heartbeats:
+
+```
+HealthMonitor receives heartbeat from DEAD node 5:
+  1. State: DEAD → REJOINING
+  2. Reset consecutive_misses_[5] = 0
+  3. Fire rejoin_callback_(node_id=5)
+     → Callback runs resynchronization logic:
+        - Re-replicate missed data from replicas
+        - Rebuild local partition state
+        - Return true when ready
+     → If true:  REJOINING → ACTIVE (re-add to router)
+     → If false: Stay REJOINING (retry on next heartbeat)
+```
+
+The callback is registered via `on_rejoin(RejoinCallback)`. If no callback is registered, the node transitions directly to ACTIVE (backward compatible).
+
+In `ClusterNode`, the REJOINING → ACTIVE transition re-adds the node to the `PartitionRouter` — the same code path as the existing JOINING → ACTIVE transition.
+
+---
+
+## Consecutive Miss Counting
+
+Instead of a single timeout threshold, the monitor now tracks per-node consecutive misses:
+
+```cpp
+// check_timeouts() — called every check interval
+for (auto& [node_id, last_seen] : nodes_) {
+    auto elapsed = now - last_seen;
+    auto expected_heartbeats = elapsed / heartbeat_interval;
+    auto received = heartbeats_received_[node_id];
+    auto misses = expected_heartbeats - received;
+
+    if (misses >= consecutive_misses_for_suspect) {  // default: 3
+        state_[node_id] = SUSPECT;
+    }
+}
+```
+
+`inject_heartbeat()` resets the miss counter to zero, handling both normal heartbeats and DEAD → REJOINING transitions.
+
+---
+
+## TCP Heartbeat Fallback
+
+A secondary TCP heartbeat compensates for UDP loss:
+
+```
+Thread architecture (4 threads):
+  send_thread_     → UDP heartbeat sender
+  recv_thread_     → UDP heartbeat receiver
+  tcp_recv_thread_ → TCP heartbeat receiver (new)
+  check_thread_    → Timeout checker
+
+SUSPECT → DEAD transition:
+  Before marking DEAD, tcp_probe(node_id) attempts a TCP connect:
+    → Success: node is alive, UDP was lost → stay SUSPECT
+    → Failure: node is truly unreachable → transition to DEAD
+```
+
+### Configuration
+
+```cpp
+struct HealthConfig {
+    uint16_t tcp_heartbeat_port            = 9101;   // TCP fallback port
+    uint32_t consecutive_misses_for_suspect = 3;     // misses before SUSPECT
+    bool     enable_dead_rejoin            = true;   // allow DEAD recovery
+    bool     fatal_on_bind_failure         = true;   // throw on UDP bind fail
+};
+```
+
+---
+
+## Socket Bind Failure
+
+The original monitor silently continued when `bind()` failed — disabling heartbeat reception without any indication. Now:
+
+```cpp
+void setup_udp_socket() {
+    // ... socket setup ...
+    if (bind(udp_sock_, ...) < 0) {
+        if (config_.fatal_on_bind_failure) {
+            throw std::runtime_error("UDP bind failed on port " + std::to_string(port));
+        }
+        // else: log warning, disable receive (legacy behavior)
+    }
+}
+```
+
+`fatal_on_bind_failure = true` is the default. This catches port conflicts early instead of producing mysterious "node unreachable" errors minutes later.
+
+---
+
+## Impact on Failover
+
+| Scenario | Before | After |
+|----------|--------|-------|
+| 3 UDP packets lost | ACTIVE → SUSPECT → DEAD | ACTIVE → (miss count 3) → SUSPECT → TCP probe → stay SUSPECT |
+| Node crash + recovery | Stays DEAD forever | DEAD → REJOINING → resync → ACTIVE |
+| UDP bind conflict | Silent degradation | Fatal error on startup |
+| Network partition heals | Manual restart required | Automatic rejoin via REJOINING state |
+
+---
+
+## Backward Compatibility
+
+All existing tests pass without modification. The new behavior (REJOINING, consecutive misses, TCP probe) activates through the new config fields, all of which have sensible defaults. The original `ACTIVE → SUSPECT → DEAD` path still works for existing deployments.
