@@ -1,0 +1,99 @@
+---
+title: "Energy & Utilities"
+template: splash
+prev: false
+next: false
+description: "ZeptoDB for synchrophasor / PMU streams, smart metering, and renewable-asset telemetry at microsecond latency"
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Synchrophasor streams. Smart meters. Wind and solar farms. Microsecond time-series for the grid edge.
+
+---
+
+## Why operators choose ZeptoDB
+
+<CardGrid>
+  <Card title="Sub-cycle latency" icon="seti:clock">
+    272μs queries over millions of rows. Detect grid disturbances within a single AC cycle — not on the next dashboard refresh.
+  </Card>
+  <Card title="PMU-scale ingestion" icon="rocket">
+    Thousands of phasor measurement units at 30–240 samples/sec each, with nanosecond timestamps. Lock-free pipeline, no dropped frames.
+  </Card>
+  <Card title="Millions of endpoints" icon="star">
+    Symbol-partitioned column store scales to millions of meters, inverters, and sensors without cardinality penalties.
+  </Card>
+  <Card title="Parquet historian" icon="approve-check-circle">
+    Years of telemetry on S3 / GCS / NFS. Query hot and cold transparently for forensic analysis and regulatory reporting.
+  </Card>
+</CardGrid>
+
+---
+
+## Use cases
+
+### Grid stability & wide-area monitoring
+- Ingest synchrophasor (PMU / C37.118) streams with nanosecond timestamps
+- Real-time ROCOF, phase-angle difference, and oscillation detection with window functions
+- ASOF JOIN to align phasors across substations for wide-area analytics
+
+### Smart metering & demand response
+- Minute-level and sub-second metering for millions of endpoints
+- Rolling aggregates per circuit, transformer, or feeder
+- Demand-response signal correlation with load response latency
+
+### Renewable asset telemetry
+- Inverter, turbine, and BMS telemetry at 1–10KHz
+- Performance ratio, capacity factor, and curtailment analytics in SQL
+- Anomaly detection on vibration and temperature for preventive maintenance
+
+### Battery & storage operations
+- Cell-level voltage, current, and temperature streams
+- State-of-charge and state-of-health rolling estimation
+- Thermal runaway early warning with multi-sensor ASOF JOIN
+
+---
+
+## Example: PMU oscillation detection
+
+```sql
+-- Detect sub-synchronous oscillations by comparing phase angles across substations
+SELECT
+    p1.ts,
+    p1.substation AS sub_a,
+    p2.substation AS sub_b,
+    p1.phase_angle - p2.phase_angle AS angle_diff,
+    ema(abs(p1.phase_angle - p2.phase_angle), 60) AS smoothed_diff
+FROM phasors p1
+ASOF JOIN phasors p2
+    ON p1.ts = p2.ts
+   AND p2.substation = 'SUB-B'
+WHERE p1.substation = 'SUB-A'
+  AND p1.ts > now() - interval '5 minutes'
+  AND abs(p1.phase_angle - p2.phase_angle) > 10  -- degrees
+```
+
+---
+
+## Deployment options
+
+| Environment | Configuration |
+|-------------|---------------|
+| Substation edge | Single node, ARM Graviton, WAL + local Parquet |
+| Control center | Multi-node cluster, 10/25 GbE, Parquet HDB on NAS |
+| Cloud historian | EKS cluster, Parquet HDB on S3, cross-region replication |
+| Hybrid | Edge ingests + aggregates; cloud keeps long-tail history |
+
+See [Production Deployment](/deployment/production_deployment/) and [EKS Cluster Requirements](/deployment/eks_cluster_requirements/) for reference architectures.
+
+---
+
+## Compliance & security
+
+- Structured JSON audit logging suitable for NERC CIP / IEC 62443 evidence
+- TLS 1.3 and mTLS on all endpoints, including cluster RPC
+- RBAC with namespace isolation for operator / analyst / auditor separation
+- Signed, offline-validated Enterprise license — no phone-home
+
+See [Security](/security/) for the full posture.

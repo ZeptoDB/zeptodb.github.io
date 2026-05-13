@@ -3,44 +3,50 @@ title: "Features"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB features — ultra-low latency time-series database"
+description: "ZeptoDB features — the microsecond time-series platform for Physical AI, Industrial IoT, Autonomous Systems, Energy, and Markets"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Ingestion Engine
+One engine for real-time ingestion, microsecond query, and ML feature serving. Standard SQL from the robot to the trading desk.
+
+---
+
+## Ingestion engine
 
 <CardGrid>
   <Card title="5.52M events/sec" icon="rocket">
-    Lock-free MPMC ring buffer with Highway SIMD batch copy. Zero allocation on the hot path.
+    Lock-free MPMC ring buffer with Highway SIMD batch copy. Zero allocation on the hot path. Robotics telemetry, factory sensors, or tick feeds — same pipeline.
   </Card>
-  <Card title="Feed Handlers" icon="star">
-    Built-in parsers for FIX 4.4, ITCH, Binance WebSocket, and Kafka. Plug in custom feeds via C++ API.
+  <Card title="Protocol handlers" icon="star">
+    Built-in FIX 4.4, ITCH, Binance WebSocket, and Kafka. OPC-UA, MQTT, and ROS2 on the roadmap. Plug custom feeds in via the C++ API.
+
+    > Kafka connector requires an Enterprise license.
   </Card>
-  <Card title="WAL" icon="approve-check-circle">
-    Write-ahead log for crash recovery. Configurable sync policy (every write, periodic, or async).
+  <Card title="Durable WAL" icon="approve-check-circle">
+    Write-ahead log for crash recovery. Configurable sync policy — every write, periodic, or async — per deployment profile.
   </Card>
 </CardGrid>
 
 ---
 
-## Query Engine
+## Query engine
 
 <CardGrid>
   <Card title="LLVM JIT" icon="seti:clock">
-    Queries compiled to native code at runtime. Vectorized execution with SIMD aggregation.
+    Queries compile to native code at runtime. Vectorized execution with SIMD aggregation across AVX2, AVX-512, and NEON.
   </Card>
   <Card title="ASOF JOIN" icon="star">
-    Point-in-time correct joins for financial and sensor data. Nanosecond precision.
+    Point-in-time correct joins across heterogeneous streams. Nanosecond precision. Foundational for sensor fusion, backtests, and multi-source telemetry.
   </Card>
   <Card title="Window JOIN" icon="star">
-    Join within a time window (±N ms). Essential for sensor fusion and event correlation.
+    Join within a time window (±N ms). Built for sensor clock drift, event correlation, and trade/quote alignment.
   </Card>
-  <Card title="Built-in Analytics" icon="rocket">
-    EMA, VWAP, xbar, mavg, percentile — temporal analytics functions built into the engine.
+  <Card title="Temporal analytics" icon="rocket">
+    EMA, VWAP, xbar, mavg, percentile — analytic primitives compiled in, not bolted on via UDFs.
   </Card>
   <Card title="Standard SQL" icon="approve-check-circle">
-    Full SQL support: SELECT, JOIN, GROUP BY, window functions, subqueries, CTEs.
+    Full SQL: SELECT, JOIN, GROUP BY, window functions, subqueries, CTEs. Your team already knows how to write it.
   </Card>
 </CardGrid>
 
@@ -50,38 +56,40 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 | Feature | Description |
 |---------|-------------|
-| In-Memory Column Store | Columnar layout optimized for SIMD scan and aggregation |
-| Arena Allocator | Custom memory management — no malloc on hot path |
-| Partition Manager | Symbol-based partitioning for data locality |
-| Parquet HDB | Historical database on S3/NFS. Query hot + cold data transparently |
+| In-memory column store | Columnar layout optimized for SIMD scan and aggregation |
+| Arena allocator | Custom memory management — no malloc on the hot path |
+| Partition manager | Symbol-based partitioning for data locality and parallelism |
+| Parquet HDB | Historical database on S3 / GCS / NFS. Hot + cold in one query |
 | Compression | LZ4 for WAL, Parquet columnar compression for HDB |
 
 ---
 
 ## Client APIs
 
-| API | Latency | Use Case |
-|-----|---------|----------|
-| Python (zero-copy) | 522ns | Quant research, ML pipelines, Jupyter notebooks |
-| C++ Pipeline | Native | Embedded, low-latency applications |
-| HTTP REST | ~1ms | Web apps, microservices, Grafana |
+| API | Latency | Typical use |
+|-----|---------|-------------|
+| Python (zero-copy) | 522ns | ML pipelines, Jupyter notebooks, quant research |
+| C++ Pipeline | Native | Embedded, low-latency, edge deployments |
+| HTTP REST | ~1ms | Web apps, microservices, Grafana dashboards |
 | Arrow Flight | ~100μs | Batch data transfer, distributed training |
-| SQL (CLI) | Interactive | Ad-hoc queries, debugging |
+| SQL (CLI) | Interactive | Ad-hoc queries, operations, debugging |
 
 ---
 
 ## Security
 
-- TLS 1.3 with optional mTLS
+- TLS 1.3 with optional mTLS on every endpoint, including cluster RPC
 - RBAC with 5 built-in roles (admin, writer, reader, analyst, monitor)
-- JWT / OIDC authentication (Okta, Auth0, Azure AD, Google)
-- API key management with rotation
-- Audit logging (all auth events, queries, admin actions)
-- Rate limiting per user/role
+- JWT / OIDC authentication (Okta, Auth0, Azure AD, Google Workspace)
+- API key management with rotation and revocation
+- Audit logging — all auth events, queries, and admin actions
+- Rate limiting per user and per role
 - Multi-tenancy with namespace isolation
-- SOC2 & MiFID II compliance ready
+- SOC2, MiFID II, and industrial (IEC 62443) evidence ready
 
-See the [Security Operations Guide](/api/security_operations_guide/) for details.
+> **Edition note:** TLS, basic RBAC, API keys, and rate limiting are in all editions. SSO/OIDC, audit export, and per-tenant advanced RBAC require Enterprise.
+
+See the [Security Operations Guide](/api/security_operations_guide/) for configuration.
 
 ---
 
@@ -93,16 +101,18 @@ See the [Security Operations Guide](/api/security_operations_guide/) for details
 - Rolling upgrades with zero downtime
 - Cross-node query routing and aggregation
 
+> Multi-node clustering requires an Enterprise license.
+
 See [Multi-Node Cluster](/deployment/multi_node_cluster/) for setup.
 
 ---
 
 ## Deployment
 
-- Docker (single command start)
-- Kubernetes / Helm
-- Bare metal with NUMA/CPU pinning optimization
-- ARM Graviton support (aarch64)
+- Docker — single-command start for dev, CI, and edge
+- Kubernetes / Helm for cluster deployments
+- Bare metal with NUMA / CPU pinning optimization
+- ARM Graviton (aarch64) for cost-efficient edge and cloud
 - Parquet HDB on S3, GCS, or local NFS
 
-See [Production Deployment](/deployment/production_deployment/) for details.
+See [Production Deployment](/deployment/production_deployment/) for reference architectures.

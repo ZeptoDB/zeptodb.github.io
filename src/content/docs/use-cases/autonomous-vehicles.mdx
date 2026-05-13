@@ -1,59 +1,64 @@
 ---
-title: "Autonomous Vehicles"
+title: "Autonomous Systems"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for driving log replay, sensor time-sync, and autonomous vehicle data pipelines"
+description: "ZeptoDB for autonomous vehicles, drones, and mobile robots — sensor time-sync, scenario mining, and fleet-scale driving-log replay"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-ASOF JOIN for multi-sensor time sync. Parquet HDB for petabyte-scale driving log replay.
+ASOF JOIN for multi-sensor time sync. Parquet HDB for petabyte-scale replay. One engine from vehicle edge to training cluster.
 
 ---
 
-## Why AV Teams Choose ZeptoDB
+## Why AV & autonomy teams choose ZeptoDB
 
 <CardGrid>
-  <Card title="Sensor Time Sync" icon="seti:clock">
-    ASOF JOIN aligns LiDAR, camera, radar, and IMU streams with nanosecond precision.
+  <Card title="Nanosecond time sync" icon="seti:clock">
+    Align LiDAR, camera, radar, IMU, GPS, and CAN with nanosecond-precision ASOF JOIN. Reproducible perception, frame after frame.
   </Card>
-  <Card title="Driving Log Replay" icon="rocket">
-    Query historical driving episodes from Parquet on S3. Replay at original speed or accelerated.
+  <Card title="Driving-log replay" icon="rocket">
+    Query historical episodes from Parquet on S3 at full fidelity. Replay at wall-clock speed, accelerated, or scenario-sliced.
   </Card>
-  <Card title="Zero-Copy ML" icon="seti:python">
-    522ns from query result to PyTorch tensor for perception model training.
+  <Card title="Zero-copy ML" icon="seti:python">
+    522ns from query result to PyTorch tensor. Same SQL feeds research notebooks, regression tests, and online perception models.
   </Card>
-  <Card title="Fleet Scale" icon="star">
-    Multi-node cluster handles telemetry from thousands of vehicles simultaneously.
+  <Card title="Fleet scale" icon="star">
+    Multi-node cluster handles telemetry from thousands of vehicles concurrently. Symbol partitioning keeps cardinality bounded.
   </Card>
 </CardGrid>
 
 ---
 
-## Use Cases
+## Where it fits
 
-### Multi-Sensor Fusion
-- Time-align LiDAR point clouds, camera frames, radar returns, and IMU data
-- Window JOIN with ±N ms tolerance for sensor clock drift compensation
-- Real-time fusion pipeline for online perception
+### Multi-sensor fusion
+- Time-align LiDAR, camera, radar, IMU, GPS, and vehicle CAN at nanosecond precision
+- Window JOIN with ±N ms tolerance to absorb sensor clock drift
+- Production-ready pipeline for online perception and HIL bench
 
-### Scenario Mining
-- SQL queries over petabytes of driving logs stored as Parquet on S3
-- Find specific scenarios: "all left turns at intersections with pedestrians in rain"
-- ASOF JOIN to correlate vehicle state with map/weather data
+### Scenario mining & triage
+- SQL over petabytes of driving logs in Parquet on S3
+- Find the scenarios that matter: *"left turns at unprotected intersections with a pedestrian in rain"*
+- Correlate vehicle state with map attributes, weather, and disengagement events
 
-### Training Data Pipeline
-- Query → NumPy → PyTorch in microseconds via zero-copy
-- Batch extraction via Arrow Flight for distributed training
-- Reproducible dataset versioning with Parquet snapshots
+### Training data & dataset curation
+- Query → NumPy → PyTorch / JAX in microseconds via zero-copy
+- Batch extraction via Arrow Flight for distributed training clusters
+- Reproducible dataset versioning through immutable Parquet snapshots
+
+### Fleet operations & safety
+- Real-time health monitoring across vehicles and edge compute
+- Disengagement and safety-driver-intervention analytics with window functions
+- Forensic replay when an incident occurs — exact event, exact timing
 
 ---
 
-## Example: Multi-Sensor Alignment
+## Example: multi-sensor alignment
 
 ```sql
--- Align all sensor streams to LiDAR timestamps
+-- Align all sensor streams to LiDAR timestamps for a single vehicle
 SELECT
     l.ts AS lidar_ts,
     l.points,
@@ -65,24 +70,32 @@ SELECT
 FROM lidar_scans l
 ASOF JOIN camera_frames c ON l.vehicle_id = c.vehicle_id AND l.ts >= c.ts
 ASOF JOIN radar_returns r ON l.vehicle_id = r.vehicle_id AND l.ts >= r.ts
-ASOF JOIN imu_readings i ON l.vehicle_id = i.vehicle_id AND l.ts >= i.ts
-ASOF JOIN gps_fixes g ON l.vehicle_id = g.vehicle_id AND l.ts >= g.ts
+ASOF JOIN imu_readings  i ON l.vehicle_id = i.vehicle_id AND l.ts >= i.ts
+ASOF JOIN gps_fixes     g ON l.vehicle_id = g.vehicle_id AND l.ts >= g.ts
 WHERE l.vehicle_id = 'vehicle-042'
   AND l.ts BETWEEN '2026-03-15 14:00:00' AND '2026-03-15 14:30:00'
 ```
 
 ---
 
-## Architecture
+## Reference architecture
 
 ```
-Vehicle Edge Node              Cloud Cluster              Training
-─────────────────    ─────────────────────────    ─────────────────
-LiDAR      ──→  │                           │
-Camera     ──→  │ ZeptoDB Edge              │
-Radar      ──→  │   ↓ WAL + Parquet        │──→  S3 Parquet HDB
-IMU        ──→  │   ↓ Sync to cloud        │──→  ZeptoDB Cluster
-GPS        ──→  │                           │──→  Arrow Flight
-                 ─────────────────────────         ↓
-                                               PyTorch Training
+Vehicle / Robot Edge          Cloud Cluster              Training
+─────────────────────    ──────────────────────    ─────────────────
+LiDAR      ──→  │                            │
+Camera     ──→  │ ZeptoDB Edge               │
+Radar      ──→  │   ↓ WAL + Parquet          │──→  S3 Parquet HDB
+IMU        ──→  │   ↓ Sync to cloud          │──→  ZeptoDB Cluster
+GPS / CAN  ──→  │                            │──→  Arrow Flight
+                 ──────────────────────────          ↓
+                                                PyTorch / JAX Training
 ```
+
+---
+
+## Why this matters commercially
+
+Autonomy stacks tend to grow three parallel data systems — one for online fusion, one for log replay, one for training data. Each comes with its own ingest path, schema drift, and on-call burden. ZeptoDB is the one engine that serves all three, with the same SQL and the same security model. Teams ship faster, regress less, and reduce the moving parts between a real-world incident and a root-cause answer.
+
+Talk to us about your platform: [Contact Sales →](/contact/)

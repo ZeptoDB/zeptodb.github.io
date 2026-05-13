@@ -8,7 +8,7 @@ description: "Compare ZeptoDB and ClickHouse — microsecond vs millisecond late
 
 ## Overview
 
-ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-built for real-time time-series where microsecond latency and temporal operations (ASOF JOIN, EMA) are critical.
+ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-built for real-time time-series where microsecond latency and temporal operations (ASOF JOIN, EMA, Window JOIN) are critical — whether the source is an exchange, a robot, a factory line, a fleet of vehicles, or a grid of meters.
 
 ---
 
@@ -37,10 +37,10 @@ ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-
 ## When to Choose ZeptoDB
 
 - Sub-millisecond query latency is a requirement
-- You need ASOF JOIN, Window JOIN, or temporal analytics
-- Real-time streaming ingestion (millions of events/sec)
-- Python zero-copy for ML/quant workflows
-- Financial market data or high-frequency sensor data
+- You need ASOF JOIN, Window JOIN, or built-in temporal analytics
+- Real-time streaming ingestion at millions of events/sec
+- Python zero-copy for ML, feature stores, or quant research
+- Physical AI, sensor fusion, autonomous systems, industrial control, or market data — any workload where time alignment matters
 
 ## When ClickHouse May Be Better
 

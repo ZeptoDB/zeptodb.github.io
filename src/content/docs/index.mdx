@@ -1,13 +1,17 @@
 ---
 title: ZeptoDB
-description: Ultra-low latency in-memory time-series database
+description: The microsecond time-series platform for Physical AI, Industrial IoT, Autonomous Systems, and Markets.
 template: splash
 hero:
-  tagline: "Built for Quants. Ready for Everything. Ultra-low latency in-memory time-series database — from trading desks to factory floors, wherever μs matters."
+  tagline: "The time-series database for the microsecond economy — robotics, factories, vehicles, grids, and markets. One engine, standard SQL, 522ns to Python."
   actions:
     - text: Quick Start
       link: /getting-started/quick_start/
       icon: right-arrow
+    - text: Talk to Sales
+      link: /contact/
+      icon: right-arrow
+      variant: secondary
     - text: GitHub
       link: https://github.com/zeptodb/zeptodb
       icon: external
@@ -16,58 +20,96 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
+## Wherever microseconds matter
+
+Sensor fusion in a humanoid. Closed-loop control on a factory floor. Tick-by-tick risk on a trading desk. Grid telemetry across a region. The workloads look different — the bottleneck is the same: **time-series data arriving faster than a conventional database can ingest, join, and hand to your model.**
+
+ZeptoDB is the microsecond time-series substrate built for that bottleneck. One engine, standard SQL, lock-free ingestion, LLVM JIT execution, and a zero-copy path straight into NumPy and PyTorch.
+
 <CardGrid stagger>
   <Card title="5.52M events/sec" icon="rocket">
-    Production-grade ingestion powered by lock-free MPMC ring buffer + Highway SIMD.
+    Lock-free MPMC ring buffer + Highway SIMD. Robotics telemetry, factory sensors, tick feeds — ingest without dropping a sample.
   </Card>
-  <Card title="272μs query (1M rows)" icon="seti:clock">
-    LLVM JIT compiled execution. ASOF JOIN, Window JOIN, EMA — all at μs latency.
+  <Card title="272μs query on 1M rows" icon="seti:clock">
+    LLVM JIT compiled execution. ASOF JOIN, Window JOIN, EMA, VWAP — analytic primitives at microsecond latency.
   </Card>
-  <Card title="522ns Python zero-copy" icon="seti:python">
-    NumPy/Pandas view directly from engine memory. No serialization, no copy.
+  <Card title="522ns to Python" icon="seti:python">
+    NumPy / Pandas / PyTorch views directly on engine memory. No serialization. No copy. Ship features straight into your model.
   </Card>
-  <Card title="Enterprise Security" icon="approve-check-circle">
-    TLS 1.3, RBAC (5 roles), JWT/OIDC, audit log. SOC2 & MiFID II ready.
+  <Card title="Enterprise-ready" icon="approve-check-circle">
+    TLS 1.3, RBAC, JWT/OIDC, audit logging, multi-node clustering. SOC2, MiFID II, IEC 62443-aware deployments.
   </Card>
 </CardGrid>
 
-## Why ZeptoDB?
+---
 
-| | **kdb+** | **ClickHouse** | **InfluxDB** | **ZeptoDB** |
-|---|---|---|---|---|
-| **Latency** | μs | ms | ms | **μs** |
-| **Ingestion** | ~5M/sec | 100K/sec | 50K/sec | **5.52M/sec** |
-| **SQL** | ✗ (q lang) | ✓ | InfluxQL | **✓ Standard SQL** |
-| **Python** | IPC | — | — | **522ns zero-copy** |
-| **ASOF JOIN** | ✓ | ✗ | ✗ | **✓** |
-| **License** | $100K+/yr | OSS | OSS | **OSS** |
-
-See detailed comparisons: [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
-
-## Use Cases
+## Built for the microsecond economy
 
 <CardGrid>
-  <Card title="📈 Trading & Finance" icon="star">
-    HFT tick processing, quant backtesting, risk/compliance. kdb+ performance at zero license cost.
-  </Card>
   <Card title="🤖 Physical AI & Robotics" icon="star">
-    Sensor fusion, RL feature store, zero-copy PyTorch pipeline. 522ns to tensor.
+    Sensor fusion across LiDAR, camera, IMU, and proprioception. 522ns from query to PyTorch tensor. Train offline on Parquet, serve online from memory — same SQL, same engine.
+
+    [Physical AI →](/use-cases/robotics/)
   </Card>
-  <Card title="🏭 Smart Factory" icon="star">
-    10KHz sensor ingestion, real-time anomaly detection, predictive maintenance.
+  <Card title="🏭 Industrial IoT & Smart Factory" icon="star">
+    10KHz+ vibration, current, and pressure streams. Rolling statistics, SPC, anomaly detection, predictive maintenance — all in standard SQL, edge to cloud.
+
+    [Industrial IoT →](/use-cases/iot/)
   </Card>
-  <Card title="🚗 Autonomous Vehicles" icon="star">
-    LiDAR + Camera + IMU time sync via ASOF JOIN. Driving log replay from Parquet HDB.
+  <Card title="🚗 Autonomous Systems" icon="star">
+    Time-align LiDAR + camera + radar + IMU with nanosecond-precision ASOF JOIN. Replay petabyte-scale driving logs from Parquet on S3 at full fidelity.
+
+    [Autonomous Vehicles →](/use-cases/autonomous-vehicles/)
+  </Card>
+  <Card title="⚡ Energy & Utilities" icon="star">
+    Synchrophasor / PMU streams, smart-meter telemetry, renewable forecasting. Sub-second aggregation over millions of endpoints with symbol-partitioned storage.
+
+    [Energy & Utilities →](/use-cases/energy/)
+  </Card>
+  <Card title="📈 Capital Markets" icon="star">
+    kdb+-class ingestion and query performance — on standard SQL, with zero license cost at the Community tier. HFT, quant research, real-time risk, MiFID II audit.
+
+    [Trading & Finance →](/use-cases/trading/)
+  </Card>
+  <Card title="🛰️ Observability & Telemetry" icon="star">
+    High-cardinality time-series for fleets, devices, and services. Millions of active series without cardinality penalties. Keep Prometheus; add microsecond history.
+
+    [See all use cases →](/use-cases/trading/)
   </Card>
 </CardGrid>
 
-<LinkCard title="Explore all use cases →" href="/use-cases/trading/" />
+---
 
-## Get Started
+## Why teams pick ZeptoDB
+
+- **One engine, every workload.** Ingestion, real-time query, historical replay, and ML feature serving in a single binary. No Lambda-architecture tax.
+- **Standard SQL, not a DSL.** Your analysts, quants, and ML engineers write SQL with temporal extensions (ASOF JOIN, xbar, EMA). No proprietary language to learn.
+- **Zero-copy to the model.** 522ns from column store to NumPy / PyTorch. The difference between a feature store that keeps up and one that doesn't.
+- **Edge to cloud.** ARM Graviton edge nodes to multi-node EKS clusters. Parquet HDB on S3 / GCS / NFS for long-tail history.
+- **Commercially friendly.** Community edition is free and production-ready on a single node. Enterprise adds clustering, SSO, and audited feature gating — no phone-home.
+
+---
+
+## How it compares
+
+| | **kdb+** | **ClickHouse** | **InfluxDB** | **TimescaleDB** | **ZeptoDB** |
+|---|---|---|---|---|---|
+| **Query latency (1M rows)** | μs | ~5ms | ~15ms | ~10ms | **272μs** |
+| **Ingestion** | ~5M/sec | 100K/sec | 50K/sec | 50K/sec | **5.52M/sec** |
+| **Query language** | q (proprietary) | SQL | InfluxQL / Flux | PostgreSQL SQL | **Standard SQL** |
+| **ASOF JOIN** | ✓ | ✗ | ✗ | workaround | **✓ native** |
+| **Python** | IPC | serialized | serialized | serialized | **522ns zero-copy** |
+| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **Free Community / Enterprise** |
+
+Detailed comparisons: [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
+
+---
+
+## Start building
 
 <CardGrid>
   <LinkCard title="Quick Start" description="From zero to first query in 5 minutes" href="/getting-started/quick_start/" />
-  <LinkCard title="Features" description="Full feature overview" href="/features/" />
-  <LinkCard title="Benchmarks" description="Reproducible performance numbers" href="/benchmarks/" />
-  <LinkCard title="Pricing" description="Free & open source with enterprise support" href="/pricing/" />
+  <LinkCard title="Features" description="The full feature surface — ingestion, execution, storage, security" href="/features/" />
+  <LinkCard title="Benchmarks" description="Reproducible numbers on commodity hardware and EKS" href="/benchmarks/" />
+  <LinkCard title="Pricing & Trial" description="Free Community — 30-day Enterprise trial, no sales call" href="/pricing/" />
 </CardGrid>

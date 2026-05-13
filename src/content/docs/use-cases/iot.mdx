@@ -1,56 +1,61 @@
 ---
-title: "Smart Factory & IoT"
+title: "Industrial IoT & Smart Factory"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for industrial IoT, predictive maintenance, and real-time anomaly detection"
+description: "ZeptoDB for manufacturing, process industries, and industrial edge — real-time control, predictive maintenance, and digital twin telemetry"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-10KHz sensor ingestion. Real-time anomaly detection. Predictive maintenance at microsecond latency.
+10KHz sensors. Sub-millisecond anomaly detection. A single engine that runs on the edge and scales to the cloud.
 
 ---
 
-## Why Manufacturers Choose ZeptoDB
+## Why manufacturers choose ZeptoDB
 
 <CardGrid>
-  <Card title="10KHz+ Ingestion" icon="rocket">
-    Handle high-frequency vibration, temperature, and pressure sensors without data loss.
+  <Card title="10KHz+ ingestion per sensor" icon="rocket">
+    Vibration, current, pressure, and temperature at the rate the physics demand. Lock-free pipeline with no jitter on the hot path.
   </Card>
-  <Card title="Real-Time Analytics" icon="seti:clock">
-    Window functions for rolling averages, anomaly detection, and threshold alerts — all in SQL.
+  <Card title="Real-time analytics in SQL" icon="seti:clock">
+    Rolling averages, SPC, anomaly detection, threshold alerts — standard SQL window functions, no UDFs to maintain.
   </Card>
-  <Card title="Edge to Cloud" icon="star">
-    Run on edge nodes (ARM Graviton) or cloud clusters. Parquet HDB for long-term storage on S3.
+  <Card title="Edge to cloud" icon="star">
+    ARM Graviton on the line, multi-node cluster in the plant, Parquet HDB on S3 for long-tail history. Same binary, same SQL.
   </Card>
-  <Card title="OPC-UA Ready" icon="approve-check-circle">
-    Industrial protocol support for PLC and SCADA integration (roadmap).
+  <Card title="Industrial protocols" icon="approve-check-circle">
+    OPC-UA and MQTT connectors for PLC, SCADA, and brownfield sensor buses. Built-in Kafka consumer for existing streaming infra.
   </Card>
 </CardGrid>
 
 ---
 
-## Use Cases
+## Where it fits
 
-### Predictive Maintenance
-- Ingest vibration, temperature, and current sensors at 10KHz+
-- Rolling statistics (EMA, stddev, percentiles) for drift detection
-- ASOF JOIN to correlate sensor anomalies with maintenance events
+### Predictive maintenance
+- Ingest vibration, temperature, current, and oil-debris sensors at 10KHz+
+- Rolling statistics (EMA, stddev, percentiles) for drift and early-warning signatures
+- ASOF JOIN to correlate sensor anomalies with maintenance events and work orders
 
-### Quality Control
-- Real-time SPC (Statistical Process Control) with window functions
-- Detect out-of-spec measurements within microseconds
-- Historical analysis from Parquet HDB for root cause investigation
+### Quality control & SPC
+- Real-time statistical process control with window functions
+- Detect out-of-spec measurements within microseconds of the sample hitting the bus
+- Historical analysis from Parquet HDB for root-cause investigation and yield review
 
-### Energy Monitoring
-- Sub-second power consumption aggregation across facility
-- Peak demand detection and load balancing analytics
-- xbar time bucketing for shift/hourly/daily reports
+### Energy & OEE
+- Sub-second power consumption aggregation across line, cell, and facility
+- xbar time bucketing for shift, hourly, and daily OEE and energy-per-unit reports
+- Peak-demand detection and load balancing analytics in standard SQL
+
+### Digital twin & process optimization
+- High-fidelity historian for simulation calibration and what-if analysis
+- Join live sensor streams with setpoints and batch records
+- Feed production ML models with the same zero-copy path used in research
 
 ---
 
-## Example: Vibration Anomaly Detection
+## Example: vibration anomaly detection
 
 ```sql
 -- Detect anomalous vibration readings using rolling statistics
@@ -70,13 +75,21 @@ ORDER BY deviation DESC
 
 ---
 
-## Deployment Options
+## Deployment options
 
 | Environment | Configuration |
-|-------------|--------------|
-| Edge (single node) | ARM Graviton, 16GB RAM, local NVMe |
-| Factory floor cluster | 3-node cluster, 10GbE, shared Parquet on NAS |
-| Cloud (historical) | Multi-node on EKS, Parquet HDB on S3 |
-| Hybrid | Edge for real-time, cloud sync for analytics |
+|-------------|---------------|
+| Line / cell edge | Single node, ARM Graviton, 16 GB RAM, local NVMe |
+| Plant cluster | 3-node cluster, 10 GbE, Parquet HDB on NAS |
+| Enterprise historian | Multi-node EKS, Parquet HDB on S3, cross-site replication |
+| Hybrid | Edge for real-time, cloud sync for cross-plant analytics and ML |
 
-See [Production Deployment](/deployment/production_deployment/) for details.
+See [Production Deployment](/deployment/production_deployment/) for reference architectures.
+
+---
+
+## Why this matters commercially
+
+Industrial data platforms typically stitch together a historian, a stream processor, a feature store, and a warehouse — four operational models for one logical pipeline. ZeptoDB replaces the hot path with a single engine that runs from a ruggedized edge node to a cluster in the cloud, with the same SQL and the same security posture. Fewer integrations, less bespoke code, and a credible path from pilot line to enterprise rollout.
+
+Talk to us about your plant or product: [Contact Sales →](/contact/)

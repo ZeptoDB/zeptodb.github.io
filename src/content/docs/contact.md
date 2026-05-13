@@ -15,7 +15,7 @@ description: "Get in touch with the ZeptoDB team"
 
 For enterprise licensing, priority support, or deployment assistance:
 
-📧 **contact@zeptodb.com** *(placeholder)*
+📧 **skswlsaks@gmail.com**
 
 We typically respond within 1 business day.
 
@@ -23,7 +23,8 @@ We typically respond within 1 business day.
 
 - Priority issue resolution with SLA
 - Dedicated Slack channel with the engineering team
-- Production deployment and performance tuning assistance
-- Custom feed handler development
-- SSO/OIDC integration support
-- Compliance guidance (SOC2, MiFID II)
+- Production deployment and performance tuning — single-node, edge, or multi-node cluster
+- Reference architectures for Physical AI, Industrial IoT, Autonomous Systems, Energy, and Capital Markets
+- Custom feed handler and connector development
+- SSO / OIDC integration support
+- Compliance guidance (SOC2, MiFID II, IEC 62443, ISO/SAE 21434, NERC CIP)

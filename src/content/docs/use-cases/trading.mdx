@@ -1,76 +1,81 @@
 ---
-title: "Trading & Finance"
+title: "Capital Markets"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for HFT, quant research, and financial compliance"
+description: "ZeptoDB for HFT, quant research, real-time risk, and MiFID II audit — kdb+-class performance on standard SQL"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-kdb+ performance. Standard SQL. Zero license cost.
+kdb+-class performance. Standard SQL. Zero license cost at the Community tier.
 
 ---
 
-## Why Trading Firms Choose ZeptoDB
+## Why trading firms pick ZeptoDB
 
 <CardGrid>
   <Card title="5.52M events/sec" icon="rocket">
-    Lock-free MPMC ring buffer ingests full-depth L2 order book feeds without dropping a tick.
+    Lock-free MPMC ring buffer ingests full-depth L2 order-book feeds without dropping a tick.
   </Card>
   <Card title="272μs queries" icon="seti:clock">
-    LLVM JIT compiled execution — ASOF JOIN, VWAP, EMA at microsecond latency.
+    LLVM JIT compiled execution. ASOF JOIN, VWAP, and EMA at microsecond latency on 1M-row windows.
   </Card>
   <Card title="522ns Python" icon="seti:python">
-    Zero-copy NumPy/Pandas views for quant notebooks. No serialization overhead.
+    Zero-copy NumPy / Pandas views for quant notebooks. No IPC, no serialization overhead.
   </Card>
-  <Card title="kdb+ compatible" icon="approve-check-circle">
-    ASOF JOIN, Window JOIN, xbar — familiar temporal operations, standard SQL syntax.
+  <Card title="kdb+ compatible semantics" icon="approve-check-circle">
+    ASOF JOIN, Window JOIN, xbar, EMA, VWAP — the temporal primitives you already use, in standard SQL.
   </Card>
 </CardGrid>
 
 ---
 
-## Use Cases
+## Where it fits
 
-### High-Frequency Trading
+### High-frequency trading
 - Real-time tick ingestion from FIX 4.4, ITCH, and exchange WebSocket feeds
-- Sub-microsecond event timestamping with nanosecond precision columns
+- Sub-microsecond event timestamping with nanosecond-precision columns
 - Lock-free pipeline: feed handler → ring buffer → column store → query
 
-### Quant Research & Backtesting
-- Python zero-copy: query result → NumPy array in 522ns
-- ASOF JOIN for point-in-time correct backtests
-- Parquet HDB for historical data on S3 — query decades of tick data
+### Quant research & backtesting
+- Python zero-copy: query result to NumPy in 522ns
+- ASOF JOIN for point-in-time correct backtests — no look-ahead bias
+- Parquet HDB for historical data on S3 — query decades of tick data with the same SQL
 
-### Risk & Compliance
-- Real-time P&L aggregation with window functions
-- Audit logging for MiFID II / SOC2 compliance
-- RBAC with 5 roles — isolate trading desks from compliance views
+### Real-time risk & P&L
+- Window functions for real-time P&L aggregation by desk, book, or strategy
+- Streaming VaR and exposure with built-in temporal analytics
+- Integrate with existing risk engines via Arrow Flight or HTTP
+
+### Compliance & audit
+- Structured JSON audit logging suitable for MiFID II and SOC2 evidence
+- RBAC with 5 built-in roles — isolate trading desks from compliance views
+- Namespace isolation for multi-entity / multi-strategy deployments
 
 ---
 
-## Architecture for Trading
+## Architecture for a trading desk
 
 ```
 Market Data Feeds          ZeptoDB                    Consumers
-─────────────────    ─────────────────────    ─────────────────
-FIX 4.4        ──→  │ Feed Handler        │
-ITCH           ──→  │   ↓                 │
-Binance WS     ──→  │ Ring Buffer (MPMC)  │──→  Python (522ns)
-Kafka          ──→  │   ↓                 │──→  SQL (HTTP/Flight)
-                     │ Column Store        │──→  C++ Pipeline
-                     │   ↓                 │──→  Grafana
-                     │ Parquet HDB (S3)    │
-                     ─────────────────────
+─────────────────    ──────────────────────    ─────────────────
+FIX 4.4        ──→  │ Feed Handler         │
+ITCH           ──→  │   ↓                  │
+Binance WS     ──→  │ Ring Buffer (MPMC)   │──→  Python (522ns)
+Kafka          ──→  │   ↓                  │──→  SQL (HTTP / Flight)
+                     │ Column Store         │──→  C++ Pipeline
+                     │   ↓                  │──→  Grafana
+                     │ Parquet HDB (S3)     │
+                     ──────────────────────
 ```
 
 ---
 
-## Example: Real-Time VWAP with ASOF JOIN
+## Example: real-time VWAP with ASOF JOIN
 
 ```sql
--- Join trades with latest quote at each trade timestamp
+-- Join trades with the latest quote at each trade timestamp
 SELECT
     t.sym,
     t.ts,
@@ -78,7 +83,9 @@ SELECT
     t.size,
     q.bid, q.ask,
     xbar(1m, t.ts) AS bucket,
-    vwap(t.price, t.size) OVER (PARTITION BY t.sym ORDER BY t.ts ROWS 100 PRECEDING) AS vwap_100
+    vwap(t.price, t.size) OVER (
+        PARTITION BY t.sym ORDER BY t.ts ROWS 100 PRECEDING
+    ) AS vwap_100
 FROM trades t
 ASOF JOIN quotes q ON t.sym = q.sym AND t.ts >= q.ts
 WHERE t.ts > now() - interval '1 hour'
@@ -86,9 +93,9 @@ WHERE t.ts > now() - interval '1 hour'
 
 ---
 
-## Migration from kdb+
+## Migrating from kdb+
 
-Already running kdb+? ZeptoDB supports the same temporal operations with standard SQL:
+Already running kdb+? ZeptoDB supports the same temporal operations with SQL syntax:
 
 | kdb+ | ZeptoDB SQL |
 |------|-------------|
@@ -96,5 +103,14 @@ Already running kdb+? ZeptoDB supports the same temporal operations with standar
 | `xbar[0D00:01; time]` | `xbar(1m, ts)` |
 | `ema[20; price]` | `ema(price, 20)` |
 | `mavg[50; price]` | `mavg(price, 50)` |
+| `wj[w; \`sym\`time; trades; (quotes; (max;bid); (min;ask))]` | `trades WINDOW JOIN quotes ...` |
 
-See the [Migration Guide](/getting-started/quick_start/) to get started.
+See the [Quick Start Guide](/getting-started/quick_start/) and [vs kdb+](/compare/vs-kdb/) for a deeper comparison. Enterprise migration tools cover kdb+, ClickHouse, DuckDB, and TimescaleDB.
+
+---
+
+## Why this matters commercially
+
+Trading firms spend seven figures per year on kdb+ licenses and carry the operational weight of a niche language. ZeptoDB delivers comparable microsecond performance on standard SQL, with a Python zero-copy path quants actually like using. The Community tier runs in production on a single node at no cost; Enterprise adds multi-node clustering, SSO, and audit export for regulated deployments.
+
+Talk to us about your desk: [Contact Sales →](/contact/)

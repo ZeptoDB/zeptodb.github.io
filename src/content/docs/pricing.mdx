@@ -3,54 +3,84 @@ title: "Pricing"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB pricing — open source core with enterprise support"
+description: "ZeptoDB pricing — open-source core, Enterprise for clustering, SSO, and regulated deployments"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Community" icon="open-book">
-    **Free & Open Source**
+    **Free — no license key required**
 
-    - Full engine: ingestion, query, ASOF JOIN, JIT
+    Production-ready on a single node. Everything you need to prototype, benchmark, and ship.
+
+    - Core engine: ingestion, query, ASOF JOIN, LLVM JIT
     - Python zero-copy, C++ API, Arrow Flight
-    - SQL, HTTP, Feed Handlers
-    - Parquet HDB on S3
-    - Multi-node clustering
+    - SQL, HTTP API, FIX / ITCH / Binance feed handlers
+    - Parquet HDB on S3, GCS, or local NFS
+    - Basic RBAC (5 built-in roles)
+    - TLS 1.3, API key auth, rate limiting
+    - Single-node deployment
     - Community support (GitHub Issues & Discussions)
 
-    [Get Started →](/getting-started/quick_start/)
+    [Get started →](/getting-started/quick_start/)
   </Card>
   <Card title="Enterprise" icon="approve-check-circle">
-    **Contact Us**
+    **License key required — [Talk to Sales →](/contact/)**
+
+    For teams that need clustering, SSO, compliance evidence, and a name on the pager.
 
     Everything in Community, plus:
 
+    - Multi-node clustering with automatic sharding
+    - SSO / OIDC integration (Okta, Auth0, Azure AD, Google Workspace)
+    - Audit log export (SIEM integration)
+    - Advanced RBAC (per-tenant namespace isolation)
+    - Kafka connector
+    - Migration tools (kdb+ / ClickHouse / DuckDB / TimescaleDB)
+    - Geo-replication (multi-region)
+    - Rolling upgrades (zero downtime)
     - Priority support with SLA
-    - Dedicated Slack channel
-    - Production deployment assistance
-    - Performance tuning consultation
-    - Custom feed handler development
-    - SSO/OIDC integration support
-    - Compliance guidance (SOC2, MiFID II)
     - Long-term support (LTS) releases
 
-    [Contact Sales →](/contact/)
+    [Talk to Sales →](/contact/)
   </Card>
 </CardGrid>
 
 ---
 
+## 30-day free trial
+
+Try every Enterprise feature for 30 days — no credit card, no sales call required.
+
+```bash
+# Generate a trial license (single-node, all Enterprise features enabled)
+curl -X POST http://localhost:8123/admin/license/trial \
+  -H "Authorization: Bearer $ADMIN_KEY"
+```
+
+Trial keys are single-node (`max_nodes=1`) with all features enabled. After 30 days, the instance gracefully downgrades to Community edition.
+
+Ready to run it across a cluster or bring Enterprise into procurement? [Contact Sales →](/contact/)
+
+---
+
 ## FAQ
 
-**Is ZeptoDB really free?**
-Yes. The full engine is open source under Apache 2.0. No feature gating, no usage limits, no license keys.
+**Is ZeptoDB Community really free?**
+Yes. The Community edition is free with no license key required. It includes the full core engine, SQL, HTTP API, Python DSL, Arrow Flight, and Parquet HDB — all on a single node. Many teams run it in production.
 
-**What does Enterprise include?**
-Priority support, SLA, deployment assistance, and consulting. The software is the same — you're paying for expertise and guaranteed response times.
+**What requires an Enterprise license?**
+Multi-node clustering, SSO/OIDC, audit log export, advanced RBAC (per-tenant), Kafka connector, migration tools, geo-replication, and rolling upgrades. These features are gated by a signed license key.
+
+**How does license validation work?**
+Fully offline — RS256 signature verification with no phone-home. Load via environment variable (`ZEPTODB_LICENSE_KEY`), file (`/etc/zeptodb/license.key`), or HTTP API (`POST /admin/license`).
+
+**What happens when a license expires?**
+You get a 7-day warning before expiry, then a 30-day grace period where everything continues working. After the grace period, the instance downgrades to Community edition. No data is ever locked.
 
 **Can I use ZeptoDB in production without Enterprise?**
-Absolutely. Many teams run ZeptoDB in production with community support. Enterprise is for teams that need guaranteed SLAs and hands-on help.
+Absolutely. Many teams run single-node ZeptoDB in production with community support. Enterprise is for teams that need multi-node clustering, SSO, audited deployments, or vendor-backed support.
 
 **Do you offer managed cloud hosting?**
-Not yet. It's on our roadmap. For now, see our [Production Deployment](/deployment/production_deployment/) and [Kubernetes Operations](/operations/kubernetes_operations/) guides.
+Not yet. It's on our roadmap. For now, see our [Production Deployment](/deployment/production_deployment/) and [Kubernetes Operations](/operations/kubernetes_operations/) guides — or [talk to us](/contact/) about a bespoke deployment.

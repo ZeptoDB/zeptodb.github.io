@@ -3,38 +3,54 @@ title: "About ZeptoDB"
 template: splash
 prev: false
 next: false
-description: "The story behind ZeptoDB — ultra-low latency time-series for everyone"
+description: "The story behind ZeptoDB — microsecond time-series for every team building a real-time system"
 ---
 
 ## Mission
 
-Make microsecond-latency time-series analytics accessible to every team — not just those with $100K+ database budgets.
+Make microsecond-latency time-series the default substrate for anyone building a real-time system — from a humanoid startup in a garage to a grid operator keeping the lights on.
 
 ---
 
-## Why We Built ZeptoDB
+## Why we built ZeptoDB
 
-The time-series database market has a gap:
+A new generation of systems has the same bottleneck, regardless of industry. A humanoid robot, a factory cell, a driverless vehicle, a smart meter network, and a trading desk all produce time-series data faster than a conventional database can ingest it, align it, and hand it to a model.
 
-- **kdb+** delivers microsecond performance but costs $100K+/year and requires learning a proprietary language (q)
-- **ClickHouse, TimescaleDB, InfluxDB** are affordable but operate at millisecond latency — 100-1000x slower for real-time workloads
-- **None** offer zero-copy Python integration for ML pipelines
+Existing options all force a trade-off:
 
-ZeptoDB closes this gap: kdb+-class performance, standard SQL, Python zero-copy, open source.
+- **kdb+** delivers microsecond performance, but costs $100K+/year and ships with a proprietary language that most teams don't want to learn in 2026.
+- **ClickHouse, TimescaleDB, InfluxDB** are affordable, mature, and well-loved — but they run at millisecond latency and were not designed for the closed-loop and tick-by-tick workloads emerging across Physical AI, autonomy, and industrial control.
+- **None** offer a 522ns zero-copy path into Python, which is where the model that consumes the data actually lives.
+
+ZeptoDB closes that gap. Microsecond performance. Standard SQL. Zero-copy to NumPy and PyTorch. Open source at the core, with a sensible Enterprise edition for clustering, SSO, and audited feature gating.
 
 ---
 
-## Technical Philosophy
+## Who uses ZeptoDB
+
+- Robotics and Physical AI teams wiring up sensor fusion and RL feature stores
+- Manufacturers running predictive maintenance and SPC at 10KHz
+- Autonomy groups replaying petabyte-scale driving logs and mining scenarios
+- Utilities ingesting PMU and smart-meter telemetry across millions of endpoints
+- Trading desks needing kdb+-class performance on standard SQL
+- Platform teams building observability and telemetry products at high cardinality
+
+One engine, one operational model, one SQL dialect.
+
+---
+
+## Technical philosophy
 
 - **Zero-copy everywhere** — data flows from network to column store to Python without copying
 - **LLVM JIT** — queries compile to native code, not interpreted
-- **SIMD-first** — Highway library for portable AVX2/512/NEON vectorization
+- **SIMD-first** — Highway library for portable AVX2 / AVX-512 / NEON vectorization
 - **Lock-free ingestion** — MPMC ring buffer, no mutex on the hot path
-- **SQL, not DSL** — standard SQL with temporal extensions (ASOF JOIN, xbar, EMA)
+- **SQL, not a DSL** — standard SQL with temporal extensions (ASOF JOIN, xbar, EMA)
+- **Open source core, no phone-home** — the engine is yours; Enterprise features are gated by offline-validated license
 
 ---
 
-## Tech Stack
+## Tech stack
 
 | Component | Technology |
 |-----------|-----------|
@@ -55,4 +71,4 @@ ZeptoDB closes this gap: kdb+-class performance, standard SQL, Python zero-copy,
 - GitHub: [github.com/zeptodb/zeptodb](https://github.com/zeptodb/zeptodb)
 - Issues: [github.com/zeptodb/zeptodb/issues](https://github.com/zeptodb/zeptodb/issues)
 - Discussions: [github.com/zeptodb/zeptodb/discussions](https://github.com/zeptodb/zeptodb/discussions)
-- Enterprise inquiries: *contact@zeptodb.com* (placeholder)
+- Enterprise, partnership, or deployment inquiries: **skswlsaks@gmail.com** · [Talk to Sales →](/contact/)

@@ -36,10 +36,10 @@ TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpo
 ## When to Choose ZeptoDB
 
 - Sub-millisecond latency is a hard requirement
-- ASOF JOIN for financial or sensor data alignment
+- ASOF JOIN for sensor, robot, or tick-by-tick alignment
 - Millions of events/sec ingestion throughput
-- Python zero-copy for ML/analytics pipelines
-- Purpose-built performance over general-purpose flexibility
+- Python zero-copy for ML feature stores and analytics pipelines
+- Multi-vertical footprint (Physical AI, industrial, automotive, energy, markets) where PostgreSQL would be a mismatch
 
 ## When TimescaleDB May Be Better
 

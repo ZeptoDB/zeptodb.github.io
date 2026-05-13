@@ -3,25 +3,25 @@ title: "Security"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB security posture — encryption, authentication, authorization, and compliance"
+description: "ZeptoDB security posture — encryption, authentication, authorization, audit, and compliance across regulated industries"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Security at a Glance
+## Security at a glance
 
 <CardGrid>
   <Card title="Encryption" icon="approve-check-circle">
-    TLS 1.3 for all connections. Optional mTLS for service-to-service authentication. Data encrypted at rest via Parquet + S3 SSE.
+    TLS 1.3 on every endpoint, including cluster RPC. Optional mTLS for service-to-service auth. Data encrypted at rest via Parquet + S3 SSE.
   </Card>
   <Card title="Authentication" icon="approve-check-circle">
-    JWT/OIDC (Okta, Auth0, Azure AD, Google), API keys with rotation, and mTLS client certificates.
+    JWT / OIDC (Okta, Auth0, Azure AD / Entra ID, Google Workspace), API keys with rotation, and mTLS client certificates.
   </Card>
   <Card title="Authorization" icon="approve-check-circle">
     RBAC with 5 built-in roles: admin, writer, reader, analyst, monitor. Namespace isolation for multi-tenancy.
   </Card>
   <Card title="Audit" icon="approve-check-circle">
-    All authentication events, queries, and admin actions logged. Structured JSON format for SIEM integration.
+    All authentication events, queries, and admin actions logged. Structured JSON, ready for Splunk / ELK / Datadog.
   </Card>
 </CardGrid>
 
@@ -29,53 +29,89 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## Compliance
 
-| Standard | Status |
-|----------|--------|
-| SOC2 Type II | Ready (audit logging, RBAC, encryption) |
-| MiFID II | Ready (trade audit trail, access controls) |
-| GDPR | Namespace isolation, data deletion support |
-| PCI DSS | TLS 1.3, access controls, audit logging |
+ZeptoDB ships the evidence primitives teams need across finance, industrial, automotive, and utilities:
+
+| Standard | Relevance | Status |
+|----------|-----------|--------|
+| SOC2 Type II | Audit logging, RBAC, encryption | Ready |
+| MiFID II | Trade audit trail, access controls | Ready |
+| GDPR | Namespace isolation, data deletion support | Ready |
+| PCI DSS | TLS 1.3, access controls, audit logging | Ready |
+| IEC 62443 | Industrial control systems — authN/authZ, audit | Evidence-ready |
+| ISO / SAE 21434 | Automotive cybersecurity — secure data handling | Evidence-ready |
+| NERC CIP | Electric utility / BES cyber asset monitoring | Evidence-ready |
+
+Regulated deployments typically want SSO, audit export, and per-tenant isolation — all available on the Enterprise tier.
 
 ---
 
-## Security Features
+## Security features
 
-### Transport Security
+### Transport security
 - TLS 1.3 on all endpoints (HTTP, Arrow Flight, cluster RPC)
 - mTLS for cluster-internal communication
 - Configurable cipher suites and certificate rotation
 
 ### Authentication
-- JWT/OIDC with automatic token validation and refresh
+- JWT / OIDC with automatic token validation and refresh
 - API key management with creation, rotation, and revocation
 - Multi-factor via OIDC provider delegation
 
 ### Authorization
-- Role-Based Access Control (RBAC) with 5 roles
+- Role-based access control (RBAC) with 5 roles
 - Per-namespace permissions for multi-tenant deployments
-- Query-level access control (table/column restrictions)
+- Query-level access control (table / column restrictions)
 
-### Rate Limiting
+### Rate limiting
 - Per-user and per-role rate limits
 - Configurable burst and sustained rates
 - Automatic throttling with informative error responses
 
-### Audit Logging
+### Audit logging
 - All auth events (login, logout, failed attempts)
 - All queries with user attribution
 - Admin actions (role changes, key management)
-- Structured JSON format, compatible with Splunk/ELK/Datadog
+- Structured JSON format, compatible with Splunk / ELK / Datadog / SIEM
 
 ---
 
-## Responsible Disclosure
+## Responsible disclosure
 
 Found a security issue? Please report it responsibly:
 
-📧 **security@zeptodb.com** *(placeholder)*
+📧 **skswlsaks@gmail.com**
 
 We aim to acknowledge reports within 48 hours and provide a fix timeline within 5 business days.
 
 ---
 
 For detailed configuration, see the [Security Operations Guide](/api/security_operations_guide/) and [SSO Integration Guide](/api/sso_integration_guide/).
+
+---
+
+## Edition availability
+
+Not all security features are available in every edition.
+
+| Feature | Community | Enterprise |
+|---------|:---------:|:----------:|
+| TLS 1.3 / mTLS | ✅ | ✅ |
+| API key authentication | ✅ | ✅ |
+| Basic RBAC (5 roles) | ✅ | ✅ |
+| Rate limiting | ✅ | ✅ |
+| Audit logging (in-memory) | ✅ | ✅ |
+| SSO / OIDC | — | ✅ |
+| Audit log export (SIEM) | — | ✅ |
+| Advanced RBAC (per-tenant) | — | ✅ |
+
+Enterprise-gated endpoints return HTTP 402 with an upgrade URL:
+
+```json
+{
+  "error": "enterprise_required",
+  "message": "SSO requires Enterprise license",
+  "upgrade_url": "https://zeptodb.com/pricing"
+}
+```
+
+See [Pricing](/pricing/) for edition details and trial information, or [Talk to Sales →](/contact/) for a regulated-deployment review.

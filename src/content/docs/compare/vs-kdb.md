@@ -8,7 +8,9 @@ description: "Compare ZeptoDB and kdb+ — same microsecond performance, standar
 
 ## Overview
 
-Both ZeptoDB and kdb+ target the same niche: ultra-low latency time-series for capital markets. The key difference — ZeptoDB delivers comparable performance with standard SQL and an open-source license.
+kdb+ is the historical benchmark for microsecond time-series — and has been the de-facto choice on trading desks for two decades. The same workloads are now showing up outside capital markets: Physical AI, autonomous systems, industrial control, and grid operations all need the same temporal primitives at the same latency.
+
+ZeptoDB targets that broader envelope. Comparable microsecond performance to kdb+, but on standard SQL, with a zero-copy path into Python, and a license model that doesn't gate adoption.
 
 ---
 

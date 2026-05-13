@@ -8,7 +8,7 @@ description: "Compare ZeptoDB and InfluxDB — microsecond latency and SQL vs In
 
 ## Overview
 
-InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targets workloads where microsecond latency, ASOF JOIN, and high-throughput ingestion are non-negotiable.
+InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targets a different envelope — workloads where microsecond latency, ASOF JOIN, and high-throughput ingestion are non-negotiable, across Physical AI, industrial, automotive, energy, and market data.
 
 ---
 
@@ -35,11 +35,11 @@ InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targe
 ## When to Choose ZeptoDB
 
 - Microsecond query latency required
-- Financial or industrial time-series with ASOF JOIN needs
+- Financial, industrial, or robotics time-series with ASOF JOIN needs
 - High-throughput ingestion (millions of events/sec)
-- Standard SQL preferred over InfluxQL/Flux
-- Python zero-copy for ML pipelines
-- High-cardinality data (many unique series)
+- Standard SQL preferred over InfluxQL / Flux
+- Python zero-copy for ML pipelines and feature stores
+- High-cardinality data (fleets, devices, meters — no cardinality penalty)
 
 ## When InfluxDB May Be Better
 

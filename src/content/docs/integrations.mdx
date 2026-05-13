@@ -3,26 +3,28 @@ title: "Integrations"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB integrations — connect with your existing data stack"
+description: "ZeptoDB integrations — connectors for industrial, robotics, automotive, and market-data stacks"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-## Data Ingestion
+## Ingestion
 
 <CardGrid>
   <Card title="Kafka" icon="star">
-    Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics.
+    Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics. The lingua franca for enterprise streaming.
 
     [Feed Handler Guide →](/feeds/feed_handler_guide/)
+
+    > Kafka connector requires Enterprise license.
   </Card>
   <Card title="FIX 4.4" icon="star">
-    Native FIX protocol parser for market data feeds. 1.1M messages/sec with 420ns parse latency.
+    Native FIX parser for market-data and order feeds. 1.1M messages/sec with 420ns parse latency.
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
   <Card title="ITCH" icon="star">
-    NASDAQ ITCH protocol handler for L3 order book data.
+    NASDAQ ITCH handler for L3 order-book data. Lossless, nanosecond-timestamped.
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
@@ -35,39 +37,40 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ---
 
-## Client Libraries
+## Client libraries
 
 | Language | Type | Latency | Link |
 |----------|------|---------|------|
-| Python | Zero-copy (NumPy/Pandas) | 522ns | [Python Reference →](/api/python_reference/) |
+| Python | Zero-copy (NumPy / Pandas / PyTorch) | 522ns | [Python Reference →](/api/python_reference/) |
 | C++ | Native Pipeline API | Native | [C++ Reference →](/api/cpp_reference/) |
 | HTTP | REST API (any language) | ~1ms | [HTTP Reference →](/api/http_reference/) |
 | Arrow Flight | gRPC streaming | ~100μs | [Flight Reference →](/api/flight_reference/) |
 
 ---
 
-## Monitoring & Observability
+## Monitoring & observability
 
 <CardGrid>
   <Card title="Prometheus" icon="star">
     Built-in `/metrics` endpoint. Scrape ingestion rates, query latency, memory usage, and cluster health.
   </Card>
   <Card title="Grafana" icon="star">
-    Query ZeptoDB directly from Grafana via HTTP API. Pre-built dashboard templates available.
+    Query ZeptoDB directly from Grafana via HTTP API. Pre-built dashboard templates for operations and telemetry.
   </Card>
 </CardGrid>
 
 ---
 
-## Storage & Cloud
+## Storage & cloud
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
 | Amazon S3 | ✓ | Parquet HDB for historical data |
 | Google Cloud Storage | ✓ | Parquet HDB |
-| Local NFS | ✓ | On-premise Parquet HDB |
+| Local NFS | ✓ | On-premise Parquet HDB — air-gapped and edge |
 | Docker | ✓ | Single-command deployment |
 | Kubernetes | ✓ | Helm chart with StatefulSet |
+| ARM Graviton | ✓ | aarch64 native for cost-efficient edge and cloud |
 
 ---
 
@@ -77,7 +80,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 |----------|----------|--------|
 | Okta | OIDC | ✓ |
 | Auth0 | OIDC | ✓ |
-| Azure AD | OIDC | ✓ |
+| Azure AD / Entra ID | OIDC | ✓ |
 | Google Workspace | OIDC | ✓ |
 | API Keys | Native | ✓ |
 | JWT | Bearer token | ✓ |
@@ -86,18 +89,25 @@ See [SSO Integration Guide →](/api/sso_integration_guide/)
 
 ---
 
-## Roadmap Integrations
+## Industrial, robotics, and edge (roadmap)
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
-| MQTT | Planned | IoT sensor ingestion |
-| OPC-UA | Planned | Industrial PLC/SCADA |
-| ROS2 | Planned | Robotics topic subscription |
+| OPC-UA | Planned | Industrial PLC / SCADA connector for manufacturing and process |
+| MQTT | Planned | Lightweight IoT sensor and robot telemetry ingestion |
+| ROS2 | Planned | Direct topic subscription for robotics and autonomy stacks |
+| AutomationML / PackML | Under evaluation | Standardized plant and machine data models |
+| CAN / Vehicle Bus | Under evaluation | Automotive telemetry ingestion at the edge |
+
+## Streaming & data platform (roadmap)
+
+| Integration | Status | Description |
+|-------------|--------|-------------|
 | Apache Pulsar | Planned | Streaming alternative to Kafka |
 | AWS Kinesis | Planned | Cloud streaming ingestion |
 | Kafka Connect Sink | Planned | Standard Kafka connector plugin |
-| JDBC/ODBC | Planned | Tableau, Excel, BI tools |
-| CDC (Debezium) | Planned | PostgreSQL/MySQL change capture |
+| CDC (Debezium) | Planned | PostgreSQL / MySQL change capture |
+| JDBC / ODBC | Planned | Tableau, Excel, BI tools |
 | DuckDB | Planned | Arrow zero-copy JOIN delegation |
 
-Interested in an integration? [Open an issue on GitHub](https://github.com/zeptodb/zeptodb/issues).
+Interested in an integration, or want to prioritize one? [Open an issue on GitHub](https://github.com/zeptodb/zeptodb/issues) or [Talk to Sales →](/contact/).

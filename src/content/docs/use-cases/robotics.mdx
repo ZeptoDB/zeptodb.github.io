@@ -3,65 +3,70 @@ title: "Physical AI & Robotics"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for sensor fusion, RL feature stores, and real-time robotics pipelines"
+description: "ZeptoDB for humanoids, manipulators, and mobile robots — sensor fusion, RL feature stores, and real-time inference pipelines"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-522ns from query to PyTorch tensor. Built for real-time ML pipelines.
+The time-series substrate for Physical AI. Ingest every sensor, align every stream, serve features to your model in microseconds.
 
 ---
 
-## Why Robotics Teams Choose ZeptoDB
+## Why Physical AI teams choose ZeptoDB
 
 <CardGrid>
-  <Card title="522ns to Tensor" icon="seti:python">
-    Zero-copy path from column store to NumPy/PyTorch. No serialization bottleneck.
+  <Card title="522ns to tensor" icon="seti:python">
+    Zero-copy path from column store to NumPy and PyTorch. Online inference and offline training share the same SQL and the same data.
   </Card>
-  <Card title="ASOF JOIN" icon="seti:clock">
-    Time-align heterogeneous sensor streams (LiDAR, IMU, camera) with nanosecond precision.
+  <Card title="Nanosecond ASOF JOIN" icon="seti:clock">
+    Time-align heterogeneous streams — LiDAR, stereo cameras, IMU, tactile, proprioception — with nanosecond precision. Point-in-time correct, always.
   </Card>
   <Card title="5.52M events/sec" icon="rocket">
-    Ingest 10KHz+ sensor data from multiple sources without backpressure.
+    Ingest 10KHz+ sensors from a fleet of robots without backpressure. Lock-free MPMC ring buffer, zero allocation on the hot path.
   </Card>
-  <Card title="Parquet HDB" icon="star">
-    Replay historical episodes from S3 for offline training and evaluation.
+  <Card title="Episodes on S3" icon="star">
+    Replay petabyte-scale Parquet episodes for offline RL training, imitation learning, and regression tests. Hot + cold in one query.
   </Card>
 </CardGrid>
 
 ---
 
-## Use Cases
+## Where it fits in the stack
 
-### Sensor Fusion
-- ASOF JOIN to time-align LiDAR point clouds, camera frames, and IMU readings
-- Nanosecond-precision timestamps for accurate temporal correlation
-- Window JOIN for ±N ms tolerance matching
+### Sensor fusion for perception
+- ASOF JOIN across LiDAR point clouds, camera frames, IMU, and depth streams
+- Window JOIN with ±N ms tolerance for clock drift across heterogeneous buses
+- Nanosecond-precision timestamps end-to-end — parser to column store
 
-### RL Feature Store
-- Real-time feature computation: rolling stats, EMA, percentiles
-- Zero-copy to PyTorch tensors for online inference
-- Historical replay from Parquet HDB for offline training
+### Feature store for RL and imitation learning
+- Rolling statistics (EMA, stddev, percentiles) computed in SQL at query time
+- Zero-copy NumPy / PyTorch handoff for online inference loops
+- Parquet HDB replay for offline training with the exact same feature definitions
 
-### Fleet Telemetry
-- Ingest telemetry from thousands of robots/vehicles simultaneously
-- Real-time anomaly detection with window functions
-- Multi-node cluster for fleet-scale data
+### Fleet telemetry & diagnostics
+- Ingest telemetry from thousands of robots or drones simultaneously
+- Real-time anomaly detection with window functions — motor current, joint torque, battery
+- Historical forensics from Parquet HDB when something goes wrong in the field
+
+### Sim-to-real evaluation
+- Treat simulation rollouts and real-robot episodes as the same schema
+- Compare policy performance across batches with standard SQL aggregates
+- Versioned datasets via immutable Parquet snapshots
 
 ---
 
-## Example: Sensor Fusion Pipeline
+## Example: sensor fusion pipeline
 
 ```sql
--- Align LiDAR scans with nearest IMU reading and camera frame
+-- Align LiDAR scans with the most recent IMU sample and camera frame
 SELECT
     l.ts,
     l.point_cloud,
     i.accel_x, i.accel_y, i.accel_z,
-    i.gyro_x, i.gyro_y, i.gyro_z,
+    i.gyro_x,  i.gyro_y,  i.gyro_z,
     c.frame_id
 FROM lidar_scans l
-ASOF JOIN imu_readings i ON l.robot_id = i.robot_id AND l.ts >= i.ts
+ASOF JOIN imu_readings  i ON l.robot_id = i.robot_id AND l.ts >= i.ts
 ASOF JOIN camera_frames c ON l.robot_id = c.robot_id AND l.ts >= c.ts
 WHERE l.ts > now() - interval '10 seconds'
 ```
@@ -72,19 +77,30 @@ import torch
 
 conn = zeptodb.connect("localhost:8123")
 
-# Query → NumPy → Tensor in microseconds
-result = conn.query("SELECT accel_x, accel_y, accel_z FROM imu_readings WHERE ts > now()-1s")
-tensor = torch.from_numpy(result.to_numpy())  # zero-copy
+# Query → NumPy → Tensor in microseconds, no serialization
+result = conn.query(
+    "SELECT accel_x, accel_y, accel_z FROM imu_readings WHERE ts > now()-1s"
+)
+tensor = torch.from_numpy(result.to_numpy())  # zero-copy view
 ```
 
 ---
 
-## Integration Points
+## Integration points
 
 | System | Integration |
-|--------|------------|
-| ROS2 | Plugin (roadmap) — direct topic subscription |
-| MQTT | Ingestion connector for IoT sensors |
-| OPC-UA | Industrial PLC connector |
-| PyTorch | Zero-copy via NumPy bridge |
-| Arrow Flight | Batch streaming for training pipelines |
+|--------|-------------|
+| ROS2 | Planned plugin — direct topic subscription, message-type-aware columns |
+| MQTT | Ingestion connector for lightweight robot telemetry |
+| OPC-UA | Industrial connector for co-bot and fixed-robot cells |
+| PyTorch / JAX | Zero-copy via NumPy bridge |
+| Arrow Flight | Batch streaming for distributed training |
+| Parquet on S3 | Immutable episode storage for dataset versioning |
+
+---
+
+## Why this matters commercially
+
+Physical AI teams routinely assemble a stack of Kafka, Parquet, Redis, and a custom ASOF-JOIN service — then spend quarters on reliability. ZeptoDB collapses that stack into one engine with one operational model. The result is fewer moving parts in production, shorter iteration cycles for the research team, and a credible path from prototype to fleet.
+
+Talk to us about your pipeline: [Contact Sales →](/contact/)
