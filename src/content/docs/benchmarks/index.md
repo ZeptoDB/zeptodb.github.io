@@ -3,10 +3,28 @@ title: "Benchmarks"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB performance benchmarks — ingestion, query latency, and Python zero-copy across sensor, robotics, and market-data workloads"
+description: "ZeptoDB benchmark criteria and results for 5.52M events/sec ingestion, 272us query latency, 522ns Python zero-copy, and millisecond Agent Memory search and context assembly."
 ---
 
-Reproducible benchmarks on commodity hardware. The same engine, the same numbers — whether the input is tick data, PMU streams, factory sensors, or vehicle telemetry. All numbers measured on a single node unless noted.
+Reproducible benchmarks on commodity hardware. The same engine, the same numbers — whether the input is tick data, PMU streams, factory sensors, or vehicle telemetry. All numbers measured on a single node unless the section explicitly says otherwise.
+
+## Benchmark Criteria
+
+These criteria are part of the benchmark claim. If a ZeptoDB number is copied without the test shape, hardware, build, and measurement method, treat it as an incomplete claim rather than a comparable result.
+
+A comparable benchmark must disclose:
+
+- **Scope:** engine-only, HTTP, Python, EKS, or RDMA path; whether network, parsing, serialization, WAL, snapshot, or provider/model time is included.
+- **Build:** ZeptoDB commit or release, compiler, optimization flags, SIMD target, CMake options, and whether LTO/PGO/tcmalloc/hugepages were enabled.
+- **Hardware:** CPU model, core count, RAM, storage, kernel, cloud instance type or bare-metal host, NUMA placement, and CPU governor when available.
+- **Dataset shape:** row count, table schema, symbol/session/tenant cardinality, timestamp distribution, batch size, embedding dimensions, memory-record count, and cache state.
+- **Run protocol:** warm-up count, measured iterations, thread count, client count, duration, whether data is preloaded, and whether results are cold, warm, or cache-hit runs.
+- **Metrics:** p50, p95, and p99 where applicable; throughput plus tail latency for ingestion; rebuild/load/save time for derived indexes and snapshots.
+- **Failure conditions:** dropped rows, rejected requests, fallback-to-scan counts, out-of-memory behavior, and any retries or timeout exclusions.
+
+For ZeptoDB-published numbers, the result is valid only for the scope shown in the section. Single-node numbers must not be reused as distributed claims. Engine-only numbers must not be presented as end-to-end HTTP or Python numbers. Cache-hit latency must not be presented as model-call latency. ANN results must report the index rebuild cost and whether search fell back to filtered scan.
+
+Comparison tables are directional unless the same workload is rerun on the same hardware with equivalent durability, batching, schema, concurrency, and query semantics. Public third-party claims that omit those details are useful context, but they are not audited ZeptoDB benchmark results.
 
 ---
 
@@ -64,7 +82,42 @@ Direct memory-mapped view. No serialization, no copy, no Arrow conversion.
 
 ---
 
+## Agent Memory
+
+Agent Memory benchmarks use client-supplied 128-dimensional embeddings and measure memory search, context assembly, exact cache lookup, semantic cache lookup, and sidecar snapshot save/load.
+
+Embedding generation and LLM/provider calls are not included in these timings. Applications own embedding/model providers; ZeptoDB measures the database-side memory, cache, context, and snapshot paths.
+
+### 10K memory records
+
+| Operation | p50 | p95 |
+|-----------|----:|----:|
+| Memory search top-K | **1.23ms** | **1.40ms** |
+| Context assembly | **1.34ms** | **1.41ms** |
+| Exact cache lookup | **0.00ms** | **0.00ms** |
+| Semantic cache lookup | **0.07ms** | **0.07ms** |
+| Snapshot save | **5.79ms** | — |
+| Snapshot load | **11.60ms** | — |
+
+The memory layer ranks candidates by tenant/session filters, embedding similarity, importance, pinned boost, recency, and access count. Context assembly deduplicates repeated content and respects an optional token budget.
+
+### Sparse-projection ANN sweep
+
+On the current 8 vCPU benchmark instance, sparse-projection ANN reduced filtered-search latency at larger memory counts:
+
+| Records | Search p50 | Search p95 | Context p50 | Context p95 | ANN rebuild |
+|--------:|-----------:|-----------:|------------:|------------:|------------:|
+| 10K | **0.19ms** | 0.41ms | **0.38ms** | 0.52ms | 12.36ms |
+| 100K | **2.41ms** | 4.68ms | **2.77ms** | 2.98ms | 138.37ms |
+| 1M | **32.03ms** | 36.27ms | **25.48ms** | 29.96ms | 1691.56ms |
+
+The ANN index is derived in-memory state. It can fall back to filtered scan when it cannot produce enough filtered candidates, and stronger index families remain a follow-up for million-memory deployments.
+
+---
+
 ## Comparison
+
+These numbers summarize the operating envelope, not an audited vendor bake-off. Use the [benchmark criteria](#benchmark-criteria) above before comparing external results or republishing a single metric.
 
 | | **ZeptoDB** | **kdb+** | **ClickHouse** | **TimescaleDB** | **InfluxDB** |
 |---|---|---|---|---|---|
@@ -73,7 +126,7 @@ Direct memory-mapped view. No serialization, no copy, no Arrow conversion.
 | ASOF JOIN | ✓ | ✓ | ✗ | ✗ | ✗ |
 | SQL | Standard | q lang | ✓ | ✓ | InfluxQL |
 | Python zero-copy | **522ns** | IPC (~ms) | — | — | — |
-| License cost | **Free (OSS)** | $100K+/yr | Free | Free | Free |
+| License cost | **Free Community (BUSL-1.1)** | $100K+/yr | Free | Free | Free |
 
 ---
 

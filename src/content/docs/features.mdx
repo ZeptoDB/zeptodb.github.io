@@ -3,52 +3,74 @@ title: "Features"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB features — the microsecond time-series platform for Physical AI, Industrial IoT, Autonomous Systems, Energy, and Markets"
+description: "Explore ZeptoDB features for live time-series data, Agent Memory, context retrieval, exact and semantic prompt cache, zero-copy Python, storage, and security."
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-One engine for real-time ingestion, microsecond query, and ML feature serving. Standard SQL from the robot to the trading desk.
+ZeptoDB has two cooperating layers: a microsecond time-series engine for live operational facts, and an Agent Memory layer for the context agents need to decide, reuse, and explain.
 
 ---
 
-## Ingestion engine
+## Agent Memory layer
+
+<CardGrid>
+  <Card title="Agent-scoped memory" icon="open-book">
+    Store durable memories with tenant, namespace, user, session, agent, type, content, metadata JSON, token count, importance, TTL, pinned status, access count, and timestamps.
+  </Card>
+  <Card title="Client-supplied embeddings" icon="star">
+    Applications provide `float32` embeddings. ZeptoDB stores, validates, filters, and ranks them without calling embedding providers or LLMs from the server.
+  </Card>
+  <Card title="Context assembly" icon="seti:clock">
+    Retrieve top-K memories under a token budget, deduplicate repeated content, and rank by semantic similarity, importance, pinned boost, recency, and access count.
+  </Card>
+  <Card title="Exact + semantic cache" icon="approve-check-circle">
+    Check normalized prompt matches and embedding-similar responses before calling an external model provider. Useful for repeated operational questions.
+  </Card>
+  <Card title="Sidecar snapshots" icon="rocket">
+    Persist memory records and vectors to `records.bin` and `vectors.bin`, with configurable mutation-count flushing and stop-time force flush.
+  </Card>
+  <Card title="AgentOps telemetry" icon="star">
+    Track agent runs, retrieval events, cache events, LLM calls, and tool calls in ordinary ZeptoDB time-series tables beside the memory subsystem.
+  </Card>
+</CardGrid>
+
+---
+
+## Time-series engine
 
 <CardGrid>
   <Card title="5.52M events/sec" icon="rocket">
-    Lock-free MPMC ring buffer with Highway SIMD batch copy. Zero allocation on the hot path. Robotics telemetry, factory sensors, or tick feeds — same pipeline.
+    Lock-free MPMC ring buffer with Highway SIMD batch copy. Zero allocation on the hot path for telemetry, ticks, traces, tool calls, and sensor streams.
   </Card>
-  <Card title="Protocol handlers" icon="star">
-    Built-in FIX 4.4, ITCH, Binance WebSocket, and Kafka. OPC-UA, MQTT, and ROS2 on the roadmap. Plug custom feeds in via the C++ API.
-
-    > Kafka connector requires an Enterprise license.
+  <Card title="272μs query on 1M rows" icon="seti:clock">
+    LLVM JIT compiled execution and SIMD aggregation for live facts the agent must retrieve before acting.
   </Card>
-  <Card title="Durable WAL" icon="approve-check-circle">
-    Write-ahead log for crash recovery. Configurable sync policy — every write, periodic, or async — per deployment profile.
+  <Card title="ASOF JOIN" icon="star">
+    Point-in-time correct joins across heterogeneous streams. Foundational for sensor fusion, market data, incidents, and agent action replay.
+  </Card>
+  <Card title="Window JOIN" icon="star">
+    Join within a time window for sensor clock drift, event correlation, tool-call timelines, and trade/quote alignment.
+  </Card>
+  <Card title="Temporal analytics" icon="rocket">
+    EMA, VWAP, xbar, mavg, percentile, GROUP BY, window functions, CTEs, and subqueries in standard SQL.
+  </Card>
+  <Card title="Standard SQL" icon="approve-check-circle">
+    Analysts, quants, ML engineers, and platform teams can query the live timeline without learning a proprietary DSL.
   </Card>
 </CardGrid>
 
 ---
 
-## Query engine
+## How the layers work together
 
-<CardGrid>
-  <Card title="LLVM JIT" icon="seti:clock">
-    Queries compile to native code at runtime. Vectorized execution with SIMD aggregation across AVX2, AVX-512, and NEON.
-  </Card>
-  <Card title="ASOF JOIN" icon="star">
-    Point-in-time correct joins across heterogeneous streams. Nanosecond precision. Foundational for sensor fusion, backtests, and multi-source telemetry.
-  </Card>
-  <Card title="Window JOIN" icon="star">
-    Join within a time window (±N ms). Built for sensor clock drift, event correlation, and trade/quote alignment.
-  </Card>
-  <Card title="Temporal analytics" icon="rocket">
-    EMA, VWAP, xbar, mavg, percentile — analytic primitives compiled in, not bolted on via UDFs.
-  </Card>
-  <Card title="Standard SQL" icon="approve-check-circle">
-    Full SQL: SELECT, JOIN, GROUP BY, window functions, subqueries, CTEs. Your team already knows how to write it.
-  </Card>
-</CardGrid>
+| Need | Time-series core | Agent Memory layer |
+|------|------------------|--------------------|
+| Live observations | Ingest sensors, ticks, traces, logs, tool calls | Store what the agent learned from them |
+| Temporal recall | Query by timestamp, entity, window, ASOF relation | Retrieve prior episodes, summaries, and decisions |
+| Grounding | Keep raw evidence and exact event order | Assemble relevant context under a token budget |
+| Provider cost control | Store cache telemetry as events | Exact and semantic prompt cache lookup |
+| Debugging | Replay the event timeline | Replay retrieved context, model calls, and agent decisions |
 
 ---
 
@@ -57,37 +79,39 @@ One engine for real-time ingestion, microsecond query, and ML feature serving. S
 | Feature | Description |
 |---------|-------------|
 | In-memory column store | Columnar layout optimized for SIMD scan and aggregation |
-| Arena allocator | Custom memory management — no malloc on the hot path |
-| Partition manager | Symbol-based partitioning for data locality and parallelism |
+| Arena allocator | Custom memory management with no malloc on the hot path |
+| Partition manager | Symbol and table scoped partitioning for locality and parallelism |
 | Parquet HDB | Historical database on S3 / GCS / NFS. Hot + cold in one query |
+| Agent Memory sidecar | `records.bin` for scalar metadata and `vectors.bin` for row-major `float32` embeddings |
 | Compression | LZ4 for WAL, Parquet columnar compression for HDB |
 
 ---
 
 ## Client APIs
 
-| API | Latency | Typical use |
-|-----|---------|-------------|
-| Python (zero-copy) | 522ns | ML pipelines, Jupyter notebooks, quant research |
-| C++ Pipeline | Native | Embedded, low-latency, edge deployments |
-| HTTP REST | ~1ms | Web apps, microservices, Grafana dashboards |
-| Arrow Flight | ~100μs | Batch data transfer, distributed training |
-| SQL (CLI) | Interactive | Ad-hoc queries, operations, debugging |
+| API | Typical use |
+|-----|-------------|
+| Python zero-copy | ML pipelines, notebooks, agent loops, quant research |
+| Python `connection.memory` | Put/search memories and assemble context |
+| Python `connection.cache` | Store and lookup exact/semantic prompt cache entries |
+| HTTP REST | SQL queries plus `/api/ai/*` memory and cache endpoints |
+| C++ API | Embedded low-latency applications and custom services |
+| Arrow Flight | Batch data transfer and distributed training |
+| SQL CLI | Ad-hoc queries, operations, debugging |
 
 ---
 
-## Security
+## Security and isolation
 
-- TLS 1.3 with optional mTLS on every endpoint, including cluster RPC
-- RBAC with 5 built-in roles (admin, writer, reader, analyst, monitor)
-- JWT / OIDC authentication (Okta, Auth0, Azure AD, Google Workspace)
-- API key management with rotation and revocation
-- Audit logging — all auth events, queries, and admin actions
-- Rate limiting per user and per role
-- Multi-tenancy with namespace isolation
-- SOC2, MiFID II, and industrial (IEC 62443) evidence ready
+- Tenant and namespace fields on every memory and cache entry
+- Optional `X-Zepto-Tenant-Id` request header with conflict rejection
+- Memory content, prompts, responses, and metadata omitted from aggregate stats
+- TLS 1.3 with optional mTLS on endpoints and cluster RPC
+- RBAC with 5 built-in roles: admin, writer, reader, analyst, monitor
+- JWT / OIDC authentication and API key management
+- Audit logging for auth events, queries, and admin actions
 
-> **Edition note:** TLS, basic RBAC, API keys, and rate limiting are in all editions. SSO/OIDC, audit export, and per-tenant advanced RBAC require Enterprise.
+> **Edition note:** The current Agent Memory implementation is single-node. In cluster mode, route `/api/ai/*` to a sticky pod or treat the layer as a per-pod cache until cluster-consistent memory routing lands.
 
 See the [Security Operations Guide](/api/security_operations_guide/) for configuration.
 
@@ -95,13 +119,13 @@ See the [Security Operations Guide](/api/security_operations_guide/) for configu
 
 ## Clustering
 
-- Multi-node with automatic sharding by symbol
+- Multi-node time-series storage with automatic sharding by symbol
 - Consistent hashing for partition placement
 - Health monitoring and automatic failover
 - Rolling upgrades with zero downtime
-- Cross-node query routing and aggregation
+- Cross-node time-series query routing and aggregation
 
-> Multi-node clustering requires an Enterprise license.
+> Multi-node time-series clustering requires an Enterprise license. Agent Memory cluster-wide search and replicated memory writes are a follow-up design area.
 
 See [Multi-Node Cluster](/deployment/multi_node_cluster/) for setup.
 
@@ -109,10 +133,11 @@ See [Multi-Node Cluster](/deployment/multi_node_cluster/) for setup.
 
 ## Deployment
 
-- Docker — single-command start for dev, CI, and edge
-- Kubernetes / Helm for cluster deployments
+- Docker for local development, CI, and single-node Agent Memory trials
+- Kubernetes / Helm for clustered time-series deployments
+- Sticky routing option for current `/api/ai/*` production pilots
 - Bare metal with NUMA / CPU pinning optimization
-- ARM Graviton (aarch64) for cost-efficient edge and cloud
+- ARM Graviton for cost-efficient edge and cloud
 - Parquet HDB on S3, GCS, or local NFS
 
 See [Production Deployment](/deployment/production_deployment/) for reference architectures.

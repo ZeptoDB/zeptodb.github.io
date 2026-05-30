@@ -3,7 +3,7 @@ title: "Community"
 template: splash
 prev: false
 next: false
-description: "Join the ZeptoDB community — contribute, discuss, and get help"
+description: "Join the ZeptoDB community for Agent Memory, microsecond time-series, Python integrations, deployment help, and open roadmap discussion."
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -62,11 +62,16 @@ ninja zepto_tests && ./tests/zepto_tests
 See the [public roadmap](https://github.com/zeptodb/zeptodb/milestones) for upcoming features and priorities.
 
 ### Near-Term
+- Agent Memory examples that combine live time-series tables with context retrieval
+- AgentOps dashboards for runs, retrieval events, cache events, LLM calls, and tool calls
+- Snapshot latency and failure metrics for Agent Memory
 - Web UI / Admin Console
 - JDBC / ODBC drivers
 - Managed cloud offering
 
 ### Medium-Term
+- Cluster-consistent Agent Memory routing and replicated memory writes
+- Stronger ANN index families for million-memory deployments
 - MQTT / OPC-UA connectors for Industrial IoT
 - ROS2 plugin for robotics and Physical AI
 - CAN / vehicle-bus ingestion for automotive
@@ -74,6 +79,8 @@ See the [public roadmap](https://github.com/zeptodb/zeptodb/milestones) for upco
 - Arrow Flight improvements
 
 ### Long-Term
+- Optional server-managed embedding providers as an Enterprise feature
+- Context trace and replay for agent explainability
 - DSL AOT compilation (Nuitka / Cython)
 - ClickHouse wire protocol compatibility
 - Cloud marketplace listings (AWS, GCP, Azure)

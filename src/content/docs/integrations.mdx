@@ -3,33 +3,54 @@ title: "Integrations"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB integrations — connectors for industrial, robotics, automotive, and market-data stacks"
+description: "ZeptoDB integrations — AI agent frameworks, provider adapters, Python, Arrow, industrial, robotics, automotive, and market-data stacks"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Agent and AI integrations
+
+<CardGrid>
+  <Card title="Python memory helpers" icon="seti:python">
+    `connection.memory` wraps memory writes, searches, and context assembly. `connection.cache` wraps exact and semantic prompt cache store/lookup.
+  </Card>
+  <Card title="LangGraph-style flows" icon="star">
+    Example retrieve/call/remember flows show how to assemble context, check cache, call a provider on miss, and write memory back.
+  </Card>
+  <Card title="Provider adapters" icon="approve-check-circle">
+    Optional example adapters cover OpenAI Responses and Anthropic Messages. They lazy-import SDKs and keep model names in application config.
+  </Card>
+  <Card title="AgentOps telemetry" icon="seti:clock">
+    Example schemas model `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, and `tool_calls` as ordinary time-series tables.
+  </Card>
+</CardGrid>
+
+ZeptoDB does not call LLM or embedding providers from the server. Applications own providers and credentials; ZeptoDB stores memory, filters candidates, assembles context, and checks cache.
+
+---
 
 ## Ingestion
 
 <CardGrid>
   <Card title="Kafka" icon="star">
-    Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics. The lingua franca for enterprise streaming.
+    Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics. Useful for operational event streams and AgentOps pipelines.
 
     [Feed Handler Guide →](/feeds/feed_handler_guide/)
 
     > Kafka connector requires Enterprise license.
   </Card>
   <Card title="FIX 4.4" icon="star">
-    Native FIX parser for market-data and order feeds. 1.1M messages/sec with 420ns parse latency.
+    Native FIX parser for market-data and order feeds. Trading agents can pair tick data with strategy memory and decision replay.
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
   <Card title="ITCH" icon="star">
-    NASDAQ ITCH handler for L3 order-book data. Lossless, nanosecond-timestamped.
+    NASDAQ ITCH handler for L3 order-book data. Lossless, nanosecond-timestamped, and ready for temporal market-memory workflows.
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
   <Card title="Binance WebSocket" icon="star">
-    Real-time crypto market data ingestion from Binance exchange.
+    Real-time crypto market data ingestion for agents watching multi-exchange state.
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
@@ -39,12 +60,12 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 ## Client libraries
 
-| Language | Type | Latency | Link |
-|----------|------|---------|------|
-| Python | Zero-copy (NumPy / Pandas / PyTorch) | 522ns | [Python Reference →](/api/python_reference/) |
-| C++ | Native Pipeline API | Native | [C++ Reference →](/api/cpp_reference/) |
-| HTTP | REST API (any language) | ~1ms | [HTTP Reference →](/api/http_reference/) |
-| Arrow Flight | gRPC streaming | ~100μs | [Flight Reference →](/api/flight_reference/) |
+| Language | Type | Typical use | Link |
+|----------|------|-------------|------|
+| Python | Zero-copy + memory/cache helpers | Agent loops, ML pipelines, notebooks | [Python Reference →](/api/python_reference/) |
+| C++ | Native Pipeline API | Embedded, low-latency, edge deployments | [C++ Reference →](/api/cpp_reference/) |
+| HTTP | REST API | SQL plus `/api/ai/*` memory/cache endpoints | [HTTP Reference →](/api/http_reference/) |
+| Arrow Flight | gRPC streaming | Batch data transfer and distributed training | [Flight Reference →](/api/flight_reference/) |
 
 ---
 
@@ -52,10 +73,10 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 <CardGrid>
   <Card title="Prometheus" icon="star">
-    Built-in `/metrics` endpoint. Scrape ingestion rates, query latency, memory usage, and cluster health.
+    Built-in `/metrics` endpoint. Scrape ingestion rates, query latency, memory usage, cluster health, Agent Memory counts, cache counts, evictions, and capacity limits.
   </Card>
   <Card title="Grafana" icon="star">
-    Query ZeptoDB directly from Grafana via HTTP API. Pre-built dashboard templates for operations and telemetry.
+    Query ZeptoDB directly from Grafana via HTTP API. Build dashboards over operational telemetry, AgentOps events, and memory/cache metrics.
   </Card>
 </CardGrid>
 
@@ -65,11 +86,12 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
-| Amazon S3 | ✓ | Parquet HDB for historical data |
+| Agent Memory sidecar | ✓ | `records.bin` + `vectors.bin` snapshots for memory/cache persistence |
+| Amazon S3 | ✓ | Parquet HDB for historical time-series data |
 | Google Cloud Storage | ✓ | Parquet HDB |
-| Local NFS | ✓ | On-premise Parquet HDB — air-gapped and edge |
-| Docker | ✓ | Single-command deployment |
-| Kubernetes | ✓ | Helm chart with StatefulSet |
+| Local NFS | ✓ | On-premise Parquet HDB for air-gapped and edge |
+| Docker | ✓ | Single-command deployment and Agent Memory pilots |
+| Kubernetes | ✓ | Helm chart with StatefulSet for time-series clusters |
 | ARM Graviton | ✓ | aarch64 native for cost-efficient edge and cloud |
 
 ---
@@ -89,17 +111,17 @@ See [SSO Integration Guide →](/api/sso_integration_guide/)
 
 ---
 
-## Industrial, robotics, and edge (roadmap)
+## Industrial, robotics, and edge
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
-| OPC-UA | Planned | Industrial PLC / SCADA connector for manufacturing and process |
-| MQTT | Planned | Lightweight IoT sensor and robot telemetry ingestion |
+| OPC-UA | Available / expanding | Industrial PLC / SCADA connector for manufacturing and process telemetry |
+| MQTT | Available / expanding | Lightweight IoT sensor and robot telemetry ingestion |
 | ROS2 | Planned | Direct topic subscription for robotics and autonomy stacks |
 | AutomationML / PackML | Under evaluation | Standardized plant and machine data models |
 | CAN / Vehicle Bus | Under evaluation | Automotive telemetry ingestion at the edge |
 
-## Streaming & data platform (roadmap)
+## Streaming & data platform
 
 | Integration | Status | Description |
 |-------------|--------|-------------|

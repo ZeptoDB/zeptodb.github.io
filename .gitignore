@@ -11,6 +11,7 @@ node_modules/
 src/content/docs/**
 # Then allow the manually-managed marketing/static pages
 !src/content/docs/index.mdx
+!src/content/docs/docs.mdx
 !src/content/docs/features.mdx
 !src/content/docs/pricing.mdx
 !src/content/docs/integrations.mdx

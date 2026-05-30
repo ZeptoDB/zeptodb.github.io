@@ -3,12 +3,12 @@ title: "Energy & Utilities"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for synchrophasor / PMU streams, smart metering, and renewable-asset telemetry at microsecond latency"
+description: "ZeptoDB for grid agents — PMU streams, smart-meter telemetry, renewable assets, incident memory, and replayable operator decisions"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Synchrophasor streams. Smart meters. Wind and solar farms. Microsecond time-series for the grid edge.
+Synchrophasor streams, smart meters, wind farms, batteries, operator actions, and incident memory. ZeptoDB gives grid agents one timeline for live evidence and durable context.
 
 ---
 
@@ -26,6 +26,9 @@ Synchrophasor streams. Smart meters. Wind and solar farms. Microsecond time-seri
   </Card>
   <Card title="Parquet historian" icon="approve-check-circle">
     Years of telemetry on S3 / GCS / NFS. Query hot and cold transparently for forensic analysis and regulatory reporting.
+  </Card>
+  <Card title="Incident memory" icon="open-book">
+    Store operator notes, prior disturbances, mitigation steps, model calls, and retrieved context beside PMU and asset telemetry.
   </Card>
 </CardGrid>
 
@@ -52,6 +55,12 @@ Synchrophasor streams. Smart meters. Wind and solar farms. Microsecond time-seri
 - Cell-level voltage, current, and temperature streams
 - State-of-charge and state-of-health rolling estimation
 - Thermal runaway early warning with multi-sensor ASOF JOIN
+
+### Grid agent workflows
+- Retrieve similar disturbances before recommending an operator action
+- Pair live PMU changes with prior incidents, mitigation steps, and asset notes
+- Cache repeated explanations for common alarms and demand-response patterns
+- Replay agent recommendations against the exact telemetry and operator timeline
 
 ---
 

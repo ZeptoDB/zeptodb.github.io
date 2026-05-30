@@ -1,18 +1,66 @@
 ---
-import type { Props } from '@astrojs/starlight/props';
 import Default from '@astrojs/starlight/components/Head.astro';
 
+const siteUrl = 'https://zeptodb.com';
+const description =
+  'ZeptoDB turns live time-series data into agent memory with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python.';
+const keywords = [
+  'agent memory database',
+  'AI agent memory',
+  'time-series database',
+  'AgentOps telemetry',
+  'prompt cache',
+  'context retrieval',
+  'microsecond database',
+  'zero-copy Python',
+].join(', ');
 const ogImage = new URL('/og-default.png', Astro.site);
+const ogImageAlt = 'ZeptoDB: agent memory for live time-series data';
 
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
-  '@type': 'SoftwareApplication',
-  name: 'ZeptoDB',
-  url: 'https://zeptodb.com',
-  applicationCategory: 'Database',
-  operatingSystem: 'Linux',
-  description: 'Ultra-low latency in-memory time-series database for trading, IoT, and robotics.',
-  offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+  '@graph': [
+    {
+      '@type': 'Organization',
+      '@id': `${siteUrl}/#organization`,
+      name: 'ZeptoDB',
+      url: siteUrl,
+      sameAs: [
+        'https://github.com/zeptodb/zeptodb',
+        'https://twitter.com/zeptodb',
+        'https://discord.gg/PAtzvCa7',
+      ],
+    },
+    {
+      '@type': 'WebSite',
+      '@id': `${siteUrl}/#website`,
+      name: 'ZeptoDB',
+      url: siteUrl,
+      description,
+      inLanguage: 'en',
+      publisher: { '@id': `${siteUrl}/#organization` },
+    },
+    {
+      '@type': 'SoftwareApplication',
+      '@id': `${siteUrl}/#software`,
+      name: 'ZeptoDB',
+      url: siteUrl,
+      applicationCategory: 'Database',
+      applicationSubCategory: 'Agent memory and time-series database',
+      operatingSystem: 'Linux',
+      description,
+      keywords,
+      featureList: [
+        'Agent Memory with tenant-scoped recall',
+        'Exact and semantic prompt cache',
+        'Microsecond time-series queries',
+        'AgentOps telemetry tables',
+        'Zero-copy Python integration',
+      ],
+      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
+      publisher: { '@id': `${siteUrl}/#organization` },
+    },
+  ],
 });
 ---
 
@@ -20,6 +68,12 @@ const jsonLd = JSON.stringify({
 
 <!-- Starlight already handles og:title, og:description, og:url, og:type, twitter:card, meta description -->
 <!-- We add only what's missing: images and structured data -->
+<meta name="keywords" content={keywords} />
+<meta name="theme-color" content="#0a0e17" />
 <meta property="og:image" content={ogImage.href} />
+<meta property="og:image:width" content="1200" />
+<meta property="og:image:height" content="630" />
+<meta property="og:image:alt" content={ogImageAlt} />
 <meta name="twitter:image" content={ogImage.href} />
+<meta name="twitter:image:alt" content={ogImageAlt} />
 <script type="application/ld+json" set:html={jsonLd} />

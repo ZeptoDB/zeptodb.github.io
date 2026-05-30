@@ -1,15 +1,26 @@
 ---
 title: ZeptoDB
-description: The microsecond time-series platform for Physical AI, Industrial IoT, Autonomous Systems, and Markets.
+description: "ZeptoDB turns live time-series data into agent memory with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python."
 template: splash
+head:
+  - tag: title
+    content: "ZeptoDB | Agent Memory for Live Time-Series Data"
+  - tag: meta
+    attrs:
+      property: og:title
+      content: "ZeptoDB | Agent Memory for Live Time-Series Data"
+  - tag: meta
+    attrs:
+      name: twitter:title
+      content: "ZeptoDB | Agent Memory for Live Time-Series Data"
 hero:
-  tagline: "The time-series database for the microsecond economy — robotics, factories, vehicles, grids, and markets. One engine, standard SQL, 522ns to Python."
+  tagline: "Turn live time-series data into operational memory for AI agents. ZeptoDB captures what happened, retrieves what matters, and feeds context back into agent loops."
   actions:
+    - text: Agent Memory
+      link: /use-cases/agent-memory/
+      icon: right-arrow
     - text: Quick Start
       link: /getting-started/quick_start/
-      icon: right-arrow
-    - text: Talk to Sales
-      link: /contact/
       icon: right-arrow
       variant: secondary
     - text: GitHub
@@ -20,61 +31,101 @@ hero:
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Wherever microseconds matter
+## Time-series data becomes agent memory
 
-Sensor fusion in a humanoid. Closed-loop control on a factory floor. Tick-by-tick risk on a trading desk. Grid telemetry across a region. The workloads look different — the bottleneck is the same: **time-series data arriving faster than a conventional database can ingest, join, and hand to your model.**
+Time-series data answers **what happened, when, and in what order**. Agent memory answers **what the agent learned, decided, reused, or should recall next**. ZeptoDB combines both layers so agents can work directly against the live history of a system instead of a detached prompt log.
 
-ZeptoDB is the microsecond time-series substrate built for that bottleneck. One engine, standard SQL, lock-free ingestion, LLVM JIT execution, and a zero-copy path straight into NumPy and PyTorch.
+The time-series engine stores the raw operational truth: ticks, sensor readings, traces, incidents, tool calls, robot state, and market events. The Agent Memory layer stores agent-scoped context beside it: memories, embeddings, retrieval filters, token-budgeted context, exact prompt cache hits, semantic cache hits, and AgentOps telemetry.
 
 <CardGrid stagger>
-  <Card title="5.52M events/sec" icon="rocket">
-    Lock-free MPMC ring buffer + Highway SIMD. Robotics telemetry, factory sensors, tick feeds — ingest without dropping a sample.
+  <Card title="5.52M observations/sec" icon="rocket">
+    Lock-free ingestion captures the live event stream agents need to reason over: telemetry, logs, trades, tool calls, and sensor data.
   </Card>
-  <Card title="272μs query on 1M rows" icon="seti:clock">
-    LLVM JIT compiled execution. ASOF JOIN, Window JOIN, EMA, VWAP — analytic primitives at microsecond latency.
+  <Card title="272μs evidence recall" icon="seti:clock">
+    The time-series core retrieves recent facts and aligned events at microsecond latency before the agent acts.
+  </Card>
+  <Card title="1.23ms filtered memory search" icon="star">
+    Agent Memory searches 10K 128-dimensional records with tenant/session filters, ranking, and context assembly for prompt-time recall.
   </Card>
   <Card title="522ns to Python" icon="seti:python">
-    NumPy / Pandas / PyTorch views directly on engine memory. No serialization. No copy. Ship features straight into your model.
+    Query results move into NumPy, Pandas, and PyTorch without serialization, keeping the model loop close to live data.
   </Card>
-  <Card title="Enterprise-ready" icon="approve-check-circle">
-    TLS 1.3, RBAC, JWT/OIDC, audit logging, multi-node clustering. SOC2, MiFID II, IEC 62443-aware deployments.
+</CardGrid>
+
+Benchmark claims are defined by hardware, build, data shape, scope, and measurement protocol. See the [benchmark criteria and reproduction notes](/benchmarks/#benchmark-criteria) before comparing or republishing a single number.
+
+---
+
+## How live data and agent memory work together
+
+<CardGrid>
+  <Card title="Observe" icon="rocket">
+    Ingest real-time events from exchanges, robots, factories, fleets, grids, applications, or agent tools. The system keeps the ordered timeline intact.
+  </Card>
+  <Card title="Remember" icon="open-book">
+    Store agent memories with tenant, namespace, user, session, agent, type, metadata, importance, TTL, pinned status, and client-supplied embeddings.
+  </Card>
+  <Card title="Recall" icon="seti:clock">
+    Retrieve by time, scope, semantics, importance, recency, access count, and token budget. Assemble the context an agent needs without dumping the whole past into a prompt.
+  </Card>
+  <Card title="Act" icon="approve-check-circle">
+    Reuse exact or semantically similar prompt responses, call a provider on cache miss, write back new memory, and keep AgentOps events in ordinary time-series tables.
   </Card>
 </CardGrid>
 
 ---
 
-## Built for the microsecond economy
+## What agents can do with both layers
 
 <CardGrid>
-  <Card title="🤖 Physical AI & Robotics" icon="star">
-    Sensor fusion across LiDAR, camera, IMU, and proprioception. 522ns from query to PyTorch tensor. Train offline on Parquet, serve online from memory — same SQL, same engine.
+  <Card title="Ask temporal questions" icon="seti:clock">
+    "What changed before the alert?", "What did the agent do after this signal?", "Which similar episodes ended badly?" Time-series gives the order; memory gives the learned context.
+  </Card>
+  <Card title="Ground decisions in evidence" icon="approve-check-circle">
+    Attach every recommendation to raw events, prior actions, retrieved memories, cache hits, tool calls, and model calls. Debug agent behavior as a replayable timeline.
+  </Card>
+  <Card title="Avoid repeated model calls" icon="star">
+    Exact and semantic prompt cache lookup runs before an external provider call. Reuse prior responses when your application policy allows it.
+  </Card>
+  <Card title="Build vertical agents" icon="rocket">
+    Industrial agents, trading agents, fleet agents, observability agents, robotics agents, and support agents can share one substrate for live facts and durable context.
+  </Card>
+</CardGrid>
+
+---
+
+## Built for real-time agent workloads
+
+<CardGrid>
+  <Card title="AI Agents & AgentOps" icon="star">
+    Agent-scoped working memory, context retrieval, exact/semantic cache, provider adapters, LangGraph-style examples, and telemetry tables for runs, retrievals, cache events, LLM calls, and tool calls.
+
+    [Agent Memory →](/use-cases/agent-memory/)
+  </Card>
+  <Card title="Physical AI & Robotics" icon="star">
+    Sensor fusion and action history become replayable episodes. A robot agent can recall what it saw, what it tried, and which previous intervention worked.
 
     [Physical AI →](/use-cases/robotics/)
   </Card>
-  <Card title="🏭 Industrial IoT & Smart Factory" icon="star">
-    10KHz+ vibration, current, and pressure streams. Rolling statistics, SPC, anomaly detection, predictive maintenance — all in standard SQL, edge to cloud.
+  <Card title="Industrial IoT & Smart Factory" icon="star">
+    Factory telemetry becomes operational memory. Maintenance agents can combine vibration history, work orders, previous diagnoses, and live alarms.
 
     [Industrial IoT →](/use-cases/iot/)
   </Card>
-  <Card title="🚗 Autonomous Systems" icon="star">
-    Time-align LiDAR + camera + radar + IMU with nanosecond-precision ASOF JOIN. Replay petabyte-scale driving logs from Parquet on S3 at full fidelity.
+  <Card title="Autonomous Systems" icon="star">
+    Fleet logs, scenario mining, and agent decisions stay on one timeline. Reproduce a decision from raw sensor data through retrieved context.
 
-    [Autonomous Vehicles →](/use-cases/autonomous-vehicles/)
+    [Autonomous Systems →](/use-cases/autonomous-vehicles/)
   </Card>
-  <Card title="⚡ Energy & Utilities" icon="star">
-    Synchrophasor / PMU streams, smart-meter telemetry, renewable forecasting. Sub-second aggregation over millions of endpoints with symbol-partitioned storage.
+  <Card title="Energy & Utilities" icon="star">
+    Grid agents can reason over PMU streams, incident memory, operator actions, and historical patterns without losing the timing of the event.
 
     [Energy & Utilities →](/use-cases/energy/)
   </Card>
-  <Card title="📈 Capital Markets" icon="star">
-    kdb+-class ingestion and query performance — on standard SQL, with zero license cost at the Community tier. HFT, quant research, real-time risk, MiFID II audit.
+  <Card title="Capital Markets" icon="star">
+    Trading agents can pair tick-by-tick market state with strategy memory, risk decisions, cache hits, and compliance-ready replay.
 
-    [Trading & Finance →](/use-cases/trading/)
-  </Card>
-  <Card title="🛰️ Observability & Telemetry" icon="star">
-    High-cardinality time-series for fleets, devices, and services. Millions of active series without cardinality penalties. Keep Prometheus; add microsecond history.
-
-    [See all use cases →](/use-cases/trading/)
+    [Capital Markets →](/use-cases/trading/)
   </Card>
 </CardGrid>
 
@@ -82,11 +133,11 @@ ZeptoDB is the microsecond time-series substrate built for that bottleneck. One 
 
 ## Why teams pick ZeptoDB
 
-- **One engine, every workload.** Ingestion, real-time query, historical replay, and ML feature serving in a single binary. No Lambda-architecture tax.
-- **Standard SQL, not a DSL.** Your analysts, quants, and ML engineers write SQL with temporal extensions (ASOF JOIN, xbar, EMA). No proprietary language to learn.
-- **Zero-copy to the model.** 522ns from column store to NumPy / PyTorch. The difference between a feature store that keeps up and one that doesn't.
-- **Edge to cloud.** ARM Graviton edge nodes to multi-node EKS clusters. Parquet HDB on S3 / GCS / NFS for long-tail history.
-- **Commercially friendly.** Community edition is free and production-ready on a single node. Enterprise adds clustering, SSO, and audited feature gating — no phone-home.
+- **One timeline for facts and decisions.** Store raw events in the time-series engine and agent memory records beside the workflows that consume them.
+- **Fast enough for the agent loop.** Microsecond time-series recall, millisecond-scale memory search, exact/semantic prompt cache lookup, and zero-copy Python access.
+- **Context with operational filters.** Tenant, namespace, user, session, agent, type, TTL, importance, pinned status, recency, and access count are first-class retrieval signals.
+- **Not just a vector database.** ZeptoDB does not replace the live operational database with a detached vector index. The memory layer sits beside the event stream that explains why the memory matters.
+- **Production-shaped surfaces.** HTTP endpoints, Python helpers, Prometheus metrics, sidecar snapshots, and examples for provider cache and LangGraph-style flows.
 
 ---
 
@@ -94,22 +145,25 @@ ZeptoDB is the microsecond time-series substrate built for that bottleneck. One 
 
 | | **kdb+** | **ClickHouse** | **InfluxDB** | **TimescaleDB** | **ZeptoDB** |
 |---|---|---|---|---|---|
-| **Query latency (1M rows)** | μs | ~5ms | ~15ms | ~10ms | **272μs** |
+| **Time-series latency** | μs | ~5ms | ~15ms | ~10ms | **272μs** |
 | **Ingestion** | ~5M/sec | 100K/sec | 50K/sec | 50K/sec | **5.52M/sec** |
-| **Query language** | q (proprietary) | SQL | InfluxQL / Flux | PostgreSQL SQL | **Standard SQL** |
-| **ASOF JOIN** | ✓ | ✗ | ✗ | workaround | **✓ native** |
-| **Python** | IPC | serialized | serialized | serialized | **522ns zero-copy** |
-| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **Free Community / Enterprise** |
+| **Temporal joins** | ASOF | limited | no | workaround | **ASOF + Window JOIN** |
+| **Python path** | IPC | serialized | serialized | serialized | **522ns zero-copy** |
+| **Agent memory** | separate stack | separate stack | separate stack | separate stack | **native memory + cache layer** |
+| **Prompt cache** | separate stack | separate stack | separate stack | separate stack | **exact + semantic lookup** |
+| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **BUSL-1.1 + Free Community / Enterprise** |
 
-Detailed comparisons: [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
+Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vector-databases/) · [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
 
 ---
 
 ## Start building
 
 <CardGrid>
+  <LinkCard title="Agent Memory" description="How live time-series becomes context, cache, and replay for agents" href="/use-cases/agent-memory/" />
+  <LinkCard title="Python Agent Memory Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
   <LinkCard title="Quick Start" description="From zero to first query in 5 minutes" href="/getting-started/quick_start/" />
-  <LinkCard title="Features" description="The full feature surface — ingestion, execution, storage, security" href="/features/" />
-  <LinkCard title="Benchmarks" description="Reproducible numbers on commodity hardware and EKS" href="/benchmarks/" />
-  <LinkCard title="Pricing & Trial" description="Free Community — 30-day Enterprise trial, no sales call" href="/pricing/" />
+  <LinkCard title="Features" description="Time-series engine, memory layer, APIs, storage, and security" href="/features/" />
+  <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and Agent Memory recall" href="/benchmarks/" />
+  <LinkCard title="Agent Memory vs Vector DBs" description="When semantic recall needs a time-series timeline beside it" href="/compare/agent-memory-vs-vector-databases/" />
 </CardGrid>

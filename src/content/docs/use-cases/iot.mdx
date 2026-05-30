@@ -3,12 +3,12 @@ title: "Industrial IoT & Smart Factory"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for manufacturing, process industries, and industrial edge — real-time control, predictive maintenance, and digital twin telemetry"
+description: "ZeptoDB for industrial agents — high-frequency telemetry, predictive maintenance memory, quality decisions, and digital twin context"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-10KHz sensors. Sub-millisecond anomaly detection. A single engine that runs on the edge and scales to the cloud.
+10KHz sensors tell the plant what is happening. Agent memory helps the plant remember what worked last time. ZeptoDB combines edge time-series ingestion with maintenance context, cache lookup, and replayable agent decisions.
 
 ---
 
@@ -26,6 +26,9 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
   </Card>
   <Card title="Industrial protocols" icon="approve-check-circle">
     OPC-UA and MQTT connectors for PLC, SCADA, and brownfield sensor buses. Built-in Kafka consumer for existing streaming infra.
+  </Card>
+  <Card title="Maintenance memory" icon="open-book">
+    Keep prior diagnoses, operator notes, work orders, model calls, and tool outputs searchable by machine, session, and incident.
   </Card>
 </CardGrid>
 
@@ -52,6 +55,12 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 - High-fidelity historian for simulation calibration and what-if analysis
 - Join live sensor streams with setpoints and batch records
 - Feed production ML models with the same zero-copy path used in research
+
+### Industrial agent workflows
+- Retrieve similar failures before recommending a maintenance action
+- Pair live alarms with prior work orders, operator notes, and pinned safety procedures
+- Cache repeated explanations for common machine states
+- Store agent decisions and tool calls as AgentOps telemetry for audit and improvement
 
 ---
 
@@ -90,6 +99,6 @@ See [Production Deployment](/deployment/production_deployment/) for reference ar
 
 ## Why this matters commercially
 
-Industrial data platforms typically stitch together a historian, a stream processor, a feature store, and a warehouse — four operational models for one logical pipeline. ZeptoDB replaces the hot path with a single engine that runs from a ruggedized edge node to a cluster in the cloud, with the same SQL and the same security posture. Fewer integrations, less bespoke code, and a credible path from pilot line to enterprise rollout.
+Industrial data platforms typically stitch together a historian, a stream processor, a vector store, a feature store, and a warehouse. ZeptoDB replaces the hot path with one model for live facts and agent context, from a ruggedized edge node to the cloud. Fewer integrations, less bespoke glue, and a clearer path from pilot line to production agent.
 
 Talk to us about your plant or product: [Contact Sales →](/contact/)

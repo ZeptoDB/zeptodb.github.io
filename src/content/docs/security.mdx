@@ -3,7 +3,7 @@ title: "Security"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB security posture — encryption, authentication, authorization, audit, and compliance across regulated industries"
+description: "ZeptoDB security posture — tenant-scoped Agent Memory, encryption, authentication, authorization, audit, and compliance"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -11,44 +11,60 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 ## Security at a glance
 
 <CardGrid>
+  <Card title="Tenant-scoped memory" icon="approve-check-circle">
+    Every memory and cache entry carries `tenant_id` and `namespace`. Requests can also use `X-Zepto-Tenant-Id`, with conflict rejection when JSON and header disagree.
+  </Card>
+  <Card title="No provider calls" icon="approve-check-circle">
+    ZeptoDB does not call embedding providers or LLM providers from the server. Applications control prompts, models, provider credentials, and embeddings.
+  </Card>
   <Card title="Encryption" icon="approve-check-circle">
-    TLS 1.3 on every endpoint, including cluster RPC. Optional mTLS for service-to-service auth. Data encrypted at rest via Parquet + S3 SSE.
+    TLS 1.3 on every endpoint, including cluster RPC. Optional mTLS for service-to-service auth. Data encrypted at rest through deployment storage controls.
   </Card>
-  <Card title="Authentication" icon="approve-check-circle">
-    JWT / OIDC (Okta, Auth0, Azure AD / Entra ID, Google Workspace), API keys with rotation, and mTLS client certificates.
-  </Card>
-  <Card title="Authorization" icon="approve-check-circle">
-    RBAC with 5 built-in roles: admin, writer, reader, analyst, monitor. Namespace isolation for multi-tenancy.
-  </Card>
-  <Card title="Audit" icon="approve-check-circle">
-    All authentication events, queries, and admin actions logged. Structured JSON, ready for Splunk / ELK / Datadog.
+  <Card title="Authentication and RBAC" icon="approve-check-circle">
+    JWT / OIDC, API keys with rotation, mTLS client certificates, and RBAC with built-in admin, writer, reader, analyst, and monitor roles.
   </Card>
 </CardGrid>
 
 ---
 
+## Agent Memory security model
+
+Agent Memory stores operationally sensitive context: summaries, retrieved facts, prompt cache entries, and metadata. The v0 model keeps those boundaries explicit:
+
+- Memory and cache entries are scoped by tenant and namespace
+- Search/context requests can filter by user, session, agent, type, TTL, and metadata
+- Aggregate stats omit memory content, prompts, responses, and metadata
+- Prometheus metrics expose counts, dimensions, evictions, and capacity limits only
+- Embeddings are client-supplied; ZeptoDB validates dimensions and rejects NaN/Inf
+- Metadata is caller-provided JSON text, so applications can attach source and trust hints
+- Server-side LLM and embedding provider credentials are not part of the default path
+
+In cluster mode, Agent Memory is currently node-local. Use sticky routing for `/api/ai/*` if you need one consistent memory view.
+
+---
+
 ## Compliance
 
-ZeptoDB ships the evidence primitives teams need across finance, industrial, automotive, and utilities:
+ZeptoDB ships the evidence primitives teams need across agentic operations, finance, industrial, automotive, and utilities:
 
 | Standard | Relevance | Status |
 |----------|-----------|--------|
-| SOC2 Type II | Audit logging, RBAC, encryption | Ready |
-| MiFID II | Trade audit trail, access controls | Ready |
-| GDPR | Namespace isolation, data deletion support | Ready |
+| SOC2 Type II | Audit logging, RBAC, encryption, change evidence | Ready |
+| MiFID II | Trade audit trail, access controls, decision replay | Ready |
+| GDPR | Namespace isolation, deletion support, tenant scoping | Ready |
 | PCI DSS | TLS 1.3, access controls, audit logging | Ready |
-| IEC 62443 | Industrial control systems — authN/authZ, audit | Evidence-ready |
-| ISO / SAE 21434 | Automotive cybersecurity — secure data handling | Evidence-ready |
-| NERC CIP | Electric utility / BES cyber asset monitoring | Evidence-ready |
+| IEC 62443 | Industrial control systems authN/authZ and audit | Evidence-ready |
+| ISO / SAE 21434 | Automotive cybersecurity and replayable data handling | Evidence-ready |
+| NERC CIP | Electric utility operational monitoring | Evidence-ready |
 
-Regulated deployments typically want SSO, audit export, and per-tenant isolation — all available on the Enterprise tier.
+Regulated deployments typically want SSO, audit export, namespace isolation, and deployment review — all available on the Enterprise tier.
 
 ---
 
 ## Security features
 
 ### Transport security
-- TLS 1.3 on all endpoints (HTTP, Arrow Flight, cluster RPC)
+- TLS 1.3 on HTTP, Arrow Flight, and cluster RPC
 - mTLS for cluster-internal communication
 - Configurable cipher suites and certificate rotation
 
@@ -58,20 +74,20 @@ Regulated deployments typically want SSO, audit export, and per-tenant isolation
 - Multi-factor via OIDC provider delegation
 
 ### Authorization
-- Role-based access control (RBAC) with 5 roles
+- Role-based access control with 5 built-in roles
 - Per-namespace permissions for multi-tenant deployments
-- Query-level access control (table / column restrictions)
+- Query-level access control for table and column restrictions
 
-### Rate limiting
-- Per-user and per-role rate limits
-- Configurable burst and sustained rates
-- Automatic throttling with informative error responses
+### Agent Memory isolation
+- Tenant and namespace required on memory/cache records
+- Optional user, session, agent, and type filters
+- TTL and capacity eviction controls
+- Pinned memory protection for capacity eviction
 
 ### Audit logging
-- All auth events (login, logout, failed attempts)
-- All queries with user attribution
-- Admin actions (role changes, key management)
-- Structured JSON format, compatible with Splunk / ELK / Datadog / SIEM
+- Auth events, failed attempts, queries, and admin actions
+- Structured JSON compatible with Splunk, ELK, Datadog, and SIEM workflows
+- AgentOps telemetry tables for agent runs, retrieval events, cache events, LLM calls, and tool calls
 
 ---
 
@@ -79,7 +95,7 @@ Regulated deployments typically want SSO, audit export, and per-tenant isolation
 
 Found a security issue? Please report it responsibly:
 
-📧 **skswlsaks@gmail.com**
+**skswlsaks@gmail.com**
 
 We aim to acknowledge reports within 48 hours and provide a fix timeline within 5 business days.
 
@@ -91,18 +107,20 @@ For detailed configuration, see the [Security Operations Guide](/api/security_op
 
 ## Edition availability
 
-Not all security features are available in every edition.
-
 | Feature | Community | Enterprise |
 |---------|:---------:|:----------:|
-| TLS 1.3 / mTLS | ✅ | ✅ |
-| API key authentication | ✅ | ✅ |
-| Basic RBAC (5 roles) | ✅ | ✅ |
-| Rate limiting | ✅ | ✅ |
-| Audit logging (in-memory) | ✅ | ✅ |
-| SSO / OIDC | — | ✅ |
-| Audit log export (SIEM) | — | ✅ |
-| Advanced RBAC (per-tenant) | — | ✅ |
+| Single-node Agent Memory | ✓ | ✓ |
+| Exact / semantic prompt cache | ✓ | ✓ |
+| Agent Memory sidecar snapshots | ✓ | ✓ |
+| TLS 1.3 / mTLS | ✓ | ✓ |
+| API key authentication | ✓ | ✓ |
+| Basic RBAC | ✓ | ✓ |
+| Rate limiting | ✓ | ✓ |
+| Audit logging | ✓ | ✓ |
+| SSO / OIDC | — | ✓ |
+| Audit log export | — | ✓ |
+| Advanced RBAC | — | ✓ |
+| Multi-node time-series clustering | — | ✓ |
 
 Enterprise-gated endpoints return HTTP 402 with an upgrade URL:
 

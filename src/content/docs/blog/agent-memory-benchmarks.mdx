@@ -1,0 +1,100 @@
+---
+title: "Agent Memory Benchmarks: Search, Context, Cache, and Snapshots"
+description: "ZeptoDB Agent Memory benchmark results for filtered memory search, context assembly, exact cache lookup, semantic cache lookup, and sidecar snapshot persistence."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Agent memory performance matters because recall sits directly in the agent loop. If every turn waits on slow context retrieval, the agent feels slow before the model is even called.
+
+ZeptoDB benchmarks the memory layer separately from the time-series core, then shows how both fit together: microsecond evidence retrieval from live tables, millisecond memory search, exact/semantic cache lookup, and zero-copy Python for model-side workflows.
+
+For any external comparison, use the [benchmark criteria](/benchmarks/#benchmark-criteria) first: scope, hardware, build flags, dataset shape, cache state, run protocol, and tail latency must be disclosed with the number.
+
+---
+
+## Benchmark shape
+
+The Agent Memory benchmark uses client-supplied 128-dimensional `float32` embeddings. It measures:
+
+- Filtered memory search
+- Context assembly under a token budget
+- Exact prompt cache lookup
+- Semantic cache lookup
+- Sidecar snapshot save/load
+- Optional sparse-projection ANN candidate generation
+
+The memory layer ranks candidates by tenant/session filters, embedding similarity, importance, pinned boost, recency, and access count. Context assembly deduplicates repeated content and respects an optional token budget.
+
+---
+
+## 10K memory records
+
+| Operation | p50 | p95 |
+|-----------|----:|----:|
+| Memory search top-K | **1.23ms** | **1.40ms** |
+| Context assembly | **1.34ms** | **1.41ms** |
+| Exact cache lookup | **0.00ms** | **0.00ms** |
+| Semantic cache lookup | **0.07ms** | **0.07ms** |
+| Snapshot save | **5.79ms** | - |
+| Snapshot load | **11.60ms** | - |
+
+For many operational agents, 10K scoped memories is already a meaningful working set: current user/session memory, incident summaries, pinned runbooks, prior diagnoses, and cache entries.
+
+---
+
+## Sparse-projection ANN sweep
+
+Sparse-projection ANN is a derived in-memory candidate index. It can reduce filtered-search latency at larger memory counts, but it is recall-sensitive and can fall back to filtered scan when it cannot produce enough filtered candidates.
+
+| Records | Search p50 | Search p95 | Context p50 | Context p95 | ANN rebuild |
+|--------:|-----------:|-----------:|------------:|------------:|------------:|
+| 10K | **0.19ms** | 0.41ms | **0.38ms** | 0.52ms | 12.36ms |
+| 100K | **2.41ms** | 4.68ms | **2.77ms** | 2.98ms | 138.37ms |
+| 1M | **32.03ms** | 36.27ms | **25.48ms** | 29.96ms | 1691.56ms |
+
+This is useful as a current baseline, not the final word on million-memory search. Stronger ANN index families remain a follow-up area.
+
+---
+
+## How this compares with the time-series core
+
+<CardGrid>
+  <Card title="5.52M events/sec" icon="rocket">
+    The ingestion path captures live observations, tool calls, cache events, and model-call telemetry without turning the agent stack into a separate logging system.
+  </Card>
+  <Card title="272us query on 1M rows" icon="seti:clock">
+    Evidence retrieval stays fast enough to happen before the agent acts, not only after an incident review.
+  </Card>
+  <Card title="522ns Python zero-copy" icon="seti:python">
+    Query results can move into Python, NumPy, Pandas, and PyTorch without serialization overhead.
+  </Card>
+  <Card title="0.07ms semantic cache lookup" icon="approve-check-circle">
+    Repeated operational prompts can reuse prior responses when application policy allows it.
+  </Card>
+</CardGrid>
+
+---
+
+## What to benchmark in your own app
+
+Raw p50 latency is only one part of the picture. For an agent workload, measure the full turn:
+
+1. Query recent time-series evidence.
+2. Retrieve memories with tenant/session filters.
+3. Assemble context under a token budget.
+4. Check exact and semantic cache.
+5. Call the model only on cache miss.
+6. Write back the decision, cache event, model call, and tool calls.
+
+That is the workload ZeptoDB is designed around: one timeline for facts, context, cache, and decisions.
+
+---
+
+## More detail
+
+<CardGrid>
+  <LinkCard title="Benchmarks" description="Full site benchmark page with time-series and Agent Memory numbers" href="/benchmarks/" />
+  <LinkCard title="Agent Memory Guide" description="API surface and Python sketch for memory, cache, and context" href="/use-cases/agent-memory/" />
+  <LinkCard title="Why Agent Memory Needs Time-Series" description="The product rationale behind replayable operational memory" href="/blog/why-agent-memory-needs-time-series/" />
+</CardGrid>

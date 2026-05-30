@@ -3,12 +3,12 @@ title: "Capital Markets"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for HFT, quant research, real-time risk, and MiFID II audit — kdb+-class performance on standard SQL"
+description: "ZeptoDB for trading agents — market time-series, strategy memory, real-time risk, prompt cache, and MiFID II replay"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-kdb+-class performance. Standard SQL. Zero license cost at the Community tier.
+kdb+-class time-series performance with an Agent Memory layer for strategy context, risk decisions, prompt cache, and replayable trading-agent behavior.
 
 ---
 
@@ -26,6 +26,9 @@ kdb+-class performance. Standard SQL. Zero license cost at the Community tier.
   </Card>
   <Card title="kdb+ compatible semantics" icon="approve-check-circle">
     ASOF JOIN, Window JOIN, xbar, EMA, VWAP — the temporal primitives you already use, in standard SQL.
+  </Card>
+  <Card title="Strategy memory" icon="open-book">
+    Store retrieved context, model calls, tool calls, risk notes, and agent decisions beside the tick timeline.
   </Card>
 </CardGrid>
 
@@ -52,6 +55,12 @@ kdb+-class performance. Standard SQL. Zero license cost at the Community tier.
 - Structured JSON audit logging suitable for MiFID II and SOC2 evidence
 - RBAC with 5 built-in roles — isolate trading desks from compliance views
 - Namespace isolation for multi-entity / multi-strategy deployments
+
+### Trading agent workflows
+- Retrieve similar market regimes before an agent adjusts a strategy
+- Cache repeated market-state explanations and risk summaries
+- Store agent decisions, tool calls, and model calls as time-series telemetry
+- Replay the path from quote/trade state to retrieved memory to action
 
 ---
 
@@ -111,6 +120,6 @@ See the [Quick Start Guide](/getting-started/quick_start/) and [vs kdb+](/compar
 
 ## Why this matters commercially
 
-Trading firms spend seven figures per year on kdb+ licenses and carry the operational weight of a niche language. ZeptoDB delivers comparable microsecond performance on standard SQL, with a Python zero-copy path quants actually like using. The Community tier runs in production on a single node at no cost; Enterprise adds multi-node clustering, SSO, and audit export for regulated deployments.
+Trading firms spend heavily on fast time-series infrastructure, then bolt agent experiments onto separate prompt logs and vector stores. ZeptoDB keeps market facts, strategy memory, cache events, model calls, and decisions on the same replayable timeline. Quants keep standard SQL and zero-copy Python; compliance gets a clearer path from signal to action.
 
 Talk to us about your desk: [Contact Sales →](/contact/)
