@@ -1,0 +1,343 @@
+---
+title: "From Time-Series to Agent Memory: Real-Time Agents on ZeptoDB"
+description: "ZeptoDB started as a microsecond time-series database. Agent Memory adds scoped recall, context assembly, prompt cache, and decision write-back so agents can reason over live data."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+ZeptoDB started with a narrow, hard problem: ingest live time-series data and answer temporal questions at microsecond latency.
+
+That foundation still matters. Trading systems, factories, robots, fleets, grids, and observability stacks all need to know what happened, when it happened, and what changed first.
+
+But an AI agent needs one more layer. It cannot only read the latest rows. It also needs to remember what mattered last time, which prior incident looked similar, which runbook was useful, whether a previous answer can be reused, and what decision it made after seeing the evidence.
+
+That is why ZeptoDB now adds Agent Memory beside the time-series core.
+
+---
+
+## The shift
+
+Before Agent Memory, ZeptoDB answered questions like:
+
+- What did the sensor stream report in the last few minutes?
+- Which ticks matched this strategy window?
+- Which trace, metric, or event happened before the incident?
+- How fast can Python read the result without serialization?
+
+With Agent Memory, the same system can support agent turns:
+
+- Retrieve fresh time-series evidence.
+- Retrieve scoped memories by tenant, user, session, agent, type, recency, importance, and embedding similarity.
+- Assemble context under a token budget.
+- Check exact and semantic prompt cache before calling a model.
+- Write back the decision as durable memory.
+- Keep the whole chain replayable later.
+
+<CardGrid>
+  <Card title="Live facts" icon="seti:clock">
+    Time-series tables keep the ordered operational evidence: sensor readings, market ticks, traces, tool calls, incidents, and outcomes.
+  </Card>
+  <Card title="Agent recall" icon="open-book">
+    Agent Memory stores the reusable context: prior diagnoses, runbooks, user preferences, session notes, decisions, and embeddings.
+  </Card>
+  <Card title="Prompt cache" icon="approve-check-circle">
+    Exact and semantic cache lookup can avoid repeated provider calls when application policy allows reuse.
+  </Card>
+  <Card title="Replay" icon="rocket">
+    Evidence, retrieved memories, cache hits, model calls, tool calls, and decisions can be queried as one timeline.
+  </Card>
+</CardGrid>
+
+---
+
+## Why this is a step forward
+
+The innovation is not "ZeptoDB added a vector search box." The important part is that live time-series evidence, agent memory, prompt cache, and decision replay now sit in one operational path.
+
+Most agent stacks split those responsibilities across separate systems:
+
+- A time-series database stores metrics or events.
+- A vector database stores semantic memories.
+- A cache stores repeated prompts.
+- A tracing system stores model and tool calls.
+- Application code tries to stitch the story together later.
+
+That split works until an agent has to explain or act in real time. By the time the data is copied across systems, the agent may have fast semantic recall but weak operational grounding. It can remember similar text without knowing the exact sequence of events that made the memory relevant.
+
+ZeptoDB makes a different bet:
+
+1. **Memory should be close to the live event stream.** An operational memory is only useful if the agent can connect it to what just happened.
+2. **Context retrieval should happen inside the agent loop.** Microsecond time-series queries and millisecond memory search are fast enough to run before the model call, not only after an incident review.
+3. **Cache should be policy-aware, not invisible.** Exact and semantic cache hits become part of the agent timeline, so teams can see when the model was skipped and why.
+4. **Every answer should be replayable.** The raw evidence, retrieved memories, cache decision, provider call, and final answer can be inspected later with ordinary queries.
+
+That is the product leap: ZeptoDB turns a database from a passive store of historical rows into an active memory substrate for real-time agents.
+
+For teams building agents in factories, trading systems, robotics, fleets, grids, and observability stacks, this changes the shape of the application. The agent can stop treating memory as a detached notebook and start treating it as part of the live operating timeline.
+
+---
+
+## A real-time agent turn
+
+The useful pattern is simple:
+
+```text
+1. A live system emits time-series data.
+2. An agent receives a question or alert.
+3. ZeptoDB queries the latest evidence.
+4. Agent Memory retrieves relevant memories.
+5. The prompt cache is checked before a provider call.
+6. The agent answer is written back as memory.
+7. The full turn remains available for debugging and replay.
+```
+
+Here is a compact demo using a factory maintenance agent. It treats `price` as vibration and `volume` as motor current to keep the table shape small. In production, you can create richer tables for temperature, pressure, state, and tool events.
+
+Start a local server with an Agent Memory snapshot directory:
+
+```bash
+./zepto_http_server --port 8123 --agent-memory-dir ./agent_memory
+```
+
+Then run one agent turn:
+
+```python
+import hashlib
+import json
+import time
+
+import pandas as pd
+import zepto_py as zepto
+
+
+def embed(text: str, dims: int = 8) -> list[float]:
+    """Deterministic demo embedding. Replace with your embedding provider."""
+    digest = hashlib.sha256(text.encode("utf-8")).digest()
+    return [((digest[i] / 255.0) * 2.0) - 1.0 for i in range(dims)]
+
+
+def call_model(question: str, evidence: list[dict], memories: list[str]) -> str:
+    """Mock provider call. Replace with OpenAI, Anthropic, or a local model."""
+    latest = evidence[-1]
+    return (
+        f"Press-7 vibration is rising to {latest['vibration_mg']} mg. "
+        "The pattern matches a prior bearing-wear incident. Inspect bearing wear, "
+        "lubrication, and motor load before increasing throughput."
+    )
+
+
+db = zepto.connect("localhost", 8123)
+
+tenant_id = "factory-a"
+namespace = "maintenance"
+user_id = "operator-12"
+session_id = "shift-2026-05-28"
+agent_id = "maintenance-agent"
+machine_symbol = 7
+
+# 1. Create and ingest a tiny live time-series sample.
+db.create_table(
+    "machine_sensors",
+    [
+        ("symbol", "INT64"),
+        ("price", "INT64"),
+        ("volume", "INT64"),
+        ("timestamp", "INT64"),
+    ],
+    if_not_exists=True,
+)
+
+now = time.time_ns()
+sensor_rows = pd.DataFrame(
+    {
+        "symbol": [machine_symbol] * 5,
+        "price": [102, 110, 119, 137, 153],       # vibration in mg
+        "volume": [4100, 4160, 4210, 4370, 4520], # motor current in mA
+        "timestamp": [now - n * 60_000_000_000 for n in [4, 3, 2, 1, 0]],
+    }
+)
+
+db.ingest_pandas(
+    sensor_rows,
+    symbol_col="symbol",
+    price_col="price",
+    volume_col="volume",
+    timestamp_col="timestamp",
+    table_name="machine_sensors",
+)
+
+# 2. Seed operational memories.
+db.memory.put(
+    "Press-7 vibration rose before bearing wear was found during the last inspection.",
+    embedding=embed("press-7 vibration bearing wear"),
+    tenant_id=tenant_id,
+    namespace=namespace,
+    user_id=user_id,
+    session_id=session_id,
+    agent_id=agent_id,
+    type="incident",
+    metadata_json=json.dumps({"machine_id": "press-7", "source": "maintenance_log"}),
+    token_count=14,
+    importance=0.9,
+    pinned=True,
+)
+
+db.memory.put(
+    "For rising vibration, compare motor current, lubrication state, temperature, and recent bearing service.",
+    embedding=embed("rising vibration inspection checklist"),
+    tenant_id=tenant_id,
+    namespace=namespace,
+    user_id=user_id,
+    session_id=session_id,
+    agent_id=agent_id,
+    type="runbook",
+    metadata_json=json.dumps({"machine_id": "press-7", "source": "runbook"}),
+    token_count=13,
+    importance=0.7,
+)
+
+# 3. Retrieve live evidence from the time-series core.
+evidence_df = db.query_pandas(
+    """
+    SELECT timestamp, price AS vibration_mg, volume AS current_ma
+    FROM machine_sensors
+    WHERE symbol = 7
+    ORDER BY timestamp
+    """
+)
+evidence = evidence_df.tail(5).to_dict("records")
+
+# 4. Retrieve agent memory for the current question.
+question = "Why is press-7 vibration rising, and what should we inspect first?"
+context = db.memory.get_context(
+    query_embedding=embed(question),
+    tenant_id=tenant_id,
+    namespace=namespace,
+    user_id=user_id,
+    session_id=session_id,
+    agent_id=agent_id,
+    token_budget=256,
+    limit=5,
+)
+
+memory_lines = [
+    m.get("content", "")
+    for m in context.get("memories", [])
+]
+
+prompt = "\n".join(
+    [
+        "Answer using both live evidence and retrieved memory.",
+        "",
+        f"Question: {question}",
+        "",
+        "Recent evidence:",
+        json.dumps(evidence, indent=2),
+        "",
+        "Retrieved memory:",
+        *[f"- {line}" for line in memory_lines],
+    ]
+)
+
+# 5. Check exact/semantic prompt cache before calling a model.
+cached = db.cache.lookup(
+    prompt,
+    embedding=embed(prompt),
+    tenant_id=tenant_id,
+    namespace=namespace,
+    semantic_threshold=0.92,
+)
+
+if cached.get("hit"):
+    answer = cached.get("entry", {}).get("response", "")
+    source = f"cache:{cached.get('kind', 'unknown')}"
+else:
+    answer = call_model(question, evidence, memory_lines)
+    db.cache.store(
+        prompt,
+        answer,
+        embedding=embed(prompt),
+        tenant_id=tenant_id,
+        namespace=namespace,
+        metadata_json=json.dumps({"question": question, "agent_id": agent_id}),
+        token_count=len(answer.split()),
+    )
+    source = "provider"
+
+# 6. Write the decision back into Agent Memory.
+decision_id = db.memory.put(
+    answer,
+    embedding=embed(answer),
+    tenant_id=tenant_id,
+    namespace=namespace,
+    user_id=user_id,
+    session_id=session_id,
+    agent_id=agent_id,
+    type="decision",
+    metadata_json=json.dumps(
+        {
+            "question": question,
+            "source": source,
+            "machine_id": "press-7",
+            "latest_vibration_mg": evidence[-1]["vibration_mg"],
+        }
+    ),
+    token_count=len(answer.split()),
+    importance=0.85,
+)
+
+print(
+    {
+        "source": source,
+        "context_memories": len(memory_lines),
+        "context_tokens": context.get("token_count", 0),
+        "decision_id": decision_id,
+        "answer": answer,
+    }
+)
+```
+
+The demo has no external model or embedding dependency. That is intentional. ZeptoDB does not own the provider call. Your application supplies embeddings, prompts, model calls, credentials, and policy. ZeptoDB owns the fast storage, retrieval, cache lookup, context assembly, and replayable telemetry layer.
+
+---
+
+## What this unlocks
+
+This is a different operating model than a standalone vector store attached to an agent framework.
+
+The agent is no longer asking memory in isolation. It can ask the database for the latest facts and the memory layer for prior context in the same turn.
+
+| Agent need | Time-series only | Time-series plus Agent Memory |
+|------------|------------------|-------------------------------|
+| Fresh evidence | Yes | Yes |
+| Prior incident recall | Manual | Native scoped memory search |
+| Prompt reuse | No | Exact and semantic cache |
+| Token-budgeted context | No | Context assembly API |
+| Decision write-back | External log | Memory record beside evidence |
+| Replay | Raw events only | Evidence, context, cache, model call, and decision |
+
+For operational agents, that replayability matters. It lets a team inspect whether the agent used fresh evidence, which memories were retrieved, whether a cached response was reused, and what action followed.
+
+---
+
+## Where to use it
+
+Agent Memory is useful anywhere the agent needs both live facts and durable context:
+
+- Factory and industrial agents diagnosing machines from sensor streams.
+- Trading agents combining live market state with strategy memory and risk decisions.
+- Robotics agents replaying sensor data, actions, operator interventions, and outcomes.
+- Observability agents joining metrics, traces, deploys, runbooks, and remediation history.
+- Support agents that need user/session memory and fresh product telemetry.
+
+The core idea is the same in each case: do not detach memory from the event stream that made it true.
+
+---
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Agent Memory Guide" description="API surface, Python sketch, benchmarks, and operating model" href="/use-cases/agent-memory/" />
+  <LinkCard title="Python Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
+  <LinkCard title="Agent Memory Benchmarks" description="Search, context, cache lookup, and snapshot results" href="/blog/agent-memory-benchmarks/" />
+</CardGrid>

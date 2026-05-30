@@ -1,0 +1,205 @@
+---
+title: "Agent Memory for AI Agents & AgentOps"
+template: splash
+prev: false
+next: false
+description: "Build AI agents on live time-series evidence with ZeptoDB Agent Memory: tenant-scoped recall, context assembly, exact and semantic prompt cache, and AgentOps telemetry."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Time-series tells an agent what happened. Agent Memory tells it what mattered last time. ZeptoDB puts both on the same operational substrate.
+
+---
+
+## Why agents need time-series memory
+
+Most agent memory systems store summaries or embeddings without the live event stream that made those memories true. That is useful for chat, but weak for operational agents. A factory agent, trading agent, robotics agent, or incident-response agent needs to know the exact sequence:
+
+1. Which signals changed?
+2. Which memories were retrieved?
+3. Was a cached answer reused?
+4. Which tool or model was called?
+5. What action followed?
+6. What happened afterward?
+
+ZeptoDB handles that shape directly. The time-series engine stores events, metrics, tool calls, model calls, and outcomes. The Agent Memory layer stores tenant/session scoped memories, embeddings, context windows, and prompt cache entries.
+
+---
+
+## What the combined system unlocks
+
+<CardGrid>
+  <Card title="Grounded agent recall" icon="approve-check-circle">
+    Retrieve memories by tenant, namespace, user, session, agent, type, TTL, importance, recency, access count, and embedding similarity, then tie the result back to raw time-series evidence.
+  </Card>
+  <Card title="Operational prompt cache" icon="star">
+    Check exact and semantic cache entries before calling an external provider. Repeated incidents, alerts, queries, and support flows can reuse prior responses when application policy allows it.
+  </Card>
+  <Card title="Replayable decisions" icon="seti:clock">
+    Store `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, and `tool_calls` as time-series tables. Reconstruct why an agent answered or acted.
+  </Card>
+  <Card title="Live context assembly" icon="rocket">
+    Pull the latest facts from SQL, retrieve durable memories from Agent Memory, fit both under a token budget, and send one grounded context packet to the model.
+  </Card>
+</CardGrid>
+
+---
+
+## Example flow
+
+```text
+1. Live system emits time-series events
+   sensors, ticks, traces, alerts, tool calls, model calls
+
+2. Agent asks a question or receives an alert
+   "Why is press-7 vibration rising?"
+
+3. ZeptoDB retrieves live evidence
+   last 10 minutes of vibration, temperature, current, maintenance events
+
+4. Agent Memory retrieves context
+   similar failures, pinned maintenance notes, prior diagnoses, cache hits
+
+5. Provider call happens only if needed
+   exact cache hit -> reuse
+   semantic cache hit -> reuse with threshold
+   cache miss -> call model
+
+6. Agent writes back
+   decision summary, action, confidence, follow-up, tool results
+
+7. AgentOps timeline remains queryable
+   replay the full chain later with SQL
+```
+
+---
+
+## API surface
+
+| Surface | Use |
+|---------|-----|
+| `POST /api/ai/memories` | Store a memory record with metadata and optional embedding |
+| `POST /api/ai/memories/search` | Search memories with filters, ranking, and top-K retrieval |
+| `POST /api/ai/context` | Assemble deduplicated memory context under a token budget |
+| `POST /api/ai/cache/store` | Store exact/semantic prompt cache entries |
+| `POST /api/ai/cache/lookup` | Lookup exact prompt matches or embedding-similar cached responses |
+| `GET /api/ai/stats` | Inspect aggregate memory/cache counts and capacity metrics |
+| `connection.memory` | Python helper for memory write/search/context calls |
+| `connection.cache` | Python helper for cache store/lookup calls |
+
+ZeptoDB deliberately does not call embedding providers or LLM providers from the server. Your application owns provider choice, model choice, prompts, and embeddings. ZeptoDB owns fast storage, filtering, ranking, context assembly, cache lookup, and telemetry.
+
+---
+
+## Python sketch
+
+```python
+import zepto_py as zepto
+
+conn = zepto.connect("localhost", 8123)
+
+recent = conn.query("""
+    SELECT ts, vibration, temperature, current
+    FROM machine_sensors
+    WHERE machine_id = 'press-7'
+      AND ts > now() - interval '10 minutes'
+    ORDER BY ts
+""")
+
+context = conn.memory.get_context(
+    tenant_id="factory-a",
+    namespace="maintenance",
+    user_id="operator-12",
+    session_id="shift-2026-05-27",
+    agent_id="maintenance-agent",
+    query_embedding=embed("press-7 rising vibration"),
+    limit=8,
+    token_budget=1800,
+)
+
+cached = conn.cache.lookup(
+    tenant_id="factory-a",
+    namespace="maintenance",
+    prompt="Why is press-7 vibration rising?",
+    embedding=embed("Why is press-7 vibration rising?"),
+    semantic_threshold=0.92,
+)
+
+if cached.get("hit"):
+    answer = cached.get("entry", {}).get("response", "")
+else:
+    answer = call_model(recent, context)
+    conn.cache.store(
+        tenant_id="factory-a",
+        namespace="maintenance",
+        prompt="Why is press-7 vibration rising?",
+        response=answer,
+        embedding=embed("Why is press-7 vibration rising?"),
+    )
+
+conn.memory.put(
+    tenant_id="factory-a",
+    namespace="maintenance",
+    user_id="operator-12",
+    session_id="shift-2026-05-27",
+    agent_id="maintenance-agent",
+    type="decision",
+    content=answer,
+    metadata_json='{"machine_id":"press-7","source":"agent"}',
+    embedding=embed(answer),
+    importance=0.87,
+    pinned=False,
+)
+```
+
+---
+
+## Vertical patterns
+
+<CardGrid>
+  <Card title="Industrial agents" icon="rocket">
+    Combine high-frequency vibration, temperature, current, and work-order timelines with prior diagnoses and cached maintenance guidance.
+  </Card>
+  <Card title="Trading agents" icon="seti:clock">
+    Pair tick-by-tick market state with strategy memory, risk decisions, execution outcomes, and compliance replay.
+  </Card>
+  <Card title="Robotics agents" icon="star">
+    Keep sensor fusion data, action outcomes, operator interventions, and policy notes together as replayable episodes.
+  </Card>
+  <Card title="Observability agents" icon="approve-check-circle">
+    Join metrics, traces, deploys, incidents, runbooks, cache hits, LLM calls, and remediation actions in one timeline.
+  </Card>
+</CardGrid>
+
+---
+
+## Performance shape
+
+| Operation | Sample result |
+|-----------|---------------|
+| Time-series ingestion | 5.52M events/sec on a single node |
+| Time-series query | 272μs filter over 1M rows |
+| Python zero-copy | 522ns query result to NumPy |
+| Memory search, 10K records | 1.23ms p50, 1.40ms p95 |
+| Context assembly, 10K records | 1.34ms p50, 1.41ms p95 |
+| Exact cache lookup | 0.00ms p50 |
+| Semantic cache lookup | 0.07ms p50 |
+
+With sparse-projection ANN enabled on the same 128-dimensional benchmark shape, 100K-record search measured 2.41ms p50 and context assembly measured 2.77ms p50. The index is derived in-memory state and falls back to filtered scan when needed.
+
+---
+
+## Current operating model
+
+Agent Memory v0 is single-node. In a cluster, route `/api/ai/*` traffic to one sticky pod or treat the memory layer as a best-effort per-pod cache. The time-series cluster remains distributed; cluster-consistent memory routing, replicated writes, and multi-node memory search are follow-up design areas.
+
+That boundary is intentional for v0: keep the fast path simple, make the API usable, prove the combined time-series plus memory workflow, then harden distributed memory semantics with the existing cluster epoch and routing model.
+
+Talk to us about your agent workflow: [Contact Sales →](/contact/)
+
+---
+
+## Start in Python
+
+If you want the shortest runnable path, use the [Agent Memory Python Quickstart](/use-cases/agent-memory-python-quickstart/). It walks through memory writes, context retrieval, cache lookup, provider fallback, and decision write-back.

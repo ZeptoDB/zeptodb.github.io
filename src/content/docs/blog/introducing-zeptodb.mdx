@@ -1,13 +1,15 @@
 ---
 title: "Introducing ZeptoDB"
-description: "Why we built an open-source microsecond time-series database — and how it compares to kdb+, ClickHouse, and InfluxDB."
+description: "Why we built ZeptoDB: a source-available microsecond time-series database that now adds Agent Memory, prompt cache, and zero-copy Python."
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-The time-series database market has a gap. kdb+ delivers microsecond performance but costs $100K+/year and requires learning a proprietary language. ClickHouse and InfluxDB are affordable but operate at millisecond latency — 100-1000x slower for real-time workloads. None offer zero-copy Python integration for ML pipelines.
+The time-series database market has a gap. kdb+ delivers microsecond performance but costs $100K+/year and requires learning a proprietary language. ClickHouse and InfluxDB are affordable but operate at millisecond latency — 100-1000x slower for real-time workloads. None combine live time-series evidence, agent-scoped memory, prompt cache, and zero-copy Python in one operational layer.
 
 ZeptoDB closes this gap.
+
+Today, that means more than fast tick or sensor queries. ZeptoDB turns live operational timelines into memory for AI agents: raw events, retrieved context, cache hits, model calls, tool calls, and decisions stay replayable with SQL.
 
 ---
 
@@ -41,7 +43,7 @@ Every layer is designed around a single principle: **zero-copy, zero-allocation 
 | SQL | ✗ (q lang) | ✓ | InfluxQL | **✓ Standard SQL** |
 | Python | IPC | — | — | **522ns zero-copy** |
 | ASOF JOIN | ✓ | ✗ | ✗ | **✓** |
-| License | $100K+/yr | OSS | OSS | **OSS (Apache 2.0)** |
+| License | $100K+/yr | OSS | OSS | **BUSL-1.1, free Community** |
 
 ---
 
@@ -63,8 +65,10 @@ Every layer is designed around a single principle: **zero-copy, zero-allocation 
 
 ## What's Next
 
-ZeptoDB is open source under Apache 2.0. We're actively developing:
+ZeptoDB is source-available under BUSL-1.1, with production use allowed by the Additional Use Grant except commercial DBaaS or managed-service resale before the 2030-04-01 Apache-2.0 change date. We're actively developing:
 
+- Cluster-consistent Agent Memory routing and replicated memory writes
+- AgentOps dashboards for retrievals, cache events, LLM calls, and tool calls
 - MQTT / OPC-UA connectors for industrial IoT
 - JDBC/ODBC drivers for BI tool integration
 - Managed cloud offering

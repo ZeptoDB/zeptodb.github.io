@@ -1,0 +1,73 @@
+---
+title: "Documentation"
+description: "Start here for ZeptoDB setup, Agent Memory, APIs, deployment, operations, and benchmarks."
+template: splash
+prev: false
+next: false
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Use this page as the shortest path into the docs. Pick the workflow that matches what you are trying to do.
+
+---
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Quick Start" description="Install ZeptoDB, start the server, insert data, and run the first query." href="/getting-started/quick_start/" />
+  <LinkCard title="Agent Memory" description="Build an agent flow with time-series evidence, context retrieval, and prompt cache." href="/use-cases/agent-memory/" />
+  <LinkCard title="HTTP API" description="Use SQL endpoints, Agent Memory endpoints, auth, metrics, and admin APIs." href="/api/http_reference/" />
+  <LinkCard title="Python API" description="Query data, use dataframe helpers, and call memory/cache helpers from Python." href="/api/python_reference/" />
+</CardGrid>
+
+---
+
+## Choose a path
+
+<CardGrid>
+  <Card title="Build an agent" icon="star">
+    Start with the Agent Memory overview, then use the Python or HTTP reference for implementation details.
+
+    [Agent Memory →](/use-cases/agent-memory/) · [Python API →](/api/python_reference/) · [HTTP API →](/api/http_reference/)
+  </Card>
+  <Card title="Run time-series workloads" icon="seti:clock">
+    Learn the SQL surface, ingestion options, benchmarks, and feed handlers.
+
+    [SQL Reference →](/api/sql_reference/) · [Benchmarks →](/benchmarks/) · [Feed Handlers →](/feeds/feed_handler_guide/)
+  </Card>
+  <Card title="Deploy and operate" icon="approve-check-circle">
+    Move from a local server to Docker, production deployments, Kubernetes, and security operations.
+
+    [Docker →](/deployment/docker/) · [Production Deployment →](/deployment/production_deployment/) · [Security Operations →](/api/security_operations_guide/)
+  </Card>
+  <Card title="Evaluate fit" icon="rocket">
+    Compare ZeptoDB against kdb+, ClickHouse, InfluxDB, and TimescaleDB before choosing an architecture.
+
+    [vs kdb+ →](/compare/vs-kdb/) · [vs ClickHouse →](/compare/vs-clickhouse/) · [vs TimescaleDB →](/compare/vs-timescaledb/)
+  </Card>
+</CardGrid>
+
+---
+
+## Common tasks
+
+| Task | Go to |
+|------|-------|
+| Start a local server | [Quick Start](/getting-started/quick_start/) |
+| Configure Agent Memory persistence | [HTTP API Reference](/api/http_reference/#ai-agent-memory-api) |
+| Write an agent context flow | [Agent Memory](/use-cases/agent-memory/#example-flow) |
+| Query from Python | [Python API Reference](/api/python_reference/) |
+| Use SQL temporal functions | [SQL Reference](/api/sql_reference/) |
+| Deploy with Docker | [Docker Deployment](/deployment/docker/) |
+| Run in production | [Production Deployment](/deployment/production_deployment/) |
+| Set up SSO/RBAC/audit | [Security Operations Guide](/api/security_operations_guide/) |
+| Review latency numbers | [Benchmarks](/benchmarks/) |
+
+---
+
+## Current Agent Memory boundary
+
+Agent Memory v0 is single-node. In clustered deployments, route `/api/ai/*` to one sticky pod or treat the memory layer as a per-pod cache. The distributed time-series cluster remains available for time-series workloads.
+
+For implementation details, use [HTTP API Reference](/api/http_reference/#ai-agent-memory-api) and [Python API Reference](/api/python_reference/#agent-memory-and-cache).

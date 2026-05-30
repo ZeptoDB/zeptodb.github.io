@@ -3,12 +3,12 @@ title: "Autonomous Systems"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for autonomous vehicles, drones, and mobile robots — sensor time-sync, scenario mining, and fleet-scale driving-log replay"
+description: "ZeptoDB for autonomy agents — sensor time-sync, scenario memory, fleet replay, and explainable decisions"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-ASOF JOIN for multi-sensor time sync. Parquet HDB for petabyte-scale replay. One engine from vehicle edge to training cluster.
+Autonomy systems need to replay more than sensor frames. They need the full chain: sensor state, scenario context, retrieved memory, model/tool calls, decisions, and outcomes. ZeptoDB keeps that chain on one timeline.
 
 ---
 
@@ -26,6 +26,9 @@ ASOF JOIN for multi-sensor time sync. Parquet HDB for petabyte-scale replay. One
   </Card>
   <Card title="Fleet scale" icon="star">
     Multi-node cluster handles telemetry from thousands of vehicles concurrently. Symbol partitioning keeps cardinality bounded.
+  </Card>
+  <Card title="Scenario memory" icon="open-book">
+    Store prior interventions, edge cases, triage notes, and agent decisions as searchable memory linked to the driving log.
   </Card>
 </CardGrid>
 
@@ -52,6 +55,12 @@ ASOF JOIN for multi-sensor time sync. Parquet HDB for petabyte-scale replay. One
 - Real-time health monitoring across vehicles and edge compute
 - Disengagement and safety-driver-intervention analytics with window functions
 - Forensic replay when an incident occurs — exact event, exact timing
+
+### Autonomy agent workflows
+- Retrieve similar scenarios before labeling, triage, or remediation
+- Cache repeated explanations for common disengagement patterns
+- Store safety-driver notes, agent summaries, and model/tool calls beside raw logs
+- Reconstruct the decision path from sensor stream to retrieved context to action
 
 ---
 
@@ -96,6 +105,6 @@ GPS / CAN  ──→  │                            │──→  Arrow Flight
 
 ## Why this matters commercially
 
-Autonomy stacks tend to grow three parallel data systems — one for online fusion, one for log replay, one for training data. Each comes with its own ingest path, schema drift, and on-call burden. ZeptoDB is the one engine that serves all three, with the same SQL and the same security model. Teams ship faster, regress less, and reduce the moving parts between a real-world incident and a root-cause answer.
+Autonomy stacks tend to grow separate systems for online fusion, log replay, training data, vector search, and agent traces. Each comes with its own ingest path, schema drift, and on-call burden. ZeptoDB keeps the evidence and the memory together, reducing the distance between a real-world incident and a root-cause answer.
 
 Talk to us about your platform: [Contact Sales →](/contact/)

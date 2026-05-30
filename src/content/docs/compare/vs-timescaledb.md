@@ -3,12 +3,12 @@ title: "ZeptoDB vs TimescaleDB"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB and TimescaleDB — purpose-built time-series vs PostgreSQL extension"
+description: "Compare ZeptoDB and TimescaleDB — microsecond time-series and Agent Memory vs PostgreSQL extension"
 ---
 
 ## Overview
 
-TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpose-built in-memory time-series engine delivering 100x lower latency for real-time workloads.
+TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpose-built in-memory time-series engine delivering lower latency for real-time workloads, with an Agent Memory layer for context retrieval, prompt cache, and AgentOps telemetry.
 
 ---
 
@@ -24,12 +24,13 @@ TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpo
 | **Window Functions** | ✓ + EMA, VWAP built-in | PostgreSQL window functions |
 | **xbar (time bucketing)** | ✓ | `time_bucket()` |
 | **Python Zero-Copy** | **522ns** | psycopg2 (~ms) |
+| **Agent Memory** | Native memory + exact/semantic cache layer | Separate stack required |
 | **JIT Compilation** | LLVM JIT | PostgreSQL JIT (limited) |
 | **SIMD** | Highway (AVX2/512, NEON) | ✗ |
 | **Continuous Aggregates** | Window functions | ✓ (materialized) |
 | **Compression** | Parquet (columnar) | Row-level compression |
 | **Ecosystem** | Growing | Full PostgreSQL ecosystem |
-| **License** | Apache 2.0 | Apache 2.0 (Community) / Proprietary (Cloud) |
+| **License** | BUSL-1.1, free Community | Apache 2.0 (Community) / Proprietary (Cloud) |
 
 ---
 
@@ -39,6 +40,7 @@ TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpo
 - ASOF JOIN for sensor, robot, or tick-by-tick alignment
 - Millions of events/sec ingestion throughput
 - Python zero-copy for ML feature stores and analytics pipelines
+- Agent Memory for operational agents that need timeline evidence and durable context
 - Multi-vertical footprint (Physical AI, industrial, automotive, energy, markets) where PostgreSQL would be a mismatch
 
 ## When TimescaleDB May Be Better

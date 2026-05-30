@@ -3,12 +3,12 @@ title: "Physical AI & Robotics"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for humanoids, manipulators, and mobile robots — sensor fusion, RL feature stores, and real-time inference pipelines"
+description: "ZeptoDB for robotic agents — sensor fusion, action memory, RL feature stores, and replayable real-time decisions"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-The time-series substrate for Physical AI. Ingest every sensor, align every stream, serve features to your model in microseconds.
+Robotic agents need more than fast telemetry. They need a memory of what the robot observed, what action was taken, which context was retrieved, and what happened afterward. ZeptoDB keeps the high-frequency sensor timeline and the agent memory timeline together.
 
 ---
 
@@ -26,6 +26,9 @@ The time-series substrate for Physical AI. Ingest every sensor, align every stre
   </Card>
   <Card title="Episodes on S3" icon="star">
     Replay petabyte-scale Parquet episodes for offline RL training, imitation learning, and regression tests. Hot + cold in one query.
+  </Card>
+  <Card title="Action memory" icon="open-book">
+    Store retrieved context, operator interventions, policy notes, tool calls, and action outcomes beside the raw sensor stream.
   </Card>
 </CardGrid>
 
@@ -52,6 +55,12 @@ The time-series substrate for Physical AI. Ingest every sensor, align every stre
 - Treat simulation rollouts and real-robot episodes as the same schema
 - Compare policy performance across batches with standard SQL aggregates
 - Versioned datasets via immutable Parquet snapshots
+
+### Agent memory for robot behavior
+- Store memory records for failed grasps, successful recoveries, operator corrections, and safety interventions
+- Retrieve similar episodes before an agent chooses a plan
+- Replay the chain from sensor data to retrieved context to action outcome
+- Cache repeated diagnostic responses during fleet operations
 
 ---
 
@@ -101,6 +110,6 @@ tensor = torch.from_numpy(result.to_numpy())  # zero-copy view
 
 ## Why this matters commercially
 
-Physical AI teams routinely assemble a stack of Kafka, Parquet, Redis, and a custom ASOF-JOIN service — then spend quarters on reliability. ZeptoDB collapses that stack into one engine with one operational model. The result is fewer moving parts in production, shorter iteration cycles for the research team, and a credible path from prototype to fleet.
+Physical AI teams routinely assemble Kafka, Parquet, Redis, vector search, and a custom ASOF-JOIN service, then spend quarters keeping the stack coherent. ZeptoDB collapses the hot path into one operational model: raw sensor facts, temporal joins, agent memory, cache lookup, and replayable AgentOps telemetry.
 
 Talk to us about your pipeline: [Contact Sales →](/contact/)

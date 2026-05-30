@@ -3,12 +3,12 @@ title: "ZeptoDB vs ClickHouse"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB and ClickHouse — microsecond vs millisecond latency for time-series workloads"
+description: "Compare ZeptoDB and ClickHouse — microsecond time-series plus Agent Memory vs millisecond OLAP"
 ---
 
 ## Overview
 
-ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-built for real-time time-series where microsecond latency and temporal operations (ASOF JOIN, EMA, Window JOIN) are critical — whether the source is an exchange, a robot, a factory line, a fleet of vehicles, or a grid of meters.
+ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-built for real-time time-series where microsecond latency, temporal operations, and agent-ready context are critical — whether the source is an exchange, a robot, a factory line, a fleet of vehicles, or a grid of meters.
 
 ---
 
@@ -25,12 +25,13 @@ ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-
 | **EMA / VWAP** | ✓ (built-in) | UDF required |
 | **xbar (time bucketing)** | ✓ | `toStartOfInterval()` |
 | **Python Zero-Copy** | **522ns** | — (requires serialization) |
+| **Agent Memory** | Native memory + exact/semantic cache layer | Separate stack required |
 | **JIT Compilation** | LLVM JIT | Partial |
 | **SIMD** | Highway (AVX2/512, NEON) | SSE4.2/AVX2 |
 | **Real-Time Ingestion** | Lock-free ring buffer | Async inserts + merge |
 | **Feed Handlers** | FIX, ITCH, Binance, Kafka | Kafka (via connector) |
 | **Clustering** | Multi-node auto-sharding | ReplicatedMergeTree + ZooKeeper |
-| **License** | Apache 2.0 | Apache 2.0 |
+| **License** | BUSL-1.1, free Community | Apache 2.0 |
 
 ---
 
@@ -40,6 +41,7 @@ ClickHouse excels at analytical queries over large datasets. ZeptoDB is purpose-
 - You need ASOF JOIN, Window JOIN, or built-in temporal analytics
 - Real-time streaming ingestion at millions of events/sec
 - Python zero-copy for ML, feature stores, or quant research
+- Agent Memory for context retrieval, prompt cache, and AgentOps telemetry beside live events
 - Physical AI, sensor fusion, autonomous systems, industrial control, or market data — any workload where time alignment matters
 
 ## When ClickHouse May Be Better

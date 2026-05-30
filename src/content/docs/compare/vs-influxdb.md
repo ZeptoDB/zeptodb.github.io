@@ -3,12 +3,12 @@ title: "ZeptoDB vs InfluxDB"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB and InfluxDB — microsecond latency and SQL vs InfluxQL"
+description: "Compare ZeptoDB and InfluxDB — microsecond time-series, SQL, and Agent Memory vs metrics-first storage"
 ---
 
 ## Overview
 
-InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targets a different envelope — workloads where microsecond latency, ASOF JOIN, and high-throughput ingestion are non-negotiable, across Physical AI, industrial, automotive, energy, and market data.
+InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targets a different envelope — workloads where microsecond latency, ASOF JOIN, high-throughput ingestion, and agent-ready operational memory are non-negotiable.
 
 ---
 
@@ -23,12 +23,13 @@ InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targe
 | **Window Functions** | ✓ (full SQL window) | Limited |
 | **EMA / VWAP** | ✓ (built-in) | Flux function |
 | **Python Zero-Copy** | **522ns** | Client library (ms) |
+| **Agent Memory** | Native memory + exact/semantic cache layer | Separate stack required |
 | **Storage** | In-memory + Parquet HDB | TSM engine (disk) |
 | **Cardinality** | No limit (symbol-partitioned) | High cardinality issues |
 | **JIT Compilation** | LLVM JIT | ✗ |
 | **Feed Handlers** | FIX, ITCH, Binance, Kafka | Telegraf plugins |
 | **Clustering** | Multi-node auto-sharding | Enterprise only (paid) |
-| **License** | Apache 2.0 | MIT (OSS) / Proprietary (Cloud) |
+| **License** | BUSL-1.1, free Community | MIT (OSS) / Proprietary (Cloud) |
 
 ---
 
@@ -39,6 +40,7 @@ InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targe
 - High-throughput ingestion (millions of events/sec)
 - Standard SQL preferred over InfluxQL / Flux
 - Python zero-copy for ML pipelines and feature stores
+- Agent Memory for operational agents over metrics, incidents, and telemetry
 - High-cardinality data (fleets, devices, meters — no cardinality penalty)
 
 ## When InfluxDB May Be Better

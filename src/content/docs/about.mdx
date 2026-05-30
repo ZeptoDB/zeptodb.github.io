@@ -3,50 +3,65 @@ title: "About ZeptoDB"
 template: splash
 prev: false
 next: false
-description: "The story behind ZeptoDB — microsecond time-series for every team building a real-time system"
+description: "The story behind ZeptoDB — turning live time-series into operational memory for AI agents"
 ---
 
 ## Mission
 
-Make microsecond-latency time-series the default substrate for anyone building a real-time system — from a humanoid startup in a garage to a grid operator keeping the lights on.
+Make live operational data usable as memory for AI agents. ZeptoDB keeps the time-series engine fast enough for real-world systems, then adds the context, cache, and replay layer agents need to act with evidence.
 
 ---
 
 ## Why we built ZeptoDB
 
-A new generation of systems has the same bottleneck, regardless of industry. A humanoid robot, a factory cell, a driverless vehicle, a smart meter network, and a trading desk all produce time-series data faster than a conventional database can ingest it, align it, and hand it to a model.
+Robots, factories, trading desks, fleets, grids, and observability platforms all produce the same kind of hard data: ordered events arriving faster than conventional databases can ingest, align, and query. AI agents are now being attached to those systems, but most agent stacks treat memory as a separate prompt artifact or vector index.
 
-Existing options all force a trade-off:
+That split loses the most important thing: time.
 
-- **kdb+** delivers microsecond performance, but costs $100K+/year and ships with a proprietary language that most teams don't want to learn in 2026.
-- **ClickHouse, TimescaleDB, InfluxDB** are affordable, mature, and well-loved — but they run at millisecond latency and were not designed for the closed-loop and tick-by-tick workloads emerging across Physical AI, autonomy, and industrial control.
-- **None** offer a 522ns zero-copy path into Python, which is where the model that consumes the data actually lives.
+The useful question is not only "which memory is semantically similar?" It is also:
 
-ZeptoDB closes that gap. Microsecond performance. Standard SQL. Zero-copy to NumPy and PyTorch. Open source at the core, with a sensible Enterprise edition for clustering, SSO, and audited feature gating.
+- What happened before this decision?
+- Which raw signals changed?
+- What did the agent retrieve?
+- Did we call a model or reuse a cache hit?
+- Which action followed, and what happened afterward?
+
+ZeptoDB closes that gap. The time-series core stores the operational timeline. The Agent Memory layer stores agent-scoped context, embeddings, cache entries, and retrieval metadata beside that timeline. Together they make agent behavior replayable, debuggable, and grounded in live data.
+
+---
+
+## What ZeptoDB is
+
+- **A microsecond time-series engine** for high-throughput ingestion, temporal joins, SQL analytics, hot/cold storage, and zero-copy Python.
+- **An additive Agent Memory layer** for tenant/session scoped memories, client-supplied embeddings, context assembly, and exact/semantic prompt cache lookup.
+- **An AgentOps substrate** where agent runs, retrieval events, cache events, LLM calls, tool calls, and raw operational events can share one timeline.
+
+ZeptoDB is not trying to become a generic standalone vector database. Its strength is the combination: raw events explain what happened, memory records explain what the agent learned, and SQL ties both back to time.
 
 ---
 
 ## Who uses ZeptoDB
 
-- Robotics and Physical AI teams wiring up sensor fusion and RL feature stores
-- Manufacturers running predictive maintenance and SPC at 10KHz
-- Autonomy groups replaying petabyte-scale driving logs and mining scenarios
-- Utilities ingesting PMU and smart-meter telemetry across millions of endpoints
-- Trading desks needing kdb+-class performance on standard SQL
-- Platform teams building observability and telemetry products at high cardinality
+- Agentic AI teams connecting agents to live operational systems
+- Robotics and Physical AI teams wiring up sensor fusion, action replay, and policy memory
+- Manufacturers building maintenance and quality agents over high-frequency telemetry
+- Autonomy groups replaying driving logs, scenarios, retrieved context, and decisions
+- Utilities building grid agents over PMU streams, incidents, and operator actions
+- Trading desks pairing tick-by-tick market state with strategy memory and audit trails
+- Platform teams building observability agents over metrics, traces, deploys, and incidents
 
-One engine, one operational model, one SQL dialect.
+One engine, one timeline, one place to connect facts with decisions.
 
 ---
 
 ## Technical philosophy
 
-- **Zero-copy everywhere** — data flows from network to column store to Python without copying
-- **LLVM JIT** — queries compile to native code, not interpreted
-- **SIMD-first** — Highway library for portable AVX2 / AVX-512 / NEON vectorization
-- **Lock-free ingestion** — MPMC ring buffer, no mutex on the hot path
-- **SQL, not a DSL** — standard SQL with temporal extensions (ASOF JOIN, xbar, EMA)
-- **Open source core, no phone-home** — the engine is yours; Enterprise features are gated by offline-validated license
+- **Time first** — every fact, memory, retrieval, and action should be explainable in sequence
+- **Zero-copy everywhere** — data flows from network to column store to Python without unnecessary serialization
+- **Client-controlled AI boundaries** — applications provide embeddings and call model providers; ZeptoDB stores, filters, ranks, and retrieves
+- **SQL, not a DSL** — standard SQL with temporal extensions for operational teams
+- **Memory beside evidence** — agent memories should not drift away from the raw events that made them useful
+- **Source-available core, no phone-home** — BUSL-1.1 with an Additional Use Grant for production use, plus offline-validated Enterprise feature gates
 
 ---
 
@@ -58,10 +73,12 @@ One engine, one operational model, one SQL dialect.
 | Compiler | Clang 19 |
 | JIT | LLVM 19 |
 | SIMD | Google Highway |
-| Build | CMake + Ninja |
-| Python | pybind11 (zero-copy NumPy) |
+| Ingestion | Lock-free MPMC ring buffer |
+| Agent Memory | C++ store, HTTP API, Python helpers, sidecar snapshots |
+| Embeddings | Client-supplied `float32`, optional sparse-projection ANN candidate index |
+| Python | pybind11 and HTTP client helpers |
 | Serialization | Apache Arrow / Parquet |
-| Networking | io_uring (Linux) |
+| Networking | io_uring, HTTP, Arrow Flight |
 | TLS | OpenSSL 3.x |
 
 ---

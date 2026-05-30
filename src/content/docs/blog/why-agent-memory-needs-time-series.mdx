@@ -1,0 +1,118 @@
+---
+title: "Why Agent Memory Needs Time-Series Data"
+description: "Agent memory is weaker when it is detached from the live event stream. ZeptoDB keeps memories, prompt cache, AgentOps telemetry, and time-series evidence on one replayable timeline."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Most agent memory systems start as summaries, embeddings, or chat history. That works for conversational recall, but it breaks down when agents operate real systems: factories, robots, trading systems, fleets, grids, observability pipelines, and support workflows.
+
+Operational agents do not only need to remember similar text. They need to know what happened, in what order, which evidence was available, which context was retrieved, whether a cached answer was reused, which model or tool was called, and what happened afterward.
+
+That is a time-series problem.
+
+---
+
+## The missing timeline
+
+Vector search can answer:
+
+- Which stored memory is semantically similar?
+- Which prior response looks close to this prompt?
+- Which document chunk matches the current query?
+
+An operational agent also needs to answer:
+
+- What changed before the alert?
+- Which raw signal made this memory useful?
+- Did the agent act on fresh evidence or stale context?
+- Was the answer from an exact cache hit, a semantic cache hit, or a model call?
+- What did the system do after the recommendation?
+
+Those questions require ordered events. Without the event stream, memory becomes detached from the conditions that made it true.
+
+---
+
+## What ZeptoDB stores together
+
+ZeptoDB combines a microsecond in-memory time-series engine with an Agent Memory layer. The goal is not to replace every vector database or every model framework. The goal is to keep agent context beside the live evidence that explains it.
+
+<CardGrid>
+  <Card title="Live evidence" icon="seti:clock">
+    Store ticks, sensors, metrics, traces, tool calls, model calls, incidents, and operator actions as time-series data.
+  </Card>
+  <Card title="Agent memory" icon="open-book">
+    Store memories with tenant, namespace, user, session, agent, type, metadata, importance, TTL, pinned status, and client-supplied embeddings.
+  </Card>
+  <Card title="Prompt cache" icon="approve-check-circle">
+    Check exact normalized prompts and semantic cache candidates before calling an external model provider.
+  </Card>
+  <Card title="AgentOps telemetry" icon="rocket">
+    Track runs, retrieval events, cache events, LLM calls, and tool calls as ordinary queryable tables.
+  </Card>
+</CardGrid>
+
+---
+
+## A simple incident flow
+
+```text
+1. Machine telemetry starts drifting
+   vibration, temperature, current, pressure
+
+2. An agent receives an alert
+   "Why is press-7 vibration rising?"
+
+3. ZeptoDB retrieves recent evidence
+   last 10 minutes of sensor readings and maintenance events
+
+4. Agent Memory retrieves prior context
+   similar incidents, pinned notes, previous diagnoses, cache hits
+
+5. The application decides whether to call a model
+   exact cache hit -> reuse
+   semantic cache hit -> reuse if policy allows
+   cache miss -> call provider
+
+6. The agent writes back the decision
+   summary, action, confidence, follow-up, tool result
+
+7. The whole chain remains replayable
+   evidence, context, cache, model calls, tools, outcome
+```
+
+This is the difference between "the embedding looked similar" and "the agent used the right evidence at the right time."
+
+---
+
+## Why this matters for SEO, observability, and safety
+
+For teams building agents, replay is not a luxury. It is how you debug cost, accuracy, latency, and risk.
+
+| Question | Detached memory | Time-series memory |
+|----------|-----------------|--------------------|
+| Why did the agent answer this way? | Memory IDs and prompt logs | Evidence, context, cache, tool calls, and outcome |
+| Was the answer stale? | Hard to prove | Query event timestamps and TTLs |
+| Did the cache save money? | Separate tracking | Cache events beside model calls |
+| Which context was reused? | Vector search logs | Filtered memories plus source timeline |
+| Can we replay a bad decision? | Partial | SQL over the full chain |
+
+---
+
+## What ZeptoDB deliberately does not do
+
+ZeptoDB does not call embedding providers or LLM providers from the server. Your application owns prompts, model choice, provider credentials, and embeddings. ZeptoDB owns storage, filtering, ranking, cache lookup, context assembly, telemetry, and time-series replay.
+
+The current Agent Memory implementation is single-node. In clustered deployments, route `/api/ai/*` traffic to one sticky pod or treat the memory layer as a per-pod cache until cluster-consistent memory routing lands.
+
+That boundary is intentional: make the API useful first, keep the fast path simple, and evolve distributed memory semantics with the existing cluster routing model.
+
+---
+
+## Start here
+
+<CardGrid>
+  <LinkCard title="Agent Memory Guide" description="API surface, Python sketch, performance shape, and operating model" href="/use-cases/agent-memory/" />
+  <LinkCard title="Benchmarks" description="Ingestion, query latency, zero-copy Python, and memory search numbers" href="/benchmarks/" />
+  <LinkCard title="Agent Memory vs Vector Databases" description="When you need a timeline beside semantic recall" href="/compare/agent-memory-vs-vector-databases/" />
+</CardGrid>

@@ -27,6 +27,8 @@ const navLinks = [
     label: 'Product',
     href: '/features/',
     children: [
+      { label: 'Agent Memory', href: '/use-cases/agent-memory/' },
+      { label: 'Python Agent Memory Quickstart', href: '/use-cases/agent-memory-python-quickstart/' },
       { label: 'Features', href: '/features/' },
       { label: 'Benchmarks', href: '/benchmarks/' },
       { label: 'Security', href: '/security/' },
@@ -35,8 +37,10 @@ const navLinks = [
   },
   {
     label: 'Use Cases',
-    href: '/use-cases/robotics/',
+    href: '/use-cases/agent-memory/',
     children: [
+      { label: 'AI Agents & AgentOps', href: '/use-cases/agent-memory/' },
+      { label: 'Python Agent Memory Quickstart', href: '/use-cases/agent-memory-python-quickstart/' },
       { label: 'Physical AI & Robotics', href: '/use-cases/robotics/' },
       { label: 'Industrial IoT & Smart Factory', href: '/use-cases/iot/' },
       { label: 'Autonomous Systems', href: '/use-cases/autonomous-vehicles/' },
@@ -48,13 +52,25 @@ const navLinks = [
     label: 'Compare',
     href: '/compare/vs-kdb/',
     children: [
+      { label: 'Agent Memory vs Vector DBs', href: '/compare/agent-memory-vs-vector-databases/' },
       { label: 'vs kdb+', href: '/compare/vs-kdb/' },
       { label: 'vs ClickHouse', href: '/compare/vs-clickhouse/' },
       { label: 'vs InfluxDB', href: '/compare/vs-influxdb/' },
       { label: 'vs TimescaleDB', href: '/compare/vs-timescaledb/' },
     ],
   },
-  { label: 'Docs', href: '/getting-started/quick_start/' },
+  {
+    label: 'Docs',
+    href: '/docs/',
+    children: [
+      { label: 'Docs Home', href: '/docs/' },
+      { label: 'Quick Start', href: '/getting-started/quick_start/' },
+      { label: 'Agent Memory', href: '/use-cases/agent-memory/' },
+      { label: 'HTTP API', href: '/api/http_reference/' },
+      { label: 'Python API', href: '/api/python_reference/' },
+      { label: 'Deployment', href: '/deployment/production_deployment/' },
+    ],
+  },
   { label: 'Pricing', href: '/pricing/' },
   { label: 'Blog', href: '/blog/' },
   { label: 'Community', href: '/community/' },

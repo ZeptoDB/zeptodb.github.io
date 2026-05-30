@@ -121,7 +121,7 @@ async function main() {
   const manualDir = join(import.meta.dirname, '..', 'src', 'content', 'docs-manual');
   // Save manual files
   const manualEntries = [
-    'index.mdx', 'features.mdx', 'pricing.mdx', 'integrations.mdx',
+    'index.mdx', 'docs.mdx', 'features.mdx', 'pricing.mdx', 'integrations.mdx',
     'security.mdx', 'community.mdx', 'about.mdx', 'contact.md',
   ];
   const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog'];
