@@ -1,6 +1,6 @@
 ---
 title: ZeptoDB
-description: "ZeptoDB turns live time-series data into agent memory with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python."
+description: "ZeptoDB turns live time-series data into operational memory for AI agents with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python."
 template: splash
 head:
   - tag: title
@@ -14,13 +14,13 @@ head:
       name: twitter:title
       content: "ZeptoDB | Agent Memory for Live Time-Series Data"
 hero:
-  tagline: "Turn live time-series data into operational memory for AI agents. ZeptoDB captures what happened, retrieves what matters, and feeds context back into agent loops."
+  tagline: "Operational memory for AI agents running on live systems. ZeptoDB captures event streams, recalls evidence in microseconds, reduces repeated model calls, and leaves a replayable trail from signal to decision."
   actions:
     - text: Agent Memory
       link: /use-cases/agent-memory/
       icon: right-arrow
-    - text: Quick Start
-      link: /getting-started/quick_start/
+    - text: Talk to Sales
+      link: /contact/
       icon: right-arrow
       variant: secondary
     - text: GitHub
@@ -33,9 +33,9 @@ import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
 ## Time-series data becomes agent memory
 
-Time-series data answers **what happened, when, and in what order**. Agent memory answers **what the agent learned, decided, reused, or should recall next**. ZeptoDB combines both layers so agents can work directly against the live history of a system instead of a detached prompt log.
+AI agents fail in production when they cannot see the latest facts, remember what worked last time, or explain why they acted. Most teams patch that gap with a time-series database, a vector store, a prompt cache, and a separate observability stack.
 
-The time-series engine stores the raw operational truth: ticks, sensor readings, traces, incidents, tool calls, robot state, and market events. The Agent Memory layer stores agent-scoped context beside it: memories, embeddings, retrieval filters, token-budgeted context, exact prompt cache hits, semantic cache hits, and AgentOps telemetry.
+ZeptoDB makes that one operational path. The time-series engine stores the raw operational truth: ticks, sensor readings, traces, incidents, tool calls, robot state, and market events. The Agent Memory layer stores agent-scoped context beside it: memories, embeddings, retrieval filters, token-budgeted context, exact prompt cache hits, semantic cache hits, and AgentOps telemetry.
 
 <CardGrid stagger>
   <Card title="5.52M observations/sec" icon="rocket">
@@ -53,6 +53,33 @@ The time-series engine stores the raw operational truth: ticks, sensor readings,
 </CardGrid>
 
 Benchmark claims are defined by hardware, build, data shape, scope, and measurement protocol. See the [benchmark criteria and reproduction notes](/benchmarks/#benchmark-criteria) before comparing or republishing a single number.
+
+---
+
+## Business case for production agents
+
+<CardGrid>
+  <Card title="Ship agents on live data" icon="rocket">
+    Build maintenance, risk, robotics, observability, and grid agents that ask the database for current evidence and durable context in the same turn.
+
+    [Agent Memory →](/use-cases/agent-memory/)
+  </Card>
+  <Card title="Reduce model spend" icon="approve-check-circle">
+    Put exact and semantic cache lookup before the provider call. Avoid repeated LLM work on recurring operational questions, alerts, and support workflows.
+
+    [Python Quickstart →](/use-cases/agent-memory-python-quickstart/)
+  </Card>
+  <Card title="Shorten investigations" icon="seti:clock">
+    Reconstruct what the agent saw, which memories it retrieved, whether it reused a response, which tool it called, and what happened next.
+
+    [Benchmarks →](/benchmarks/)
+  </Card>
+  <Card title="Consolidate the stack" icon="star">
+    Replace a fragile chain of TSDB + vector database + cache + log store for operational agents with one timeline and standard SQL.
+
+    [Agent Memory vs Vector DBs →](/compare/agent-memory-vs-vector-databases/)
+  </Card>
+</CardGrid>
 
 ---
 
@@ -135,6 +162,7 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 
 - **One timeline for facts and decisions.** Store raw events in the time-series engine and agent memory records beside the workflows that consume them.
 - **Fast enough for the agent loop.** Microsecond time-series recall, millisecond-scale memory search, exact/semantic prompt cache lookup, and zero-copy Python access.
+- **A clearer business case.** Reduce duplicate provider calls, shorten incident investigations, and give compliance teams a replayable trail instead of a disconnected prompt log.
 - **Context with operational filters.** Tenant, namespace, user, session, agent, type, TTL, importance, pinned status, recency, and access count are first-class retrieval signals.
 - **Not just a vector database.** ZeptoDB does not replace the live operational database with a detached vector index. The memory layer sits beside the event stream that explains why the memory matters.
 - **Production-shaped surfaces.** HTTP endpoints, Python helpers, Prometheus metrics, sidecar snapshots, and examples for provider cache and LangGraph-style flows.
@@ -162,8 +190,8 @@ Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vect
 <CardGrid>
   <LinkCard title="Agent Memory" description="How live time-series becomes context, cache, and replay for agents" href="/use-cases/agent-memory/" />
   <LinkCard title="Python Agent Memory Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
-  <LinkCard title="Quick Start" description="From zero to first query in 5 minutes" href="/getting-started/quick_start/" />
+  <LinkCard title="Quick Start" description="First query or agent memory loop in minutes" href="/getting-started/quick_start/" />
   <LinkCard title="Features" description="Time-series engine, memory layer, APIs, storage, and security" href="/features/" />
   <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and Agent Memory recall" href="/benchmarks/" />
-  <LinkCard title="Agent Memory vs Vector DBs" description="When semantic recall needs a time-series timeline beside it" href="/compare/agent-memory-vs-vector-databases/" />
+  <LinkCard title="Talk to Sales" description="Discuss agent workflows, deployment shape, support, and Enterprise requirements" href="/contact/" />
 </CardGrid>

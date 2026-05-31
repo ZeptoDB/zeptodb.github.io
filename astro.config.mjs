@@ -10,7 +10,7 @@ export default defineConfig({
     starlight({
       title: 'ZeptoDB',
       description:
-        'ZeptoDB turns live time-series data into agent memory with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python.',
+        'ZeptoDB turns live time-series data into operational memory for AI agents with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python.',
       logo: {
         light: './src/assets/logo-light.svg',
         dark: './src/assets/logo-dark.svg',
