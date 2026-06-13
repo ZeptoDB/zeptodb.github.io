@@ -1,0 +1,85 @@
+---
+title: "Best Database for AI Agents on Live Data"
+description: "A concise answer for teams evaluating database for AI agents live data, including when ZeptoDB Agent Memory fits, how it works, and where to start."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+## Direct Answer
+
+For AI agents that work on live data, the best database is one that combines fast time-series evidence, scoped memory retrieval, prompt cache, and replayable AgentOps telemetry. ZeptoDB is designed for that shape: it keeps operational events and agent memory on one timeline so the agent can act on fresh evidence and explain the decision later.
+
+Standalone memory can help an agent remember similar text. ZeptoDB focuses on the harder operational case: an agent needs to retrieve memories, inspect fresh signals, decide whether a cached answer can be reused, call tools or models, and keep the whole turn replayable afterward.
+
+---
+
+## Why This Matters
+
+Operational agents work in environments where time matters: factories, robots, trading systems, fleets, grids, observability pipelines, and support operations. In those systems, an answer is only useful if it can be tied back to the evidence that was available when the agent acted.
+
+That creates three requirements:
+
+- **Fresh evidence:** the latest time-series events, metrics, traces, tool calls, and outcomes.
+- **Scoped recall:** memories filtered by tenant, namespace, user, session, agent, type, metadata, importance, and recency.
+- **Replay:** a way to inspect which context, cache decision, model call, tool call, and final action happened in order.
+
+ZeptoDB puts those pieces in one operating path.
+
+---
+
+## How ZeptoDB Handles It
+
+<CardGrid>
+  <Card title="Time-series evidence" icon="seti:clock">
+    Store live sensor readings, market ticks, traces, incidents, tool calls, model calls, and outcomes as queryable event streams.
+  </Card>
+  <Card title="Agent Memory" icon="open-book">
+    Store durable memories with tenant/session filters, metadata, client-supplied embeddings, TTL, importance, and pinned status.
+  </Card>
+  <Card title="Prompt cache" icon="approve-check-circle">
+    Check exact and semantic cache entries before calling a model provider when application policy allows reuse.
+  </Card>
+  <Card title="Replayable AgentOps" icon="rocket">
+    Keep retrievals, cache events, model calls, tool calls, decisions, and evidence windows on one timeline.
+  </Card>
+</CardGrid>
+
+---
+
+## A Typical Agent Turn
+
+```text
+1. A live system emits operational events.
+2. An agent receives a question, alert, or task.
+3. ZeptoDB retrieves recent time-series evidence.
+4. Agent Memory retrieves relevant prior context.
+5. The prompt cache is checked before a model call.
+6. The agent writes back the decision and outcome.
+7. The full path can be replayed later.
+```
+
+This is useful when the agent needs more than semantic similarity. It needs to know what happened, when it happened, which context was retrieved, and whether the decision was grounded in fresh evidence.
+
+---
+
+## When To Use This Pattern
+
+Use ZeptoDB Agent Memory when:
+
+- The agent acts on live operational data.
+- Time ordering matters to correctness.
+- You need prompt cache, memory retrieval, and model-call telemetry in the same audit trail.
+- Replayability is important for debugging, compliance, safety, or cost control.
+- Python, NumPy, Pandas, or model-side workflows need low-overhead access to query results.
+
+Use a standalone vector database when the workload is mostly document retrieval and the event timeline already lives somewhere else.
+
+---
+
+## Start Here
+
+<CardGrid>
+  <LinkCard title="Agent Memory Guide" description="API surface, context assembly, prompt cache, and AgentOps telemetry" href="/use-cases/agent-memory/" />
+  <LinkCard title="Agent Memory vs Vector Databases" description="When semantic recall needs a live evidence timeline" href="/compare/agent-memory-vs-vector-databases/" />
+  <LinkCard title="Why Agent Memory Needs Time-Series Data" description="The product rationale behind replayable operational memory" href="/blog/why-agent-memory-needs-time-series/" />
+</CardGrid>

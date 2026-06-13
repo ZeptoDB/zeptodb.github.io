@@ -17,6 +17,8 @@ const keywords = [
 const ogImage = new URL('/og-default.png', Astro.site);
 const ogImageAlt = 'ZeptoDB: agent memory for live time-series data';
 const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
+const googleSiteVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
+const bingSiteVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION?.trim();
 
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
@@ -77,6 +79,8 @@ const jsonLd = JSON.stringify({
 <meta property="og:image:alt" content={ogImageAlt} />
 <meta name="twitter:image" content={ogImage.href} />
 <meta name="twitter:image:alt" content={ogImageAlt} />
+{googleSiteVerification && <meta name="google-site-verification" content={googleSiteVerification} />}
+{bingSiteVerification && <meta name="msvalidate.01" content={bingSiteVerification} />}
 <script type="application/ld+json" set:html={jsonLd} />
 
 {gaMeasurementId && (

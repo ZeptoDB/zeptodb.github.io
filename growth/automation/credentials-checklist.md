@@ -29,6 +29,8 @@ Suggested repository variables:
 
 ```text
 PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
+PUBLIC_GOOGLE_SITE_VERIFICATION=
+PUBLIC_BING_SITE_VERIFICATION=
 ```
 
 ## OpenAI And AI Search Monitoring
