@@ -11,3 +11,15 @@ reddit-robotics-01,/use-cases/robotics/,reddit,comment,2026-06-robotics-memory,r
 reddit-kdb-01,/compare/vs-kdb/,reddit,comment,2026-06-timeseries-agents,kdb-alternative-v1,kdb-alternative,growth,Use only when alternatives are requested.
 hackernews-show-01,/blog/introducing-zeptodb/,hackernews,launch,2026-06-timeseries-agents,hn-show-launch-v1,microsecond-time-series,growth,Use only when launch story is ready.
 github-profile-01,/getting-started/quick_start/,github,profile,2026-06-agent-memory,github-readme-link-v1,quick-start,growth,Use in project profile or repo links.
+x-agent-memory-definition-01,/blog/what-is-agent-memory/,x,post,2026-06-answer-pages,x-agent-memory-definition-v1,what-is-agent-memory,growth,Definition post for X.
+x-agent-memory-definition-02,/blog/what-is-agent-memory/,x,post,2026-06-answer-pages,x-agent-memory-proof-v1,agent-memory,growth,Operational memory proof post for X.
+x-live-data-agents-01,/blog/best-database-for-ai-agents-live-data/,x,post,2026-06-answer-pages,x-live-data-agents-v1,database-for-ai-agents,growth,Live data database post for X.
+x-live-data-agents-02,/blog/best-database-for-ai-agents-live-data/,x,post,2026-06-answer-pages,x-agentops-replay-v1,agentops-replay,growth,AgentOps replay post for X.
+threads-agent-memory-definition-01,/blog/what-is-agent-memory/,threads,post,2026-06-answer-pages,threads-agent-memory-definition-v1,what-is-agent-memory,growth,Definition post for Threads.
+threads-agent-memory-definition-02,/blog/what-is-agent-memory/,threads,post,2026-06-answer-pages,threads-agent-memory-replay-v1,replayable-agent-memory,growth,Replay post for Threads.
+threads-live-data-agents-01,/blog/best-database-for-ai-agents-live-data/,threads,post,2026-06-answer-pages,threads-live-data-agents-v1,database-for-ai-agents,growth,Live data agents post for Threads.
+threads-live-data-agents-02,/blog/best-database-for-ai-agents-live-data/,threads,post,2026-06-answer-pages,threads-agent-loop-v1,agent-loop-database,growth,Agent loop database post for Threads.
+reddit-local-llama-definition-01,/blog/what-is-agent-memory/,reddit,comment,2026-06-answer-pages,local-llama-agent-memory-definition-v1,what-is-agent-memory,growth,Use only when thread asks about agent memory architecture.
+reddit-langchain-memory-01,/blog/what-is-agent-memory/,reddit,comment,2026-06-answer-pages,langchain-agent-memory-v1,agent-memory,growth,Use only for memory implementation questions.
+reddit-mlops-agentops-02,/blog/best-database-for-ai-agents-live-data/,reddit,comment,2026-06-answer-pages,mlops-live-data-agentops-v1,agentops-replay,growth,Use only for production agent observability threads.
+reddit-dataengineering-live-agents-01,/blog/best-database-for-ai-agents-live-data/,reddit,comment,2026-06-answer-pages,dataengineering-live-data-agents-v1,database-for-ai-agents,growth,Use only for architecture or database choice threads.
