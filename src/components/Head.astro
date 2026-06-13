@@ -16,6 +16,7 @@ const keywords = [
 ].join(', ');
 const ogImage = new URL('/og-default.png', Astro.site);
 const ogImageAlt = 'ZeptoDB: agent memory for live time-series data';
+const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
 
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
@@ -77,3 +78,74 @@ const jsonLd = JSON.stringify({
 <meta name="twitter:image" content={ogImage.href} />
 <meta name="twitter:image:alt" content={ogImageAlt} />
 <script type="application/ld+json" set:html={jsonLd} />
+
+{gaMeasurementId && (
+  <>
+    <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}></script>
+    <script define:vars={{ gaMeasurementId }}>
+      window.dataLayer = window.dataLayer || [];
+      function gtag() {
+        window.dataLayer.push(arguments);
+      }
+      window.gtag = window.gtag || gtag;
+      window.gtag('js', new Date());
+      window.gtag('config', gaMeasurementId, {
+        send_page_view: true,
+      });
+    </script>
+    <script is:inline>
+      function sendGaEvent(name, params) {
+        if (typeof window.gtag !== 'function') return;
+        window.gtag('event', name, params);
+      }
+
+      document.addEventListener('click', (event) => {
+        const link = event.target?.closest?.('a[href]');
+        if (!link) return;
+
+        const href = link.getAttribute('href');
+        if (!href) return;
+
+        let url;
+        try {
+          url = new URL(href, window.location.href);
+        } catch {
+          return;
+        }
+
+        const params = {
+          link_url: url.href,
+          link_text: (link.textContent || link.getAttribute('aria-label') || '').trim().slice(0, 100),
+          page_path: window.location.pathname,
+        };
+
+        if (url.protocol === 'mailto:') {
+          sendGaEvent('email_click', params);
+          return;
+        }
+
+        if (url.origin === window.location.origin && url.pathname.startsWith('/contact')) {
+          sendGaEvent('contact_click', params);
+          return;
+        }
+
+        if (url.hostname.includes('github.com')) {
+          sendGaEvent('github_click', params);
+          return;
+        }
+
+        if (url.hostname.includes('discord.gg') || url.hostname.includes('discord.com')) {
+          sendGaEvent('discord_click', params);
+          return;
+        }
+
+        if (url.origin !== window.location.origin) {
+          sendGaEvent('outbound_click', {
+            ...params,
+            outbound_domain: url.hostname,
+          });
+        }
+      });
+    </script>
+  </>
+)}

@@ -12,7 +12,8 @@ local `.env` files excluded from git, or the deployment platform secret manager.
 - Bing Webmaster Tools property for `https://zeptodb.com/`
 - Bing IndexNow API key
 - IndexNow key file hosted at `https://zeptodb.com/<key>.txt`
-- Analytics property capable of reading UTM/referrer traffic
+- Google Analytics 4 web data stream for `https://zeptodb.com/`
+- GitHub Actions repository variable: `PUBLIC_GA_MEASUREMENT_ID`
 - Access to server or CDN logs, if available
 
 Suggested secrets:
@@ -22,6 +23,12 @@ INDEXNOW_KEY=
 BING_WEBMASTER_API_KEY=
 GOOGLE_SEARCH_CONSOLE_CLIENT_EMAIL=
 GOOGLE_SEARCH_CONSOLE_PRIVATE_KEY=
+```
+
+Suggested repository variables:
+
+```text
+PUBLIC_GA_MEASUREMENT_ID=G-XXXXXXXXXX
 ```
 
 ## OpenAI And AI Search Monitoring

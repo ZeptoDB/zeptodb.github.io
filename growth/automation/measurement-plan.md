@@ -67,6 +67,15 @@ The source prompt set is `growth/ai-search-prompts.csv`; the measurement log is
 - contact page visits
 - email clicks
 
+GA4 is loaded only when `PUBLIC_GA_MEASUREMENT_ID` is set during the Astro build.
+Track these custom events as conversion candidates:
+
+- `github_click`
+- `discord_click`
+- `contact_click`
+- `email_click`
+- `outbound_click`
+
 ### Community
 
 - High-intent opportunities logged.
