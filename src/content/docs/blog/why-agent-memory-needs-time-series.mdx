@@ -103,9 +103,9 @@ For teams building agents, replay is not a luxury. It is how you debug cost, acc
 
 ZeptoDB does not call embedding providers or LLM providers from the server. Your application owns prompts, model choice, provider credentials, and embeddings. ZeptoDB owns storage, filtering, ranking, cache lookup, context assembly, telemetry, and time-series replay.
 
-The current Agent Memory implementation is single-node. In clustered deployments, route `/api/ai/*` traffic to one sticky pod or treat the memory layer as a per-pod cache until cluster-consistent memory routing lands.
+Agent Memory now has a routed multi-node operating path for writes, point reads, fan-out memory search/context, semantic-cache fan-out, owner-local persistence, replica WAL durability policy, cluster-scoped stats, and owner-failover reporting.
 
-That boundary is intentional: make the API useful first, keep the fast path simple, and evolve distributed memory semantics with the existing cluster routing model.
+Shard migration dual-write/catch-up remains future work. The boundary is now narrower: keep memory routing explicit, preserve replayability, and evolve migration semantics with the existing cluster routing model.
 
 ---
 

@@ -87,13 +87,13 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 
 <CardGrid>
   <Card title="Observe" icon="rocket">
-    Ingest real-time events from exchanges, robots, factories, fleets, grids, applications, or agent tools. The system keeps the ordered timeline intact.
+    Ingest real-time events from exchanges, ROS 2 robots, factories, logistics edges, fleets, grids, applications, or agent tools through HTTP, Arrow IPC, MessagePack, Telegraf, Kinesis, Kafka, MQTT, and OPC-UA paths. The system keeps the ordered timeline intact.
   </Card>
   <Card title="Remember" icon="open-book">
     Store agent memories with tenant, namespace, user, session, agent, type, metadata, importance, TTL, pinned status, and client-supplied embeddings.
   </Card>
   <Card title="Recall" icon="seti:clock">
-    Retrieve by time, scope, semantics, importance, recency, access count, and token budget. Assemble the context an agent needs without dumping the whole past into a prompt.
+    Retrieve by time, scope, semantics, importance, recency, access count, and token budget. Assemble context locally or across Agent Memory nodes without dumping the whole past into a prompt.
   </Card>
   <Card title="Act" icon="approve-check-circle">
     Reuse exact or semantically similar prompt responses, call a provider on cache miss, write back new memory, and keep AgentOps events in ordinary time-series tables.
@@ -125,12 +125,12 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 
 <CardGrid>
   <Card title="AI Agents & AgentOps" icon="star">
-    Agent-scoped working memory, context retrieval, exact/semantic cache, provider adapters, LangGraph-style examples, and telemetry tables for runs, retrievals, cache events, LLM calls, and tool calls.
+    Agent-scoped working memory, context retrieval, exact/semantic cache, cluster-scoped stats, provider adapters, LangGraph-style examples, and telemetry tables for runs, retrievals, cache events, LLM calls/errors, context traces, replay windows, and tool calls.
 
     [Agent Memory →](/use-cases/agent-memory/)
   </Card>
   <Card title="Physical AI & Robotics" icon="star">
-    Sensor fusion and action history become replayable episodes. A robot agent can recall what it saw, what it tried, and which previous intervention worked.
+    ROS 2 typed profiles, rosbag2 replay, sensor fusion, and action history become replayable episodes. A robot agent can recall what it saw, what it tried, and which previous intervention worked.
 
     [Physical AI →](/use-cases/robotics/)
   </Card>
@@ -149,6 +149,11 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 
     [Energy & Utilities →](/use-cases/energy/)
   </Card>
+  <Card title="Logistics & Edge Automation" icon="star">
+    AGV pose, RFID, sorter, cold-chain, and yard events become spatially queryable timelines for replay, geofencing, and exception agents.
+
+    [Logistics →](/use-cases/logistics/)
+  </Card>
   <Card title="Capital Markets" icon="star">
     Trading agents can pair tick-by-tick market state with strategy memory, risk decisions, cache hits, and compliance-ready replay.
 
@@ -165,7 +170,7 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 - **A clearer business case.** Reduce duplicate provider calls, shorten incident investigations, and give compliance teams a replayable trail instead of a disconnected prompt log.
 - **Context with operational filters.** Tenant, namespace, user, session, agent, type, TTL, importance, pinned status, recency, and access count are first-class retrieval signals.
 - **Not just a vector database.** ZeptoDB does not replace the live operational database with a detached vector index. The memory layer sits beside the event stream that explains why the memory matters.
-- **Production-shaped surfaces.** HTTP endpoints, Python helpers, Prometheus metrics, sidecar snapshots, and examples for provider cache and LangGraph-style flows.
+- **Production-shaped surfaces.** HTTP endpoints, Python helpers, Prometheus metrics, sidecar snapshots, MessagePack ingest, Telegraf output, Kinesis streams, ROS 2, OPC-UA, and examples for provider cache and LangGraph-style flows.
 
 ---
 
@@ -191,6 +196,8 @@ Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vect
   <LinkCard title="Agent Memory" description="How live time-series becomes context, cache, and replay for agents" href="/use-cases/agent-memory/" />
   <LinkCard title="Python Agent Memory Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
   <LinkCard title="Quick Start" description="First query or agent memory loop in minutes" href="/getting-started/quick_start/" />
+  <LinkCard title="Physical AI & ROS 2" description="Typed robot telemetry, rosbag2 replay, and sensor timelines" href="/use-cases/robotics/" />
+  <LinkCard title="Logistics & Edge Automation" description="AGV geofences, RFID timelines, sorter metrics, and cold-chain audit" href="/use-cases/logistics/" />
   <LinkCard title="Features" description="Time-series engine, memory layer, APIs, storage, and security" href="/features/" />
   <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and Agent Memory recall" href="/benchmarks/" />
   <LinkCard title="Talk to Sales" description="Discuss agent workflows, deployment shape, support, and Enterprise requirements" href="/contact/" />

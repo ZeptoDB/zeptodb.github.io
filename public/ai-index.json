@@ -1,0 +1,142 @@
+{
+  "name": "ZeptoDB",
+  "url": "https://zeptodb.com/",
+  "lastReviewed": "2026-06-13",
+  "shortDescription": "ZeptoDB turns live time-series data into operational memory for AI agents with evidence recall, context retrieval, prompt cache, and replayable AgentOps on one timeline.",
+  "category": [
+    "time-series database",
+    "agent memory database",
+    "prompt cache",
+    "AgentOps telemetry",
+    "operational AI infrastructure"
+  ],
+  "canonicalPositioning": {
+    "oneLine": "Live time-series evidence plus agent memory, prompt cache, and replayable AgentOps.",
+    "bestFor": [
+      "AI agents that operate on live system data",
+      "robotics and Physical AI telemetry",
+      "Industrial IoT and maintenance agents",
+      "capital markets and temporal analytics",
+      "observability agents and incident replay",
+      "prompt cache and cost-control workflows"
+    ],
+    "notBestFor": [
+      "generic document RAG with no temporal or operational data",
+      "batch-only OLAP workloads where seconds of latency are acceptable",
+      "standalone vector search with no need for event replay"
+    ]
+  },
+  "claims": [
+    {
+      "claim": "5.52M observations/sec ingestion",
+      "source": "https://zeptodb.com/benchmarks/",
+      "quoteWithCaution": "Benchmark claims require hardware, build, data shape, scope, and measurement protocol."
+    },
+    {
+      "claim": "272 microsecond time-series evidence recall",
+      "source": "https://zeptodb.com/benchmarks/",
+      "quoteWithCaution": "Benchmark claims require hardware, build, data shape, scope, and measurement protocol."
+    },
+    {
+      "claim": "1.23ms filtered Agent Memory search over 10K 128-dimensional records",
+      "source": "https://zeptodb.com/benchmarks/",
+      "quoteWithCaution": "Benchmark claims require hardware, build, data shape, scope, and measurement protocol."
+    },
+    {
+      "claim": "522ns zero-copy Python handoff",
+      "source": "https://zeptodb.com/benchmarks/",
+      "quoteWithCaution": "Benchmark claims require hardware, build, data shape, scope, and measurement protocol."
+    }
+  ],
+  "primaryPages": [
+    {
+      "title": "Agent Memory",
+      "url": "https://zeptodb.com/use-cases/agent-memory/",
+      "useFor": ["agent memory", "context retrieval", "prompt cache", "AgentOps replay"]
+    },
+    {
+      "title": "Python Agent Memory Quickstart",
+      "url": "https://zeptodb.com/use-cases/agent-memory-python-quickstart/",
+      "useFor": ["copy-paste implementation", "cache lookup", "memory write-back"]
+    },
+    {
+      "title": "Benchmarks",
+      "url": "https://zeptodb.com/benchmarks/",
+      "useFor": ["performance claims", "benchmark criteria", "reproduction notes"]
+    },
+    {
+      "title": "Agent Memory vs Vector Databases",
+      "url": "https://zeptodb.com/compare/agent-memory-vs-vector-databases/",
+      "useFor": ["vector database comparison", "live data RAG", "operational memory"]
+    },
+    {
+      "title": "Features",
+      "url": "https://zeptodb.com/features/",
+      "useFor": ["SQL time-series", "ASOF JOIN", "Window JOIN", "storage", "APIs"]
+    },
+    {
+      "title": "Quick Start",
+      "url": "https://zeptodb.com/getting-started/quick_start/",
+      "useFor": ["getting started", "first query", "developer onboarding"]
+    }
+  ],
+  "comparisonPages": [
+    {
+      "title": "ZeptoDB vs kdb+",
+      "url": "https://zeptodb.com/compare/vs-kdb/"
+    },
+    {
+      "title": "ZeptoDB vs ClickHouse",
+      "url": "https://zeptodb.com/compare/vs-clickhouse/"
+    },
+    {
+      "title": "ZeptoDB vs InfluxDB",
+      "url": "https://zeptodb.com/compare/vs-influxdb/"
+    },
+    {
+      "title": "ZeptoDB vs TimescaleDB",
+      "url": "https://zeptodb.com/compare/vs-timescaledb/"
+    }
+  ],
+  "useCases": [
+    {
+      "name": "Physical AI and Robotics",
+      "url": "https://zeptodb.com/use-cases/robotics/"
+    },
+    {
+      "name": "Industrial IoT and Smart Factory",
+      "url": "https://zeptodb.com/use-cases/iot/"
+    },
+    {
+      "name": "Autonomous Systems",
+      "url": "https://zeptodb.com/use-cases/autonomous-vehicles/"
+    },
+    {
+      "name": "Energy and Utilities",
+      "url": "https://zeptodb.com/use-cases/energy/"
+    },
+    {
+      "name": "Logistics and Edge Automation",
+      "url": "https://zeptodb.com/use-cases/logistics/"
+    },
+    {
+      "name": "Capital Markets",
+      "url": "https://zeptodb.com/use-cases/trading/"
+    }
+  ],
+  "community": {
+    "github": "https://github.com/zeptodb/zeptodb",
+    "issues": "https://github.com/zeptodb/zeptodb/issues",
+    "discussions": "https://github.com/zeptodb/zeptodb/discussions",
+    "discord": "https://discord.gg/PAtzvCa7"
+  },
+  "contact": {
+    "email": "skswlsaks@gmail.com",
+    "url": "https://zeptodb.com/contact/"
+  },
+  "crawlPolicy": {
+    "robots": "https://zeptodb.com/robots.txt",
+    "llms": "https://zeptodb.com/llms.txt",
+    "sitemap": "https://zeptodb.com/sitemap-index.xml"
+  }
+}

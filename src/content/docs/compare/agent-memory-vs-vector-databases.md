@@ -24,7 +24,8 @@ ZeptoDB Agent Memory is built for that second shape. It stores memories and embe
 | Tenant/session filters | Varies by product | First-class tenant, namespace, user, session, agent, type, TTL, metadata |
 | Prompt cache | Usually separate | Exact and semantic cache layer |
 | Time-series evidence | Separate database required | Native time-series engine |
-| AgentOps telemetry | Separate logging stack | Runs, retrievals, cache events, LLM calls, and tool calls as tables |
+| AgentOps telemetry | Separate logging stack | Runs, retrievals, cache events, LLM calls/errors, context traces, replay windows, and tool calls as tables |
+| Cluster operation | Product-specific distributed index | Routed writes, fan-out search/context, semantic-cache fan-out, cluster stats, replica WAL policy |
 | Temporal joins | Not the core model | ASOF JOIN and Window JOIN |
 | Replay decisions | Requires integration work | Evidence, memory, cache, tools, and outcome share one timeline |
 | Python zero-copy | Not typical | 522ns query result to NumPy |
@@ -53,6 +54,7 @@ Use ZeptoDB when:
 - You need to explain decisions with raw evidence, not only similar memories.
 - Prompt cache events and model calls should be queryable beside operational events.
 - Tenant/session/user/agent filters are part of recall quality.
+- Clustered operation should keep memory routing and time-series evidence under one deployment model.
 - You need ASOF JOIN, Window JOIN, and SQL over the same timeline.
 - Python model loops should avoid serialization overhead.
 
@@ -93,7 +95,7 @@ The difference is not "vectors or no vectors." ZeptoDB stores client-supplied em
 
 ## Current Boundary
 
-Agent Memory v0 is single-node. In a cluster, route `/api/ai/*` traffic to one sticky pod or treat the memory layer as a per-pod cache. The time-series cluster remains distributed. Cluster-consistent memory routing, replicated writes, and multi-node memory search are follow-up design areas.
+Agent Memory has a routed multi-node operating path for writes, point reads, fan-out memory search/context, semantic-cache fan-out, owner-local persistence, replica WAL durability policy, cluster-scoped stats, and owner-failover reporting. Shard migration dual-write/catch-up remains future work.
 
 If you need distributed vector search across hundreds of millions of embeddings today, use a dedicated vector database. If you need operational memory beside fast time-series evidence, ZeptoDB is the more direct fit.
 

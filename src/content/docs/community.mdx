@@ -42,6 +42,7 @@ We welcome contributions of all kinds:
 - Documentation improvements → [Docs repo](https://github.com/zeptodb/zeptodb/tree/main/docs)
 - Benchmarks and performance reports
 - Integration examples and tutorials
+- ROS 2 bridge configs, rosbag2 replay recipes, and message-profile examples
 
 ### Getting Started
 
@@ -62,25 +63,26 @@ ninja zepto_tests && ./tests/zepto_tests
 See the [public roadmap](https://github.com/zeptodb/zeptodb/milestones) for upcoming features and priorities.
 
 ### Near-Term
-- Agent Memory examples that combine live time-series tables with context retrieval
-- AgentOps dashboards for runs, retrieval events, cache events, LLM calls, and tool calls
-- Snapshot latency and failure metrics for Agent Memory
+- Agent Memory examples that combine live time-series tables, context retrieval, context traces, and replay windows
+- AgentOps dashboards for runs, retrieval events, cache events, LLM calls/errors, context traces, and tool calls
+- Live open62541 validation recipes for OPC-UA Historical Access and server mode
+- Apache Pulsar consumer design and examples
+- Release-bot token hardening and release branch automation
 - Web UI / Admin Console
 - JDBC / ODBC drivers
 - Managed cloud offering
 
 ### Medium-Term
-- Cluster-consistent Agent Memory routing and replicated memory writes
-- Stronger ANN index families for million-memory deployments
-- MQTT / OPC-UA connectors for Industrial IoT
-- ROS2 plugin for robotics and Physical AI
+- Shard migration dual-write/catch-up for Agent Memory
+- Production embedding dump evaluation for ANN defaults
+- Additional Industrial IoT and Physical AI connector examples
 - CAN / vehicle-bus ingestion for automotive
 - Geo-replication for multi-region operators
 - Arrow Flight improvements
 
 ### Long-Term
 - Optional server-managed embedding providers as an Enterprise feature
-- Context trace and replay for agent explainability
+- Cross-product replay UI for agent explainability
 - DSL AOT compilation (Nuitka / Cython)
 - ClickHouse wire protocol compatibility
 - Cloud marketplace listings (AWS, GCP, Azure)

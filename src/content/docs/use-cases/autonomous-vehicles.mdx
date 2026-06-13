@@ -39,12 +39,14 @@ Autonomy systems need to replay more than sensor frames. They need the full chai
 ### Multi-sensor fusion
 - Time-align LiDAR, camera, radar, IMU, GPS, and vehicle CAN at nanosecond precision
 - Window JOIN with ±N ms tolerance to absorb sensor clock drift
+- Use ROS 2 typed profiles for IMU, Odometry, TF, JointState, and LaserScan tables where the autonomy stack runs on ROS 2
 - Production-ready pipeline for online perception and HIL bench
 
 ### Scenario mining & triage
 - SQL over petabytes of driving logs in Parquet on S3
 - Find the scenarios that matter: *"left turns at unprotected intersections with a pedestrian in rain"*
 - Correlate vehicle state with map attributes, weather, and disengagement events
+- Filter geofences, proximity, and route-specific incidents with `ST_Distance` and `ST_Within`
 
 ### Training data & dataset curation
 - Query → NumPy → PyTorch / JAX in microseconds via zero-copy

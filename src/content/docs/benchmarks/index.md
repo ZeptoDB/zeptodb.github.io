@@ -53,6 +53,33 @@ Lock-free MPMC ring buffer with Highway SIMD batch copy. Zero allocation on hot 
 
 ---
 
+## Physical AI and Logistics Proof Workloads
+
+The P9 logistics proof suite defines repeatable workload shapes for AGV, sorter, RFID, and cold-chain systems. These are benchmark shapes and pass criteria, not blanket production guarantees.
+
+| Workload | Rows/sec target | Query proof |
+|----------|----------------:|-------------|
+| 2K AGV pose streams | 200,000 | Geofence and proximity filter |
+| 1M sorter lane events | 1,000,000 | Per-lane jam and anomaly aggregate |
+| 50K RFID reads | 50,000 | Entity timeline reconstruction |
+| Cold-chain sensors | 100,000 | Audit range scan by shipment |
+
+Pass criteria include sustained target ingest for 10 minutes, no decode or ingest failures, p50/p99 query latency per workload, deterministic result parity, and matching result counts across x86_64 and aarch64 runs.
+
+### Factory 10KHz live competitor proof
+
+The factory 10KHz proof was rerun against ZeptoDB, InfluxDB, and TimescaleDB with a fixed 10,000 rows/sec target for 60 seconds. This is a correctness and sustained-rate proof, not a maximum-throughput shootout.
+
+| System | Result | Duration | Inserted | Verified | Failed | Observed rows/sec |
+|--------|--------|---------:|---------:|---------:|-------:|------------------:|
+| ZeptoDB | PASS | 60.000s | 600,000 | 600,000 | 0 | 9,999.98 |
+| InfluxDB | PASS | 60.000s | 600,000 | 600,000 | 0 | 9,999.98 |
+| TimescaleDB | PASS | 60.008s | 600,000 | 600,000 | 0 | 9,998.68 |
+
+For logistics query patterns, see [Logistics & Edge Automation](/use-cases/logistics/).
+
+---
+
 ## Query Latency
 
 All queries on 1M-row in-memory table, single thread. Table names (`trades`, `quotes`, `sensors`) are illustrative — the engine treats them identically.
@@ -101,7 +128,7 @@ Embedding generation and LLM/provider calls are not included in these timings. A
 
 The memory layer ranks candidates by tenant/session filters, embedding similarity, importance, pinned boost, recency, and access count. Context assembly deduplicates repeated content and respects an optional token budget.
 
-### Sparse-projection ANN sweep
+### ANN modes and fixtures
 
 On the current 8 vCPU benchmark instance, sparse-projection ANN reduced filtered-search latency at larger memory counts:
 
@@ -111,7 +138,7 @@ On the current 8 vCPU benchmark instance, sparse-projection ANN reduced filtered
 | 100K | **2.41ms** | 4.68ms | **2.77ms** | 2.98ms | 138.37ms |
 | 1M | **32.03ms** | 36.27ms | **25.48ms** | 29.96ms | 1691.56ms |
 
-The ANN index is derived in-memory state. It can fall back to filtered scan when it cannot produce enough filtered candidates, and stronger index families remain a follow-up for million-memory deployments.
+The ANN path now includes sparse projection, HNSW, and IVF candidate modes, plus clustered and real-embedding fixtures. The index remains derived in-memory state: final filtering/ranking still applies, stats expose rebuilds, fallbacks, memory bytes, tombstone entries, and sidecar byte counts, and the system can fall back to filtered scan when an index cannot produce enough filtered candidates.
 
 ---
 
@@ -147,11 +174,13 @@ Distributed benchmarks on EKS with 3 data nodes + 1 load generator, single AZ pl
 Cluster: EKS `zepto-bench` (ap-northeast-2), K8s v1.35, Helm chart deployment.
 Cost: ~$12/run (2 hours) or ~$1.17/run with sleep/wake automation.
 
+The full EKS rebalance integrity run now passes Stage 5/6 across amd64 and arm64: each architecture verified 50/50 symbols after rebalance using cluster HTTP `SELECT`, stable table identifiers, and the QueryCoordinator path.
+
 ---
 
 ## amd64 vs arm64 (Graviton)
 
-Tested on EKS with 6× amd64 (r7i/m7i/c7i) + 5× arm64 (m7g, Karpenter). All K8s tests passed 38/38 on both architectures.
+Tested on EKS with 6× amd64 (r7i/m7i/c7i) + 5× arm64 (m7g, Karpenter). All K8s tests passed 38/38 on both architectures. Graviton validation also covered Arrow IPC and Flight paths: Arrow IPC unit coverage passed 14/14, the full unit suite passed with the S3-only skip, live S3 checks passed 2/2, Arrow smoke inserted 3 rows with 0 failures, and the rebalance smoke passed.
 
 ### Ingestion Throughput
 

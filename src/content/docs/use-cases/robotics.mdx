@@ -3,7 +3,7 @@ title: "Physical AI & Robotics"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for robotic agents — sensor fusion, action memory, RL feature stores, and replayable real-time decisions"
+description: "ZeptoDB for robotic agents — ROS 2 ingest, sensor fusion, action memory, RL feature stores, and replayable real-time decisions"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -30,6 +30,9 @@ Robotic agents need more than fast telemetry. They need a memory of what the rob
   <Card title="Action memory" icon="open-book">
     Store retrieved context, operator interventions, policy notes, tool calls, and action outcomes beside the raw sensor stream.
   </Card>
+  <Card title="ROS 2 bridge" icon="star">
+    Subscribe to scalar topics, standard ROS 2 profiles, or typed profile tables; import and replay the same profiles from rosbag2.
+  </Card>
 </CardGrid>
 
 ---
@@ -37,6 +40,7 @@ Robotic agents need more than fast telemetry. They need a memory of what the rob
 ## Where it fits in the stack
 
 ### Sensor fusion for perception
+- Direct ROS 2 topic ingest for scalar `std_msgs`, IMU, JointState, Odometry, TF, and LaserScan telemetry
 - ASOF JOIN across LiDAR point clouds, camera frames, IMU, and depth streams
 - Window JOIN with ±N ms tolerance for clock drift across heterogeneous buses
 - Nanosecond-precision timestamps end-to-end — parser to column store
@@ -61,6 +65,21 @@ Robotic agents need more than fast telemetry. They need a memory of what the rob
 - Retrieve similar episodes before an agent chooses a plan
 - Replay the chain from sensor data to retrieved context to action outcome
 - Cache repeated diagnostic responses during fleet operations
+
+---
+
+## ROS 2 ingest, typed profiles, and replay
+
+ZeptoDB includes an optional ROS 2 connector for Physical AI pipelines. Build with `-DZEPTO_USE_ROS2=ON` and provide `rclcpp`, `std_msgs`, standard ROS 2 message packages, and optionally `rosbag2_cpp` / `rosbag2_storage`.
+
+- Live subscriptions currently support scalar `std_msgs/msg/{Float64,Float32,Int64,Int32,UInt64,UInt32}` topics using a single `data` field.
+- `Ros2IngestMode::StandardProfile` supports IMU, JointState, Odometry, TFMessage, and LaserScan profiles by flattening configured numeric fields into scalar rows.
+- `Ros2IngestMode::TypedProfile` writes schema-aware wide rows for the same standard profiles, including robot/session/topic/frame metadata and profile-specific numeric columns.
+- Typed profile rows participate in table-scoped cluster routing through typed-row RPC forwarding when the partition owner is remote.
+- rosbag2 import and replay use the same configured subscriptions as topic allowlists, preserving bag send timestamps as source time.
+- The bridge is read-only: it subscribes to ROS 2 data and imports bags without publishing back into the ROS graph.
+
+Start with the [ROS 2 Setup and Smoke Test](/operations/ros2_setup/), the [ROS 2 Edge Deployment Guide](/operations/ros2_edge_deployment/), and the [C++ ROS 2 connector reference](/api/cpp_reference/#ros-2-connector).
 
 ---
 
@@ -99,7 +118,9 @@ tensor = torch.from_numpy(result.to_numpy())  # zero-copy view
 
 | System | Integration |
 |--------|-------------|
-| ROS2 | Planned plugin — direct topic subscription, message-type-aware columns |
+| ROS 2 scalar topics | Available — live `std_msgs` subscriptions, table-aware ingest, rosbag2 import/replay |
+| ROS 2 standard profiles | Available — IMU, JointState, Odometry, TFMessage, LaserScan scalar mapping |
+| ROS 2 typed profiles | Available — schema-aware wide tables with typed-row cluster forwarding |
 | MQTT | Ingestion connector for lightweight robot telemetry |
 | OPC-UA | Industrial connector for co-bot and fixed-robot cells |
 | PyTorch / JAX | Zero-copy via NumPy bridge |

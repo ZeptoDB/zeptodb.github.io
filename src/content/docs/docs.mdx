@@ -17,6 +17,8 @@ Use this page as the shortest path into the docs. Pick the workflow that matches
 <CardGrid>
   <LinkCard title="Quick Start" description="Start with SQL, or jump into the Agent Memory Python loop." href="/getting-started/quick_start/" />
   <LinkCard title="Agent Memory" description="Build an agent flow with time-series evidence, context retrieval, and prompt cache." href="/use-cases/agent-memory/" />
+  <LinkCard title="Physical AI & ROS 2" description="Ingest robot telemetry, typed profiles, replay bags, and query sensor timelines." href="/use-cases/robotics/" />
+  <LinkCard title="Logistics & Edge Automation" description="Query AGV, RFID, sorter, cold-chain, and geofence workflows." href="/use-cases/logistics/" />
   <LinkCard title="HTTP API" description="Use SQL endpoints, Agent Memory endpoints, auth, metrics, and admin APIs." href="/api/http_reference/" />
   <LinkCard title="Python API" description="Query data, use dataframe helpers, and call memory/cache helpers from Python." href="/api/python_reference/" />
 </CardGrid>
@@ -35,6 +37,11 @@ Use this page as the shortest path into the docs. Pick the workflow that matches
     Learn the SQL surface, ingestion options, benchmarks, and feed handlers.
 
     [SQL Reference →](/api/sql_reference/) · [Benchmarks →](/benchmarks/) · [Feed Handlers →](/feeds/feed_handler_guide/)
+  </Card>
+  <Card title="Connect ROS 2" icon="rocket">
+    Build the optional ROS 2 bridge, smoke-test Jazzy packages, subscribe to scalar or typed-profile topics, and import or replay rosbag2 data.
+
+    [ROS 2 Setup →](/operations/ros2_setup/) · [Edge Deployment →](/operations/ros2_edge_deployment/) · [C++ ROS 2 API →](/api/cpp_reference/#ros-2-connector)
   </Card>
   <Card title="Deploy and operate" icon="approve-check-circle">
     Move from a local server to Docker, production deployments, Kubernetes, and security operations.
@@ -59,15 +66,27 @@ Use this page as the shortest path into the docs. Pick the workflow that matches
 | Write an agent context flow | [Agent Memory](/use-cases/agent-memory/#example-flow) |
 | Query from Python | [Python API Reference](/api/python_reference/) |
 | Use SQL temporal functions | [SQL Reference](/api/sql_reference/) |
+| Use spatial distance and geofence predicates | [SQL Reference: Spatial Functions](/api/sql_reference/#spatial-functions) |
+| Ingest Arrow IPC batches over HTTP | [HTTP Reference: Arrow IPC Ingest](/api/http_reference/#arrow-ipc-ingest--post-insertarrow) |
+| Ingest MessagePack column batches over HTTP | [HTTP Reference: MessagePack Ingest](/api/http_reference/#messagepack-columnar-ingest--post-insertmsgpack) |
+| Connect Telegraf input plugins to ZeptoDB | [Telegraf Output](/operations/telegraf_output/) |
+| Consume AWS Kinesis streams | [C++ Reference: Feed Handlers](/api/cpp_reference/#feed-handlers) |
+| Enable ROS 2 topic ingest | [ROS 2 Setup and Smoke Test](/operations/ros2_setup/) |
+| Deploy ZeptoDB at a ROS 2 edge node | [ROS 2 Edge Deployment](/operations/ros2_edge_deployment/) |
+| Use `Ros2Consumer` from C++ | [C++ Reference: ROS 2 connector](/api/cpp_reference/#ros-2-connector) |
+| Use `OpcUaConsumer` or `OpcUaServer` from C++ | [C++ Reference: OPC-UA Consumer](/api/cpp_reference/#opc-ua-consumer) |
+| Inspect cluster-wide Agent Memory stats | [HTTP API Reference](/api/http_reference/#get-apiaistats) |
 | Deploy with Docker | [Docker Deployment](/deployment/docker/) |
 | Run in production | [Production Deployment](/deployment/production_deployment/) |
+| Follow release branch policy | [Branch Release Policy](/deployment/branch_release_policy/) |
+| Cut and validate a release | [Release Process](/deployment/release_process/) |
 | Set up SSO/RBAC/audit | [Security Operations Guide](/api/security_operations_guide/) |
 | Review latency numbers | [Benchmarks](/benchmarks/) |
 
 ---
 
-## Current Agent Memory boundary
+## Current Agent Memory operating model
 
-Agent Memory v0 is single-node. In clustered deployments, route `/api/ai/*` to one sticky pod or treat the memory layer as a per-pod cache. The distributed time-series cluster remains available for time-series workloads.
+Agent Memory supports routed writes, point reads, fan-out memory search/context assembly, semantic-cache fan-out, replica WAL durability policy, delete and eviction tombstones, tenant quotas, local stats, cluster-scoped stats, and owner-failover reporting.
 
-For implementation details, use [HTTP API Reference](/api/http_reference/#ai-agent-memory-api) and [Python API Reference](/api/python_reference/#agent-memory-and-cache).
+Shard migration dual-write/catch-up remains future work. For implementation details, use [HTTP API Reference](/api/http_reference/#ai-agent-memory-api), [Python API Reference](/api/python_reference/#agent-memory-and-cache), and [Agent Memory for AI Agents](/use-cases/agent-memory/).

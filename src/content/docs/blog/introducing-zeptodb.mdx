@@ -67,9 +67,9 @@ Every layer is designed around a single principle: **zero-copy, zero-allocation 
 
 ZeptoDB is source-available under BUSL-1.1, with production use allowed by the Additional Use Grant except commercial DBaaS or managed-service resale before the 2030-04-01 Apache-2.0 change date. We're actively developing:
 
-- Cluster-consistent Agent Memory routing and replicated memory writes
-- AgentOps dashboards for retrievals, cache events, LLM calls, and tool calls
-- MQTT / OPC-UA connectors for industrial IoT
+- Shard migration dual-write/catch-up for Agent Memory
+- AgentOps dashboards for retrievals, cache events, LLM calls/errors, context traces, replay windows, and tool calls
+- Additional industrial, Physical AI, and edge connector examples
 - JDBC/ODBC drivers for BI tool integration
 - Managed cloud offering
 

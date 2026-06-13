@@ -23,7 +23,7 @@ Most agent memory systems store summaries or embeddings without the live event s
 5. What action followed?
 6. What happened afterward?
 
-ZeptoDB handles that shape directly. The time-series engine stores events, metrics, tool calls, model calls, and outcomes. The Agent Memory layer stores tenant/session scoped memories, embeddings, context windows, and prompt cache entries.
+ZeptoDB handles that shape directly. The time-series engine stores events, metrics, tool calls, model calls, and outcomes. The Agent Memory layer stores tenant/session scoped memories, embeddings, context windows, prompt cache entries, retention policy, and replay metadata.
 
 ---
 
@@ -37,10 +37,16 @@ ZeptoDB handles that shape directly. The time-series engine stores events, metri
     Check exact and semantic cache entries before calling an external provider. Repeated incidents, alerts, queries, and support flows can reuse prior responses when application policy allows it.
   </Card>
   <Card title="Replayable decisions" icon="seti:clock">
-    Store `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, and `tool_calls` as time-series tables. Reconstruct why an agent answered or acted.
+    Store `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, `llm_errors`, `tool_calls`, `context_traces`, and `context_replay_events` as time-series tables.
   </Card>
   <Card title="Live context assembly" icon="rocket">
     Pull the latest facts from SQL, retrieve durable memories from Agent Memory, fit both under a token budget, and send one grounded context packet to the model.
+  </Card>
+  <Card title="Cluster-aware operation" icon="star">
+    Route writes, point reads, search/context, and semantic cache fallback across Agent Memory nodes, then inspect local or cluster-scoped stats.
+  </Card>
+  <Card title="Retention and ANN controls" icon="approve-check-circle">
+    Bound memory with tenant quotas, TTL/capacity eviction, tombstones, rollback, and optional sparse/HNSW/IVF ANN candidate indexes.
   </Card>
 </CardGrid>
 
@@ -84,7 +90,8 @@ ZeptoDB handles that shape directly. The time-series engine stores events, metri
 | `POST /api/ai/context` | Assemble deduplicated memory context under a token budget |
 | `POST /api/ai/cache/store` | Store exact/semantic prompt cache entries |
 | `POST /api/ai/cache/lookup` | Lookup exact prompt matches or embedding-similar cached responses |
-| `GET /api/ai/stats` | Inspect aggregate memory/cache counts and capacity metrics |
+| `GET /api/ai/stats` | Inspect local memory/cache counts, capacity, snapshot health, ANN footprint, and failover status |
+| `GET /api/ai/stats?scope=cluster` | Aggregate Agent Memory stats across configured nodes and report partial failures |
 | `connection.memory` | Python helper for memory write/search/context calls |
 | `connection.cache` | Python helper for cache store/lookup calls |
 
@@ -155,6 +162,19 @@ conn.memory.put(
 
 ---
 
+## AgentOps trace and replay
+
+Agent Memory examples now include concrete AgentOps mappings:
+
+- OpenTelemetry GenAI spans map to `llm_calls`, `llm_errors`, `cache_events`, and `tool_calls`.
+- Context trace rows record selected memories, rank, score, similarity, token count, and reason.
+- Context replay rows record time-series queries and evidence windows around a decision.
+- These tables remain queryable with the same SQL engine that stores the operational timeline.
+
+This keeps the agent path inspectable: what the agent saw, which memories it used, which cache decision happened, which provider/tool call ran, and which evidence window justified the answer.
+
+---
+
 ## Vertical patterns
 
 <CardGrid>
@@ -186,15 +206,22 @@ conn.memory.put(
 | Exact cache lookup | 0.00ms p50 |
 | Semantic cache lookup | 0.07ms p50 |
 
-With sparse-projection ANN enabled on the same 128-dimensional benchmark shape, 100K-record search measured 2.41ms p50 and context assembly measured 2.77ms p50. The index is derived in-memory state and falls back to filtered scan when needed.
+Exact filtered scan remains the baseline. Optional sparse projection, HNSW, and IVF candidate indexes can reduce semantic candidate latency while preserving final filtering and ranking. Stats expose indexed vectors, rebuilds, fallbacks, memory bytes, tombstone entries, and sidecar byte counts.
 
 ---
 
 ## Current operating model
 
-Agent Memory v0 is single-node. In a cluster, route `/api/ai/*` traffic to one sticky pod or treat the memory layer as a best-effort per-pod cache. The time-series cluster remains distributed; cluster-consistent memory routing, replicated writes, and multi-node memory search are follow-up design areas.
+Agent Memory now has a multi-node operating path for routed writes, point reads, fan-out search/context, semantic-cache fan-out, owner-local persistence, replica WAL policy, delete and eviction tombstones, tenant quotas, local/cluster stats, and owner-failover status.
 
-That boundary is intentional for v0: keep the fast path simple, make the API usable, prove the combined time-series plus memory workflow, then harden distributed memory semantics with the existing cluster epoch and routing model.
+Operationally important details:
+
+- `GET /api/ai/stats` returns local counts, snapshot health, ANN footprint, eviction config, and last owner-failover result.
+- `GET /api/ai/stats?scope=cluster` aggregates node stats and partial failures.
+- Tenant quotas run before global caps; pinned memories are protected from capacity eviction, but TTL expiry still removes them.
+- Automatic TTL, tenant-quota, and capacity evictions emit tombstones.
+- Failed durability paths restore capacity-eviction side effects if the tombstone path is not durable.
+- Shard migration dual-write/catch-up remains future work outside the current routed Agent Memory path.
 
 Talk to us about your agent workflow: [Contact Sales →](/contact/)
 

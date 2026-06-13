@@ -1,0 +1,13 @@
+id,path,source,medium,campaign,content,term,owner,notes
+threads-agent-memory-01,/use-cases/agent-memory/,threads,post,2026-06-agent-memory,threads-agent-memory-v1,agent-memory,growth,Post about memory needing live evidence.
+threads-prompt-cache-01,/use-cases/agent-memory-python-quickstart/,threads,post,2026-06-prompt-cache,threads-prompt-cache-v1,prompt-cache,growth,Post about repeated provider calls.
+threads-agentops-01,/use-cases/agent-memory/,threads,post,2026-06-agent-memory,threads-agentops-replay-v1,agentops,growth,Post about replayable agent decisions.
+threads-vector-db-01,/compare/agent-memory-vs-vector-databases/,threads,post,2026-06-vector-db-alt,threads-vector-db-v1,vector-db-alternative,growth,Post about detached vector memory.
+threads-robotics-01,/use-cases/robotics/,threads,post,2026-06-robotics-memory,threads-robotics-v1,robot-agent-memory,growth,Post about ROS 2 and replay.
+reddit-local-llama-01,/use-cases/agent-memory/,reddit,comment,2026-06-agent-memory,local-llama-memory-v1,agent-memory,growth,Use only after thread-specific review.
+reddit-dataengineering-01,/features/,reddit,comment,2026-06-timeseries-agents,dataengineering-tsdb-v1,time-series-database,growth,Use only for architecture comparison threads.
+reddit-mlops-01,/use-cases/agent-memory/,reddit,comment,2026-06-agent-memory,mlops-agentops-v1,agent-observability,growth,Use only for AgentOps or replay threads.
+reddit-robotics-01,/use-cases/robotics/,reddit,comment,2026-06-robotics-memory,robotics-ros2-v1,ros-2-telemetry,growth,Use only for ROS 2 telemetry threads.
+reddit-kdb-01,/compare/vs-kdb/,reddit,comment,2026-06-timeseries-agents,kdb-alternative-v1,kdb-alternative,growth,Use only when alternatives are requested.
+hackernews-show-01,/blog/introducing-zeptodb/,hackernews,launch,2026-06-timeseries-agents,hn-show-launch-v1,microsecond-time-series,growth,Use only when launch story is ready.
+github-profile-01,/getting-started/quick_start/,github,profile,2026-06-agent-memory,github-readme-link-v1,quick-start,growth,Use in project profile or repo links.

@@ -1,0 +1,11 @@
+priority,title,target_slug,primary_query,canonical_page,status,notes
+1,What is Agent Memory?,/blog/what-is-agent-memory/,what is agent memory,/use-cases/agent-memory/,planned,Definition page for AI answer engines.
+1,Agent Memory vs Vector Databases,/compare/agent-memory-vs-vector-databases/,agent memory vs vector database,/compare/agent-memory-vs-vector-databases/,existing,Strengthen with direct-answer FAQ if needed.
+1,Best Database for AI Agents on Live Data,/blog/best-database-for-ai-agents-live-data/,database for AI agents live data,/use-cases/agent-memory/,planned,Category page.
+1,Prompt Cache Architecture for AI Agents,/blog/prompt-cache-architecture-ai-agents/,prompt cache architecture AI agents,/use-cases/agent-memory-python-quickstart/,planned,Cost and cache query page.
+1,Time-Series Database for AI Agents,/blog/time-series-database-for-ai-agents/,time-series database for AI agents,/features/,planned,Core GEO page.
+2,ZeptoDB vs ClickHouse for Real-Time Agent Workloads,/compare/vs-clickhouse/,ClickHouse alternative real-time agents,/compare/vs-clickhouse/,existing,Add agent-loop framing if needed.
+2,ZeptoDB vs kdb+,/compare/vs-kdb/,kdb alternative SQL time-series,/compare/vs-kdb/,existing,Add concise FAQ if needed.
+2,ROS 2 Telemetry Database for Physical AI,/blog/ros2-telemetry-database-physical-ai/,ROS 2 telemetry database,/use-cases/robotics/,planned,Robotics GEO page.
+2,AgentOps Replay: What Did The Agent Know When It Acted?,/blog/agentops-replay-what-did-the-agent-know/,AgentOps replay,/use-cases/agent-memory/,planned,Replay and observability page.
+2,ASOF JOIN and Temporal SQL for Agent Context,/blog/asof-join-temporal-sql-agent-context/,ASOF JOIN agent context,/features/,planned,Temporal SQL educational page.

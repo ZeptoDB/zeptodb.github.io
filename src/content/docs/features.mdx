@@ -28,10 +28,19 @@ ZeptoDB has two cooperating layers: a microsecond time-series engine for live op
     Check normalized prompt matches and embedding-similar responses before calling an external model provider. Useful for repeated operational questions.
   </Card>
   <Card title="Sidecar snapshots" icon="rocket">
-    Persist memory records and vectors to `records.bin` and `vectors.bin`, with configurable mutation-count flushing and stop-time force flush.
+    Persist memory records and vectors to `records.bin` and `vectors.bin`, with WAL replay, snapshot latency/failure metrics, sidecar byte gauges, and stop-time force flush.
   </Card>
   <Card title="AgentOps telemetry" icon="star">
-    Track agent runs, retrieval events, cache events, LLM calls, and tool calls in ordinary ZeptoDB time-series tables beside the memory subsystem.
+    Track agent runs, retrieval events, cache events, LLM calls, LLM errors, tool calls, context traces, and replay events in ordinary ZeptoDB time-series tables.
+  </Card>
+  <Card title="Cluster-aware memory" icon="approve-check-circle">
+    Routed writes, point reads, fan-out search/context, semantic-cache fan-out, replica WAL policy, failover status, and cluster-scoped stats are available for multi-node deployments.
+  </Card>
+  <Card title="Retention controls" icon="seti:clock">
+    Tenant quotas, TTL/capacity eviction, pinned-memory protection, eviction tombstones, and rollback of failed durability side effects keep memory shards bounded and replayable.
+  </Card>
+  <Card title="ANN options" icon="star">
+    Exact scan remains the default. Optional sparse projection, HNSW, and dependency-free IVF candidate indexes expose rebuild, fallback, memory, and tombstone metrics.
   </Card>
 </CardGrid>
 
@@ -53,10 +62,44 @@ ZeptoDB has two cooperating layers: a microsecond time-series engine for live op
     Join within a time window for sensor clock drift, event correlation, tool-call timelines, and trade/quote alignment.
   </Card>
   <Card title="Temporal analytics" icon="rocket">
-    EMA, VWAP, xbar, mavg, percentile, GROUP BY, window functions, CTEs, and subqueries in standard SQL.
+    EMA, VWAP, xbar, mavg, percentile, spatial distance predicates, GROUP BY, window functions, CTEs, and subqueries in standard SQL.
   </Card>
   <Card title="Standard SQL" icon="approve-check-circle">
     Analysts, quants, ML engineers, and platform teams can query the live timeline without learning a proprietary DSL.
+  </Card>
+</CardGrid>
+
+---
+
+## Ingestion and connectors
+
+<CardGrid>
+  <Card title="ROS 2 bridge" icon="star">
+    Optional `Ros2Consumer` support for live scalar topics, standard profiles, typed profile tables, connector metrics, typed-row cluster forwarding, and rosbag2 import/replay.
+
+    [ROS 2 Setup →](/operations/ros2_setup/)
+  </Card>
+  <Card title="Arrow IPC ingest" icon="seti:clock">
+    `POST /insert/arrow` ingests Arrow RecordBatchStream payloads through the table-aware tick path for DataFrame, Polars, PyArrow, and batched clients.
+
+    [HTTP Reference →](/api/http_reference/#arrow-ipc-ingest--post-insertarrow)
+  </Card>
+  <Card title="MessagePack ingest" icon="seti:clock">
+    `POST /insert/msgpack` provides a compact binary map-of-column-arrays format for embedded and Telegraf-style clients.
+
+    [HTTP Reference →](/api/http_reference/#messagepack-columnar-ingest--post-insertmsgpack)
+  </Card>
+  <Card title="Telegraf / Kinesis" icon="approve-check-circle">
+    Telegraf `outputs.execd` and optional AWS Kinesis consumer support broaden pipeline ingestion without adding a bespoke source per sensor or stream.
+  </Card>
+  <Card title="Kafka and market feeds" icon="rocket">
+    Kafka batch ingestion plus native FIX, ITCH, and Binance feed handlers for high-throughput event streams.
+  </Card>
+  <Card title="MQTT / OPC-UA" icon="approve-check-circle">
+    Lightweight robot telemetry plus OPC-UA scalar, array, string, structured, history, alarms, browse, and server-mode surfaces.
+  </Card>
+  <Card title="Arrow and Parquet" icon="seti:clock">
+    Arrow Flight for batch transfer and Parquet HDB on S3, GCS, or NFS for replayable historical data.
   </Card>
 </CardGrid>
 
@@ -95,7 +138,13 @@ ZeptoDB has two cooperating layers: a microsecond time-series engine for live op
 | Python `connection.memory` | Put/search memories and assemble context |
 | Python `connection.cache` | Store and lookup exact/semantic prompt cache entries |
 | HTTP REST | SQL queries plus `/api/ai/*` memory and cache endpoints |
+| HTTP Arrow IPC ingest | Batched DataFrame / Arrow RecordBatchStream ingestion via `POST /insert/arrow` |
+| HTTP MessagePack ingest | Dependency-light binary columnar ingestion via `POST /insert/msgpack` |
 | C++ API | Embedded low-latency applications and custom services |
+| C++ `Ros2Consumer` | ROS 2 scalar, standard-profile, typed-profile, and rosbag2 ingest |
+| C++ `OpcUaConsumer` / `OpcUaServer` | Industrial OPC-UA ingestion, history reads, alarm events, browse discovery, and server publication |
+| C++ `KinesisConsumer` | AWS Kinesis stream polling, decoding, and table-aware routing |
+| Telegraf `outputs.execd` | Influx line protocol to ZeptoDB HTTP batches |
 | Arrow Flight | Batch data transfer and distributed training |
 | SQL CLI | Ad-hoc queries, operations, debugging |
 
@@ -103,7 +152,7 @@ ZeptoDB has two cooperating layers: a microsecond time-series engine for live op
 
 ## Security and isolation
 
-- Tenant and namespace fields on every memory and cache entry
+- Tenant, namespace, quota, TTL, and pinned-retention controls on memory and cache entries
 - Optional `X-Zepto-Tenant-Id` request header with conflict rejection
 - Memory content, prompts, responses, and metadata omitted from aggregate stats
 - TLS 1.3 with optional mTLS on endpoints and cluster RPC
@@ -111,7 +160,7 @@ ZeptoDB has two cooperating layers: a microsecond time-series engine for live op
 - JWT / OIDC authentication and API key management
 - Audit logging for auth events, queries, and admin actions
 
-> **Edition note:** The current Agent Memory implementation is single-node. In cluster mode, route `/api/ai/*` to a sticky pod or treat the layer as a per-pod cache until cluster-consistent memory routing lands.
+> **Operations note:** Agent Memory exposes local and cluster-scoped stats. Multi-node memory routing is available for routed writes, point reads, fan-out search/context, semantic-cache fallback, replica WAL durability, and owner-failover status. Shard migration dual-write/catch-up remains future work.
 
 See the [Security Operations Guide](/api/security_operations_guide/) for configuration.
 
@@ -124,8 +173,9 @@ See the [Security Operations Guide](/api/security_operations_guide/) for configu
 - Health monitoring and automatic failover
 - Rolling upgrades with zero downtime
 - Cross-node time-series query routing and aggregation
+- Cluster-scoped Agent Memory stats and routed memory/cache operations
 
-> Multi-node time-series clustering requires an Enterprise license. Agent Memory cluster-wide search and replicated memory writes are a follow-up design area.
+> Multi-node time-series clustering requires an Enterprise license. Multi-node Agent Memory features are intended for Enterprise-style deployments and should be validated against your durability and failover policy.
 
 See [Multi-Node Cluster](/deployment/multi_node_cluster/) for setup.
 
@@ -133,9 +183,10 @@ See [Multi-Node Cluster](/deployment/multi_node_cluster/) for setup.
 
 ## Deployment
 
-- Docker for local development, CI, and single-node Agent Memory trials
+- Docker for local development, CI, and Agent Memory trials
 - Kubernetes / Helm for clustered time-series deployments
-- Sticky routing option for current `/api/ai/*` production pilots
+- Agent Memory cluster stats, routed operations, and deterministic owner-failover validation for multi-node pilots
+- ROS 2 Jazzy smoke path and edge deployment guide for connector validation on development hosts, CI workers, and robot-lab edge nodes
 - Bare metal with NUMA / CPU pinning optimization
 - ARM Graviton for cost-efficient edge and cloud
 - Parquet HDB on S3, GCS, or local NFS

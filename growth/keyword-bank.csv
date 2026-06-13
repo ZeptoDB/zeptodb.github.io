@@ -1,0 +1,110 @@
+cluster,keyword,intent,priority,landing_page,notes
+agent_memory,agent memory,category,1,/use-cases/agent-memory/,Core category term.
+agent_memory,AI agent memory,category,1,/use-cases/agent-memory/,High fit.
+agent_memory,LLM memory,category,1,/use-cases/agent-memory/,Bridge to existing memory discussions.
+agent_memory,agent memory database,solution,1,/use-cases/agent-memory/,Direct product fit.
+agent_memory,memory for AI agents,problem,1,/use-cases/agent-memory/,Natural language query.
+agent_memory,long term memory agents,problem,2,/use-cases/agent-memory/,Often vector-store centric.
+agent_memory,episodic memory agents,problem,2,/use-cases/agent-memory/,Good for replay positioning.
+agent_memory,agent state persistence,problem,1,/use-cases/agent-memory/,Operational need.
+agent_memory,agent context retrieval,problem,1,/use-cases/agent-memory/,Core use case.
+agent_memory,context assembly,solution,2,/use-cases/agent-memory/,Good for architecture replies.
+agent_memory,token budget context,problem,2,/use-cases/agent-memory/,Prompt-time retrieval angle.
+agent_memory,tenant scoped memory,solution,2,/use-cases/agent-memory/,Enterprise fit.
+agent_memory,session scoped memory,solution,2,/use-cases/agent-memory/,Product specific fit.
+agent_memory,memory TTL agents,problem,3,/use-cases/agent-memory/,Good for ops discussions.
+agent_memory,pinned memories agents,solution,3,/use-cases/agent-memory/,Specific product feature.
+prompt_cache,prompt cache,category,1,/use-cases/agent-memory-python-quickstart/,High purchase intent.
+prompt_cache,semantic prompt cache,solution,1,/use-cases/agent-memory-python-quickstart/,Direct feature fit.
+prompt_cache,exact prompt cache,solution,2,/use-cases/agent-memory-python-quickstart/,Technical detail.
+prompt_cache,LLM cache,category,1,/use-cases/agent-memory-python-quickstart/,Common phrase.
+prompt_cache,reduce LLM cost,problem,1,/use-cases/agent-memory-python-quickstart/,Business trigger.
+prompt_cache,cache LLM responses,problem,1,/use-cases/agent-memory-python-quickstart/,Developer trigger.
+prompt_cache,semantic cache threshold,solution,2,/use-cases/agent-memory-python-quickstart/,Technical discussion.
+prompt_cache,provider call cache,problem,2,/use-cases/agent-memory-python-quickstart/,Good for cost control.
+prompt_cache,avoid repeated model calls,problem,1,/use-cases/agent-memory-python-quickstart/,Core value prop.
+agentops,AgentOps,category,1,/use-cases/agent-memory/,Strong fit.
+agentops,agent observability,category,1,/use-cases/agent-memory/,Good community query.
+agentops,LLM observability,category,2,/use-cases/agent-memory/,Broader market.
+agentops,agent telemetry,problem,1,/use-cases/agent-memory/,Product fit.
+agentops,agent replay,problem,1,/use-cases/agent-memory/,Differentiated angle.
+agentops,replayable agent decisions,problem,1,/use-cases/agent-memory/,High fit.
+agentops,what did the agent see,problem,1,/use-cases/agent-memory/,Pain language.
+agentops,debug AI agent behavior,problem,1,/use-cases/agent-memory/,High intent.
+agentops,agent tool call logs,problem,2,/use-cases/agent-memory/,Telemetry table fit.
+agentops,OpenTelemetry GenAI,category,2,/use-cases/agent-memory/,Integration angle.
+vector_db,vector database alternative,comparison,1,/compare/agent-memory-vs-vector-databases/,Strong comparison intent.
+vector_db,vector DB for agents,comparison,1,/compare/agent-memory-vs-vector-databases/,Common buying path.
+vector_db,vector database memory,category,2,/compare/agent-memory-vs-vector-databases/,Bridge term.
+vector_db,vector store agent memory,category,1,/compare/agent-memory-vs-vector-databases/,High fit.
+vector_db,vector DB limitations,problem,1,/compare/agent-memory-vs-vector-databases/,Good education angle.
+vector_db,temporal vector search,problem,2,/compare/agent-memory-vs-vector-databases/,Differentiate with time.
+vector_db,metadata filters vector DB,problem,2,/compare/agent-memory-vs-vector-databases/,Operational filters.
+vector_db,hybrid search memory,category,2,/compare/agent-memory-vs-vector-databases/,Broader retrieval.
+vector_db,RAG memory agent,category,2,/compare/agent-memory-vs-vector-databases/,Adjacent topic.
+vector_db,live data RAG,problem,1,/compare/agent-memory-vs-vector-databases/,Strong ZeptoDB fit.
+timeseries,time-series database,category,1,/features/,Core category.
+timeseries,time series database,category,1,/features/,No hyphen variant.
+timeseries,microsecond time-series database,solution,1,/benchmarks/,Differentiated.
+timeseries,real-time time-series database,category,1,/features/,High fit.
+timeseries,in-memory time-series database,category,1,/features/,Engine fit.
+timeseries,source available time-series database,solution,2,/pricing/,License fit.
+timeseries,SQL time-series database,category,1,/features/,Developer language.
+timeseries,temporal SQL,category,1,/features/,Feature fit.
+timeseries,ASOF JOIN SQL,solution,1,/features/,High technical fit.
+timeseries,Window JOIN time-series,solution,2,/features/,Technical feature.
+timeseries,temporal join database,problem,1,/features/,High fit.
+timeseries,event timeline database,problem,2,/features/,Good for agents.
+timeseries,high frequency telemetry database,problem,1,/features/,Robotics/IoT.
+timeseries,low latency database,problem,1,/benchmarks/,Broad but useful.
+timeseries,microsecond query latency,problem,1,/benchmarks/,Benchmark route.
+python,zero-copy Python,solution,1,/features/,Differentiated.
+python,Python time-series database,category,1,/api/python_reference/,Developer query.
+python,NumPy zero-copy database,solution,1,/features/,Technical fit.
+python,Pandas time-series database,category,2,/api/python_reference/,Developer query.
+python,Arrow Flight database,solution,2,/api/flight_reference/,Integration fit.
+python,PyTorch live data,problem,3,/features/,ML angle.
+database_comparison,kdb alternative,comparison,1,/compare/vs-kdb/,High intent.
+database_comparison,kdb+ alternative,comparison,1,/compare/vs-kdb/,High intent.
+database_comparison,ClickHouse alternative time-series,comparison,1,/compare/vs-clickhouse/,High intent.
+database_comparison,InfluxDB alternative,comparison,2,/compare/vs-influxdb/,Moderate intent.
+database_comparison,TimescaleDB alternative,comparison,2,/compare/vs-timescaledb/,Moderate intent.
+database_comparison,kdb vs ClickHouse,comparison,2,/compare/vs-kdb/,Join comparison threads carefully.
+database_comparison,ClickHouse latency,problem,2,/compare/vs-clickhouse/,Good for high-frequency use cases.
+database_comparison,InfluxDB latency,problem,2,/compare/vs-influxdb/,Good if thread is about hot path.
+database_comparison,TimescaleDB performance,problem,2,/compare/vs-timescaledb/,Use careful claims.
+database_comparison,OLAP vs time-series database,education,3,/compare/vs-clickhouse/,Educational.
+robotics,ROS 2 telemetry,category,1,/use-cases/robotics/,High fit.
+robotics,rosbag replay database,problem,1,/use-cases/robotics/,Strong fit.
+robotics,robot telemetry database,problem,1,/use-cases/robotics/,High fit.
+robotics,Physical AI memory,category,1,/use-cases/robotics/,Emerging category.
+robotics,robot agent memory,problem,1,/use-cases/robotics/,Strong fit.
+robotics,sensor fusion time-series,problem,2,/use-cases/robotics/,Good feature route.
+robotics,10kHz sensor data database,problem,2,/use-cases/robotics/,Performance fit.
+robotics,robot decision replay,problem,1,/use-cases/robotics/,Differentiated.
+iot,industrial IoT database,category,1,/use-cases/iot/,High fit.
+iot,smart factory telemetry,problem,1,/use-cases/iot/,High fit.
+iot,OPC-UA time-series,solution,2,/integrations/,Integration route.
+iot,MQTT time-series database,solution,2,/integrations/,Integration route.
+iot,maintenance agent memory,problem,1,/use-cases/iot/,Strong product story.
+iot,edge telemetry database,problem,1,/use-cases/iot/,Good for edge.
+iot,historian alternative,comparison,2,/use-cases/iot/,Use practical language.
+iot,factory agent memory,problem,1,/use-cases/iot/,Strong fit.
+trading,tick database,category,1,/use-cases/trading/,High fit.
+trading,market data time-series,category,1,/use-cases/trading/,High fit.
+trading,ASOF join trades quotes,problem,1,/use-cases/trading/,Strong technical fit.
+trading,zero-copy Python quant,solution,1,/use-cases/trading/,Good proof point.
+trading,trading agent memory,problem,1,/use-cases/trading/,Emerging category.
+trading,strategy replay database,problem,2,/use-cases/trading/,Compliance/research angle.
+trading,FIX parser database,solution,3,/use-cases/trading/,Specific feature.
+trading,ITCH parser database,solution,3,/use-cases/trading/,Specific feature.
+deployment,Kubernetes time-series database,category,2,/deployment/kubernetes_operations/,Deployment fit.
+deployment,stateful database Kubernetes,problem,2,/deployment/kubernetes_operations/,Operations fit.
+deployment,edge database deployment,problem,2,/deployment/production_deployment/,Industrial fit.
+deployment,multi node time-series database,solution,2,/deployment/multi_node_cluster/,Enterprise fit.
+deployment,S3 cold tier time-series,solution,3,/operations/cold_tier_s3/,Storage fit.
+license,BUSL database,category,3,/pricing/,License questions.
+license,source available database,category,2,/pricing/,Discovery.
+license,free community database,category,3,/pricing/,Adoption.
+security,SSO database,problem,3,/api/sso_integration_guide/,Enterprise.
+security,SOC2 agent memory,problem,3,/security/,Compliance.

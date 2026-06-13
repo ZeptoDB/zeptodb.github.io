@@ -38,9 +38,14 @@ export default defineConfig({
             { label: 'Quick Start', slug: 'getting-started/quick_start' },
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
             { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
+            { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
+            { label: 'ROS 2 Setup', slug: 'operations/ros2_setup' },
+            { label: 'ROS 2 Edge Deployment', slug: 'operations/ros2_edge_deployment' },
+            { label: 'Telegraf Output', slug: 'operations/telegraf_output' },
             { label: 'HTTP API', slug: 'api/http_reference' },
             { label: 'Python API', slug: 'api/python_reference' },
             { label: 'Production Deployment', slug: 'deployment/production_deployment' },
+            { label: 'Release Process', slug: 'deployment/release_process' },
           ],
         },
         {
@@ -69,6 +74,8 @@ export default defineConfig({
           items: [
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
             { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
+            { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
+            { label: 'Logistics & Edge Automation', slug: 'use-cases/logistics' },
             { label: 'Features', slug: 'features' },
             { label: 'Benchmarks', slug: 'benchmarks' },
             { label: 'Security', slug: 'security' },

@@ -1,0 +1,119 @@
+---
+title: "Logistics & Edge Automation"
+template: splash
+prev: false
+next: false
+description: "ZeptoDB for logistics AI — AGV pose streams, sorter events, RFID timelines, cold-chain audit trails, geofences, and edge replay."
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+Warehouses, yards, cold-chain lanes, and factory logistics all produce physical operations data: AGV poses, sorter lane metrics, RFID reads, pallet state, sensor health, and exception events. ZeptoDB keeps those timelines queryable for replay, geofencing, anomaly detection, and agent workflows.
+
+---
+
+## Why logistics teams choose ZeptoDB
+
+<CardGrid>
+  <Card title="Entity timelines" icon="seti:clock">
+    Reconstruct pallet, RFID tag, shipment, AGV, or sorter-lane history with ordered time-series queries and ASOF JOIN.
+  </Card>
+  <Card title="Spatial SQL" icon="star">
+    Use `haversine`, `ST_Distance`, and `ST_Within` for AGV proximity checks, geofences, drone zones, and yard automation.
+  </Card>
+  <Card title="High-rate ingest" icon="rocket">
+    Ingest AGV pose streams, sorter metrics, RFID reads, and cold-chain sensors through HTTP, Arrow IPC, MessagePack, Telegraf, Kinesis, ROS 2, OPC-UA, MQTT, or Kafka paths.
+  </Card>
+  <Card title="Audit-grade trails" icon="approve-check-circle">
+    Use append-only ingest, table ACLs, S3-backed Parquet retention, and per-shipment symbols for cold-chain and regulated lane evidence.
+  </Card>
+  <Card title="Agent memory" icon="open-book">
+    Store exception notes, prior remediation, operator decisions, and model/tool calls beside the live logistics timeline.
+  </Card>
+</CardGrid>
+
+---
+
+## Workloads
+
+| Workload | Typical rows/sec target | Query proof |
+|----------|------------------------:|-------------|
+| AGV pose streams | 200,000 | Geofence and proximity filters |
+| Sorter lane events | 1,000,000 | Per-lane jam and anomaly aggregates |
+| RFID reads | 50,000 | Entity timeline reconstruction |
+| Cold-chain sensors | 100,000 | Audit range scan by shipment |
+
+These are benchmark shapes, not blanket production guarantees. Use the [benchmark criteria](/benchmarks/#benchmark-criteria) when publishing or comparing results.
+
+The factory 10KHz live competitor proof completed at a fixed 10,000 rows/sec target for 60 seconds across ZeptoDB, InfluxDB, and TimescaleDB. All three systems inserted and verified 600,000 rows with zero failed rows in that sustained-rate proof. See [Benchmarks](/benchmarks/#factory-10khz-live-competitor-proof) for the exact table and scope.
+
+---
+
+## Example: AGV geofence
+
+```sql
+SELECT agv_id, timestamp
+FROM agv_pose
+WHERE ST_Within(lat, lon, 37.7749, -122.4194, 50)
+```
+
+## Example: pallet timeline with AGV state
+
+```sql
+SELECT p.timestamp, p.state, p.zone, a.lat, a.lon
+FROM pallet_events p
+ASOF JOIN agv_pose a
+ON p.agv_id = a.agv_id AND p.timestamp >= a.timestamp
+WHERE p.pallet_id = 10042
+ORDER BY p.timestamp ASC
+```
+
+## Example: cold-chain audit table
+
+```sql
+CREATE TABLE cold_chain_events (
+  timestamp TIMESTAMP_NS,
+  shipment_id SYMBOL,
+  pallet_id SYMBOL,
+  sensor_id SYMBOL,
+  route_id SYMBOL,
+  temperature_c FLOAT64,
+  humidity_pct FLOAT64,
+  door_open BOOL,
+  quality INT32
+)
+```
+
+Use table-scoped API keys for ingestion clients and avoid granting UPDATE or DELETE permissions to append-only telemetry writers.
+
+---
+
+## Reference paths
+
+<CardGrid>
+  <Card title="Spatial SQL" icon="star">
+    Distance and geofence functions for AGV, drone, and yard workflows.
+
+    [SQL Reference →](/api/sql_reference/#spatial-functions)
+  </Card>
+  <Card title="Arrow IPC ingest" icon="seti:clock">
+    Batched DataFrame and Arrow RecordBatchStream ingestion over HTTP.
+
+    [HTTP Reference →](/api/http_reference/#arrow-ipc-ingest--post-insertarrow)
+  </Card>
+  <Card title="MessagePack and Telegraf" icon="seti:clock">
+    Compact column batches over HTTP, or Telegraf `outputs.execd` for existing edge input ecosystems.
+
+    [MessagePack →](/api/http_reference/#messagepack-columnar-ingest--post-insertmsgpack) · [Telegraf →](/operations/telegraf_output/)
+  </Card>
+  <Card title="ROS 2 edge" icon="rocket">
+    Robot-local and lab-edge deployment guidance for Physical AI telemetry.
+
+    [ROS 2 Edge Deployment →](/operations/ros2_edge_deployment/)
+  </Card>
+  <Card title="Industrial and stream connectors" icon="approve-check-circle">
+    OPC-UA, MQTT, Kafka, and Kinesis paths for PLC, SCADA, sorter, edge, and cloud-stream telemetry.
+
+    [Integrations →](/integrations/)
+  </Card>
+</CardGrid>

@@ -21,7 +21,10 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     Optional example adapters cover OpenAI Responses and Anthropic Messages. They lazy-import SDKs and keep model names in application config.
   </Card>
   <Card title="AgentOps telemetry" icon="seti:clock">
-    Example schemas model `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, and `tool_calls` as ordinary time-series tables.
+    Example schemas model `agent_runs`, `retrieval_events`, `cache_events`, `llm_calls`, `llm_errors`, `tool_calls`, `context_traces`, and `context_replay_events` as ordinary time-series tables.
+  </Card>
+  <Card title="OpenTelemetry mapping" icon="star">
+    Example mapping converts OTLP-style GenAI spans into ZeptoDB AgentOps tables for LLM calls, cache hits, tool calls, and errors.
   </Card>
 </CardGrid>
 
@@ -32,6 +35,21 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 ## Ingestion
 
 <CardGrid>
+  <Card title="Arrow IPC ingest" icon="seti:clock">
+    `POST /insert/arrow` accepts Apache Arrow IPC RecordBatchStream bytes and writes through the table-aware tick ingest path without per-row SQL.
+
+    [HTTP Reference →](/api/http_reference/#arrow-ipc-ingest--post-insertarrow)
+  </Card>
+  <Card title="MessagePack ingest" icon="seti:clock">
+    `POST /insert/msgpack` accepts a dependency-light MessagePack map of column arrays for embedded and Telegraf-style batched clients.
+
+    [HTTP Reference →](/api/http_reference/#messagepack-columnar-ingest--post-insertmsgpack)
+  </Card>
+  <Card title="Telegraf output" icon="approve-check-circle">
+    `zepto-telegraf-output` plugs into Telegraf `outputs.execd`, reads Influx line protocol from stdin, and writes ZeptoDB batches over HTTP.
+
+    [Telegraf Output →](/operations/telegraf_output/)
+  </Card>
   <Card title="Kafka" icon="star">
     Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics. Useful for operational event streams and AgentOps pipelines.
 
@@ -54,6 +72,18 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 
     [Feed Handlers →](/feeds/feed_handler_complete/)
   </Card>
+  <Card title="AWS Kinesis" icon="star">
+    Optional `KinesisConsumer` for AWS-native streams, reusing Kafka/MQTT tick decoders with table-aware local and cluster routing.
+
+    [C++ Reference →](/api/cpp_reference/#feed-handlers)
+  </Card>
+  <Card title="ROS 2" icon="star">
+    Optional `Ros2Consumer` bridge for Physical AI: scalar topics, standard message profiles, typed profile tables, cluster forwarding, and rosbag2 import/replay.
+
+    [ROS 2 Setup →](/operations/ros2_setup/) · [Edge Deployment →](/operations/ros2_edge_deployment/) · [C++ Reference →](/api/cpp_reference/#ros-2-connector)
+
+    > ROS 2 connector support requires `-DZEPTO_USE_ROS2=ON`; IoT connectors require an Enterprise license.
+  </Card>
 </CardGrid>
 
 ---
@@ -63,8 +93,8 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 | Language | Type | Typical use | Link |
 |----------|------|-------------|------|
 | Python | Zero-copy + memory/cache helpers | Agent loops, ML pipelines, notebooks | [Python Reference →](/api/python_reference/) |
-| C++ | Native Pipeline API | Embedded, low-latency, edge deployments | [C++ Reference →](/api/cpp_reference/) |
-| HTTP | REST API | SQL plus `/api/ai/*` memory/cache endpoints | [HTTP Reference →](/api/http_reference/) |
+| C++ | Native Pipeline API + connector helpers | Embedded, low-latency, edge, robot-lab, and streaming deployments | [C++ Reference →](/api/cpp_reference/) |
+| HTTP | REST API + binary ingest | SQL, `/api/ai/*`, Arrow IPC ingest, and MessagePack ingest | [HTTP Reference →](/api/http_reference/) |
 | Arrow Flight | gRPC streaming | Batch data transfer and distributed training | [Flight Reference →](/api/flight_reference/) |
 
 ---
@@ -86,7 +116,7 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
-| Agent Memory sidecar | ✓ | `records.bin` + `vectors.bin` snapshots for memory/cache persistence |
+| Agent Memory sidecar | ✓ | `records.bin` + `vectors.bin` snapshots, WAL replay, snapshot metrics, ANN footprint, and sidecar byte gauges |
 | Amazon S3 | ✓ | Parquet HDB for historical time-series data |
 | Google Cloud Storage | ✓ | Parquet HDB |
 | Local NFS | ✓ | On-premise Parquet HDB for air-gapped and edge |
@@ -115,9 +145,11 @@ See [SSO Integration Guide →](/api/sso_integration_guide/)
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
-| OPC-UA | Available / expanding | Industrial PLC / SCADA connector for manufacturing and process telemetry |
+| OPC-UA | Available / expanding | PLC / SCADA connector with scalar, array, string, structured, Historical Access, Alarms & Conditions, browse CLI, and server-mode surfaces |
 | MQTT | Available / expanding | Lightweight IoT sensor and robot telemetry ingestion |
-| ROS2 | Planned | Direct topic subscription for robotics and autonomy stacks |
+| ROS 2 scalar topics | Available | Live scalar `std_msgs` topic subscriptions plus rosbag2 import/replay |
+| ROS 2 standard profiles | Available | IMU, JointState, Odometry, TFMessage, and LaserScan scalar mapping |
+| ROS 2 typed profiles | Available | Schema-aware wide tables for standard profiles, with typed-row cluster forwarding |
 | AutomationML / PackML | Under evaluation | Standardized plant and machine data models |
 | CAN / Vehicle Bus | Under evaluation | Automotive telemetry ingestion at the edge |
 
@@ -125,8 +157,11 @@ See [SSO Integration Guide →](/api/sso_integration_guide/)
 
 | Integration | Status | Description |
 |-------------|--------|-------------|
+| AWS Kinesis | Available | Optional AWS-native stream consumer with JSON/BINARY/JSON_HUMAN tick decoders |
+| Telegraf output | Available | `outputs.execd` writer for Telegraf input ecosystems |
+| MessagePack ingest | Available | Dependency-light HTTP binary batch ingest at `/insert/msgpack` |
+| Arrow IPC ingest | Available | Arrow RecordBatchStream HTTP ingest at `/insert/arrow` |
 | Apache Pulsar | Planned | Streaming alternative to Kafka |
-| AWS Kinesis | Planned | Cloud streaming ingestion |
 | Kafka Connect Sink | Planned | Standard Kafka connector plugin |
 | CDC (Debezium) | Planned | PostgreSQL / MySQL change capture |
 | JDBC / ODBC | Planned | Tableau, Excel, BI tools |

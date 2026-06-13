@@ -73,12 +73,12 @@ One engine, one timeline, one place to connect facts with decisions.
 | Compiler | Clang 19 |
 | JIT | LLVM 19 |
 | SIMD | Google Highway |
-| Ingestion | Lock-free MPMC ring buffer |
-| Agent Memory | C++ store, HTTP API, Python helpers, sidecar snapshots |
-| Embeddings | Client-supplied `float32`, optional sparse-projection ANN candidate index |
+| Ingestion | Lock-free MPMC ring buffer, Arrow IPC, MessagePack, feed handlers |
+| Agent Memory | C++ store, HTTP API, Python helpers, sidecar snapshots, routed cluster stats |
+| Embeddings | Client-supplied `float32`, optional sparse/HNSW/IVF ANN candidate indexes |
 | Python | pybind11 and HTTP client helpers |
-| Serialization | Apache Arrow / Parquet |
-| Networking | io_uring, HTTP, Arrow Flight |
+| Serialization | Apache Arrow / MessagePack / Parquet |
+| Networking | io_uring, HTTP, Arrow Flight, Telegraf output, Kinesis, ROS 2, OPC-UA, MQTT |
 | TLS | OpenSSL 3.x |
 
 ---

@@ -1,0 +1,16 @@
+segment,persona,buying_trigger,pain_language,primary_offer,proof_asset,landing_page,priority
+agent_infra,AI agent platform engineer,Agents need current facts and durable recall,"vector memory is detached from live events",Agent Memory with time-series evidence,Agent Memory guide,/use-cases/agent-memory/,1
+agent_infra,Founder or CTO building operational agents,LLM costs or repeated answers are rising,"we need memory and cache before provider calls",Prompt cache plus replayable context,Python quickstart,/use-cases/agent-memory-python-quickstart/,1
+agentops,SRE or observability engineer,They need to explain agent behavior after incidents,"we cannot replay what the agent saw",AgentOps telemetry on the same timeline,Agent Memory guide,/use-cases/agent-memory/,1
+database,data infrastructure engineer,Existing TSDB is too slow for hot-path decisions,"ClickHouse is fine for analytics but not for microsecond recall",Microsecond time-series SQL,benchmarks,/benchmarks/,1
+database,Database evaluator,They compare kdb+ ClickHouse InfluxDB TimescaleDB,"we want kdb-like latency without kdb pricing or q",Standard SQL and source-available model,comparison pages,/compare/vs-kdb/,1
+robotics,Physical AI or robotics engineer,They need rosbag replay and decision memory,"the robot cannot remember previous interventions",ROS 2 and replayable agent memory,robotics use case,/use-cases/robotics/,2
+iot,Industrial IoT platform lead,Factory telemetry must feed maintenance agents,"historians and vector stores are disconnected",Operational memory for factories,IoT use case,/use-cases/iot/,2
+autonomy,Autonomous systems engineer,They need scenario replay and safety analysis,"we need one timeline for sensors decisions and outcomes",Replayable decision timelines,autonomous systems use case,/use-cases/autonomous-vehicles/,2
+energy,Grid or utilities data engineer,They need live PMU or grid event context,"operator actions and events are split across systems",Energy agent memory,energy use case,/use-cases/energy/,3
+logistics,Warehouse or fleet automation engineer,They need edge event replay,"AGV RFID and exception data are fragmented",Logistics and edge automation,logistics use case,/use-cases/logistics/,3
+trading,Quant researcher,They need ASOF joins and Python notebooks,"we need temporal joins and zero-copy data access",Microsecond SQL and zero-copy Python,trading use case,/use-cases/trading/,2
+trading,Trading infrastructure engineer,They need tick ingestion and decision replay,"we need fast ingest and compliance-ready replay",Time-series plus strategy memory,trading use case,/use-cases/trading/,2
+ml_platform,ML platform engineer,They need feature and context retrieval near live systems,"feature stores and vector DBs are not enough for temporal state",Live context assembly,Agent Memory guide,/use-cases/agent-memory/,2
+cost_control,Engineering manager,Provider spend is high from repeated agent calls,"the same prompt keeps hitting the model",Exact and semantic prompt cache,Python quickstart,/use-cases/agent-memory-python-quickstart/,2
+security_compliance,Compliance or regulated deployment lead,They need audit trails for agent decisions,"we need evidence for every automated decision",Replayable AgentOps trail,security page,/security/,3

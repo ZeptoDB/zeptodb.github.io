@@ -10,7 +10,11 @@
     "dev": "astro dev",
     "build": "node scripts/sync-docs.mjs && astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "growth:validate": "node scripts/growth-validate.mjs",
+    "growth:links": "node scripts/growth-build-links.mjs",
+    "growth:search": "node scripts/growth-search-queue.mjs",
+    "growth:score": "node scripts/growth-score-opportunities.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.2",

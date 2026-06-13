@@ -25,7 +25,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
     ARM Graviton on the line, multi-node cluster in the plant, Parquet HDB on S3 for long-tail history. Same binary, same SQL.
   </Card>
   <Card title="Industrial protocols" icon="approve-check-circle">
-    OPC-UA and MQTT connectors for PLC, SCADA, and brownfield sensor buses. Built-in Kafka consumer for existing streaming infra.
+    OPC-UA, MQTT, Telegraf, and Kinesis connectors for PLC, SCADA, brownfield sensor buses, and cloud streams. OPC-UA covers scalar, array, string, structured, history, alarms, browse, and server-mode surfaces.
   </Card>
   <Card title="Maintenance memory" icon="open-book">
     Keep prior diagnoses, operator notes, work orders, model calls, and tool outputs searchable by machine, session, and incident.
@@ -40,6 +40,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 - Ingest vibration, temperature, current, and oil-debris sensors at 10KHz+
 - Rolling statistics (EMA, stddev, percentiles) for drift and early-warning signatures
 - ASOF JOIN to correlate sensor anomalies with maintenance events and work orders
+- Use OPC-UA arrays, structured fields, strings, Historical Access backfills, Telegraf line-protocol input, Kinesis streams, or MessagePack batches through the same quality and routing policy
 
 ### Quality control & SPC
 - Real-time statistical process control with window functions
@@ -55,6 +56,7 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 - High-fidelity historian for simulation calibration and what-if analysis
 - Join live sensor streams with setpoints and batch records
 - Feed production ML models with the same zero-copy path used in research
+- Expose selected ZeptoDB symbols back to PLC / SCADA clients through OPC-UA server mode when open62541 server support is enabled
 
 ### Industrial agent workflows
 - Retrieve similar failures before recommending a maintenance action
@@ -94,6 +96,8 @@ ORDER BY deviation DESC
 | Hybrid | Edge for real-time, cloud sync for cross-plant analytics and ML |
 
 See [Production Deployment](/deployment/production_deployment/) for reference architectures.
+
+For connector details, see [Integrations](/integrations/), [Telegraf Output](/operations/telegraf_output/), [HTTP MessagePack ingest](/api/http_reference/#messagepack-columnar-ingest--post-insertmsgpack), [C++ OPC-UA reference](/api/cpp_reference/#opc-ua-consumer), and [Kinesis feed handlers](/api/cpp_reference/#feed-handlers).
 
 ---
 

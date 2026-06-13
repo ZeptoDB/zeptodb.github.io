@@ -1,0 +1,56 @@
+channel,community,category,audience_fit,posture,first_action,risk,notes
+reddit,r/LocalLLaMA,AI agents,high,comment_only,answer technical memory and retrieval threads,medium,Verify subreddit rules before linking.
+reddit,r/LangChain,AI agents,high,comment_only,answer memory and agent state questions,medium,Disclose affiliation when mentioning ZeptoDB.
+reddit,r/AI_Agents,AI agents,high,comment_only,answer architecture questions,medium,Watch for vendor fatigue.
+reddit,r/MachineLearning,ML systems,medium,comment_only,only reply to systems or benchmark discussions,high,No shallow promotion.
+reddit,r/mlops,ML platform,high,comment_only,answer production memory and observability threads,medium,Useful for AgentOps positioning.
+reddit,r/dataengineering,Data infrastructure,high,comment_only,answer TSDB or streaming architecture threads,medium,Strong fit for stack consolidation.
+reddit,r/databasedevelopment,Databases,high,comment_only,answer implementation and storage questions,medium,Technical depth required.
+reddit,r/Database,Databases,medium,comment_only,monitor comparison questions,medium,Check activity level.
+reddit,r/clickhouse,Databases,medium,comment_only,only answer when alternatives are requested,high,Do not attack ClickHouse.
+reddit,r/influxdb,Databases,medium,comment_only,only answer migration or latency questions,high,Be respectful and specific.
+reddit,r/timescaledb,Databases,medium,comment_only,only answer comparison questions,high,Avoid vendor hijacking.
+reddit,r/kdb,Quant databases,high,comment_only,answer kdb alternative and temporal SQL threads,high,Small expert community.
+reddit,r/algotrading,Trading,high,comment_only,answer time-series and data pipeline questions,medium,No financial advice.
+reddit,r/quant,Trading,medium,comment_only,answer research infrastructure threads,medium,Keep claims benchmark-scoped.
+reddit,r/financeprogramming,Trading,medium,comment_only,answer market data engineering threads,medium,Check rules and activity.
+reddit,r/robotics,Robotics,high,comment_only,answer ROS 2 replay and telemetry questions,medium,Use robotics landing page.
+reddit,r/ROS,Robotics,high,comment_only,answer rosbag and telemetry storage questions,medium,Technical examples preferred.
+reddit,r/embedded,Edge systems,medium,comment_only,answer low-latency edge data questions,medium,Do not overfit to cloud.
+reddit,r/IOT,Industrial IoT,high,comment_only,answer historian and telemetry questions,medium,Use factory examples.
+reddit,r/PLC,Industrial IoT,medium,comment_only,answer only where software/data stack is relevant,high,Operational practitioners dislike hype.
+reddit,r/industrialautomation,Industrial IoT,medium,comment_only,monitor maintenance agent threads,high,Use practical language.
+reddit,r/sre,Observability,high,comment_only,answer incident replay and agent ops threads,medium,Do not pitch without context.
+reddit,r/devops,Observability,medium,comment_only,monitor LLM ops and observability discussions,medium,High volume lower precision.
+reddit,r/observability,Observability,high,comment_only,answer telemetry and tracing questions,medium,AgentOps angle.
+reddit,r/kubernetes,Infrastructure,medium,comment_only,only reply to stateful deployment or HA threads,medium,Use deployment docs.
+reddit,r/cpp,Engineering,medium,comment_only,answer C++ database implementation posts,medium,Good for credibility.
+reddit,r/rust,Engineering,low,listen_only,monitor database implementation comparisons,low,ZeptoDB is C++ so fit is indirect.
+reddit,r/programming,Engineering,medium,comment_only,only reply to substantive database posts,high,Very sensitive to promotion.
+reddit,r/startups,Founder,medium,comment_only,answer infra cost and agent product questions,medium,Less technical.
+reddit,r/SaaS,Founder,low,listen_only,monitor agent product ops discussions,medium,Use sparingly.
+reddit,r/microsaas,Founder,medium,comment_only,answer agent infra and cost threads,medium,Avoid generic SaaS advice.
+reddit,r/selfhosted,Infrastructure,medium,comment_only,monitor source-available database threads,medium,License clarity matters.
+reddit,r/opensource,Open source,medium,comment_only,monitor launch and licensing discussions,high,Be clear about BUSL.
+reddit,r/github,Developer tools,low,listen_only,monitor repo growth and release threads,low,Indirect.
+reddit,r/redditdev,Developer platform,low,listen_only,monitor API policy changes,medium,Not a customer channel.
+threads,keyword: agent memory,AI agents,high,post_and_reply,post short proof-backed takes,low,Use official API and pacing.
+threads,keyword: AI agents,AI agents,high,post_and_reply,reply to builder conversations,low,Avoid repetitive replies.
+threads,keyword: vector database,AI infrastructure,high,post_and_reply,contrast live evidence with detached vectors,medium,Do not dunk on competitors.
+threads,keyword: prompt cache,AI infrastructure,high,post_and_reply,share cache economics and examples,low,Good education topic.
+threads,keyword: time-series database,Data infrastructure,high,post_and_reply,share benchmarks and temporal SQL examples,low,Use one link max.
+threads,keyword: robotics AI,Robotics,medium,post_and_reply,share ROS 2 and replay ideas,low,Use concrete examples.
+threads,keyword: AgentOps,Observability,high,post_and_reply,share replay and telemetry patterns,low,Good product category fit.
+hackernews,Show HN,Developer audience,high,submit_when_ready,prepare launch story and benchmarks,medium,Only when demo/docs are polished.
+hackernews,Ask HN,Developer audience,medium,comment_only,answer relevant architecture questions,medium,No link unless directly useful.
+github,zeptodb issues,Existing users,high,owned_channel,turn support questions into docs and examples,low,High intent.
+github,competitor issues,Database evaluators,medium,listen_only,learn pain language from public issues,medium,Do not market inside competitor repos.
+github,awesome lists,Developer discovery,medium,submit_pr,submit only where ZeptoDB clearly fits,medium,Follow contribution rules.
+discord,LangChain community,AI agents,high,manual_only,join and answer memory architecture questions,medium,Follow server promotion rules.
+discord,LlamaIndex community,AI agents,high,manual_only,join and answer data/memory questions,medium,Avoid drive-by links.
+discord,ROS community,Robotics,high,manual_only,join and learn telemetry pain,medium,Relationship channel.
+discord,MLOps community,ML platform,high,manual_only,answer production agent questions,medium,Manual only.
+slack,MLOps Community,ML platform,high,manual_only,answer observability and retrieval questions,medium,Check vendor rules.
+slack,DataTalks.Club,Data engineering,medium,manual_only,monitor database and streaming channels,medium,Educational posture.
+linkedin,founder profile,Enterprise,high,post_and_reply,weekly proof-backed founder posts,low,Good for enterprise trust.
+linkedin,company page,Enterprise,medium,post_only,repost technical articles and releases,low,Lower engagement.
