@@ -1,2 +1,22 @@
 date,engine,prompt,zeptodb_appeared,cited_url,answer_accuracy,competitors_cited,next_fix,notes
 2026-06-13,template,What is the best database for AI agents that need live time-series data?,,,,,,Replace this row with real weekly checks.
+2026-06-13,bing_copilot,How can AI agents replay what they saw before taking action?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Bing/Copilot check.
+2026-06-13,bing_copilot,Which time-series database is designed for AI agents?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Bing/Copilot check.
+2026-06-13,chatgpt_search,How should I build prompt cache for AI agents?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory-python-quickstart/; Priority: 1; Prompt cache query.
+2026-06-13,chatgpt_search,What are alternatives to vector databases for AI agent memory?,,,,,,Expected page: https://zeptodb.com/compare/agent-memory-vs-vector-databases/; Priority: 1; Comparison query.
+2026-06-13,chatgpt_search,What is agent memory for operational AI agents?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Definition query.
+2026-06-13,chatgpt_search,What is the best database for AI agents that need live time-series data?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Category-defining query.
+2026-06-13,chatgpt_search,Which database supports time-series evidence and agent memory together?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Differentiated query.
+2026-06-13,google_ai_mode,Best database for AI agent memory over live data,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 1; Google AI Mode check.
+2026-06-13,google_ai_mode,Prompt cache architecture for AI agents,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory-python-quickstart/; Priority: 1; Google AI Mode check.
+2026-06-13,google_ai_mode,Vector database alternative for operational agents,,,,,,Expected page: https://zeptodb.com/compare/agent-memory-vs-vector-databases/; Priority: 1; Google AI Mode check.
+2026-06-13,perplexity,What is the best database for prompt cache and agent memory?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory-python-quickstart/; Priority: 1; Perplexity check.
+2026-06-13,perplexity,What is the difference between agent memory and a vector database?,,,,,,Expected page: https://zeptodb.com/compare/agent-memory-vs-vector-databases/; Priority: 1; Perplexity check.
+2026-06-13,bing_copilot,ClickHouse alternative for real-time agent workloads,,,,,,Expected page: https://zeptodb.com/compare/vs-clickhouse/; Priority: 2; Bing/Copilot check.
+2026-06-13,bing_copilot,Database for ASOF JOIN and AI agent context,,,,,,Expected page: https://zeptodb.com/features/; Priority: 2; Bing/Copilot check.
+2026-06-13,chatgpt_search,What database should I use for ROS 2 telemetry and robot agent memory?,,,,,,Expected page: https://zeptodb.com/use-cases/robotics/; Priority: 2; Robotics query.
+2026-06-13,chatgpt_search,What is a kdb+ alternative with SQL for time-series workloads?,,,,,,Expected page: https://zeptodb.com/compare/vs-kdb/; Priority: 2; Competitive query.
+2026-06-13,chatgpt_search,What is replayable AgentOps?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 2; AgentOps query.
+2026-06-13,google_ai_mode,Time-series database for robotics telemetry,,,,,,Expected page: https://zeptodb.com/use-cases/robotics/; Priority: 2; Google AI Mode check.
+2026-06-13,perplexity,How do I store AgentOps telemetry for replay?,,,,,,Expected page: https://zeptodb.com/use-cases/agent-memory/; Priority: 2; Perplexity check.
+2026-06-13,perplexity,What database handles ROS 2 telemetry and agent memory?,,,,,,Expected page: https://zeptodb.com/use-cases/robotics/; Priority: 2; Perplexity check.

@@ -32,6 +32,16 @@ function isAccurate(value) {
   return ['accurate', 'yes', 'y', 'true', '1'].includes(String(value || '').trim().toLowerCase());
 }
 
+function hasObservedResult(row) {
+  return Boolean(
+    row.zeptodb_appeared ||
+    row.cited_url ||
+    row.answer_accuracy ||
+    row.competitors_cited ||
+    row.next_fix,
+  );
+}
+
 function groupBy(rows, key) {
   const groups = new Map();
   for (const row of rows) {
@@ -111,34 +121,51 @@ function report() {
   }
 
   const total = rows.length;
-  const appeared = rows.filter((row) => isYes(row.zeptodb_appeared)).length;
-  const cited = rows.filter((row) => row.cited_url && row.cited_url.includes('zeptodb.com')).length;
-  const accurate = rows.filter((row) => isAccurate(row.answer_accuracy)).length;
+  const completedRows = rows.filter(hasObservedResult);
+  const pending = total - completedRows.length;
+  const completed = completedRows.length;
+  const appeared = completedRows.filter((row) => isYes(row.zeptodb_appeared)).length;
+  const cited = completedRows.filter((row) => row.cited_url && row.cited_url.includes('zeptodb.com')).length;
+  const accurate = completedRows.filter((row) => isAccurate(row.answer_accuracy)).length;
+  const pct = (value) => (completed === 0 ? 'n/a' : `${Math.round((value / completed) * 100)}%`);
 
-  console.log(`- Checks: ${total}`);
-  console.log(`- ZeptoDB appeared: ${appeared}/${total} (${Math.round((appeared / total) * 100)}%)`);
-  console.log(`- ZeptoDB cited: ${cited}/${total} (${Math.round((cited / total) * 100)}%)`);
-  console.log(`- Accurate answers: ${accurate}/${total} (${Math.round((accurate / total) * 100)}%)\n`);
+  console.log(`- Checks queued: ${total}`);
+  console.log(`- Checks completed: ${completed}`);
+  console.log(`- Checks pending: ${pending}`);
+  console.log(`- ZeptoDB appeared: ${appeared}/${completed} (${pct(appeared)})`);
+  console.log(`- ZeptoDB cited: ${cited}/${completed} (${pct(cited)})`);
+  console.log(`- Accurate answers: ${accurate}/${completed} (${pct(accurate)})\n`);
 
   console.log('## By Engine\n');
-  console.log('| Engine | Checks | Appeared | Cited | Accurate |');
-  console.log('|---|---:|---:|---:|---:|');
+  console.log('| Engine | Queued | Completed | Pending | Appeared | Cited | Accurate |');
+  console.log('|---|---:|---:|---:|---:|---:|---:|');
   for (const [engine, engineRows] of groupBy(rows, 'engine')) {
     const engineTotal = engineRows.length;
-    const engineAppeared = engineRows.filter((row) => isYes(row.zeptodb_appeared)).length;
-    const engineCited = engineRows.filter((row) => row.cited_url && row.cited_url.includes('zeptodb.com')).length;
-    const engineAccurate = engineRows.filter((row) => isAccurate(row.answer_accuracy)).length;
-    console.log(`| ${engine} | ${engineTotal} | ${engineAppeared} | ${engineCited} | ${engineAccurate} |`);
+    const engineCompletedRows = engineRows.filter(hasObservedResult);
+    const engineCompleted = engineCompletedRows.length;
+    const enginePending = engineTotal - engineCompleted;
+    const engineAppeared = engineCompletedRows.filter((row) => isYes(row.zeptodb_appeared)).length;
+    const engineCited = engineCompletedRows.filter((row) => row.cited_url && row.cited_url.includes('zeptodb.com')).length;
+    const engineAccurate = engineCompletedRows.filter((row) => isAccurate(row.answer_accuracy)).length;
+    console.log(`| ${engine} | ${engineTotal} | ${engineCompleted} | ${enginePending} | ${engineAppeared} | ${engineCited} | ${engineAccurate} |`);
   }
 
   const gaps = rows.filter((row) =>
-    !isYes(row.zeptodb_appeared) ||
-    !row.cited_url.includes('zeptodb.com') ||
-    !isAccurate(row.answer_accuracy) ||
-    row.next_fix,
+    hasObservedResult(row) &&
+    (
+      !isYes(row.zeptodb_appeared) ||
+      !row.cited_url.includes('zeptodb.com') ||
+      !isAccurate(row.answer_accuracy) ||
+      row.next_fix
+    ),
   );
 
   console.log('\n## Follow-Ups\n');
+  if (completed === 0) {
+    console.log('- No completed checks yet. Fill the pending rows in `growth/ai-search-citation-log.csv` after manual AI-search checks.');
+    return;
+  }
+
   if (gaps.length === 0) {
     console.log('- No follow-ups logged.');
     return;
