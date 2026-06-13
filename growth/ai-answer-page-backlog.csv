@@ -1,5 +1,5 @@
 priority,title,target_slug,primary_query,canonical_page,status,notes
-1,What is Agent Memory?,/blog/what-is-agent-memory/,what is agent memory,/use-cases/agent-memory/,planned,Definition page for AI answer engines.
+1,What is Agent Memory?,/blog/what-is-agent-memory/,what is agent memory,/use-cases/agent-memory/,published,Definition page for AI answer engines.
 1,Agent Memory vs Vector Databases,/compare/agent-memory-vs-vector-databases/,agent memory vs vector database,/compare/agent-memory-vs-vector-databases/,existing,Strengthen with direct-answer FAQ if needed.
 1,Best Database for AI Agents on Live Data,/blog/best-database-for-ai-agents-live-data/,database for AI agents live data,/use-cases/agent-memory/,published,Category page.
 1,Prompt Cache Architecture for AI Agents,/blog/prompt-cache-architecture-ai-agents/,prompt cache architecture AI agents,/use-cases/agent-memory-python-quickstart/,planned,Cost and cache query page.
