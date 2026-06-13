@@ -39,6 +39,21 @@
 |---|---|---|---|
 | | | | |
 
+## AI Search Visibility
+
+Generate the current report:
+
+```bash
+pnpm growth:ai-search -- --mode=report --date=YYYY-MM-DD
+```
+
+| Engine | Checks | Appeared | Cited | Accurate | Notes |
+|---|---:|---:|---:|---:|---|
+| ChatGPT Search | 0 | 0 | 0 | 0 | |
+| Google AI Mode | 0 | 0 | 0 | 0 | |
+| Bing/Copilot | 0 | 0 | 0 | 0 | |
+| Perplexity | 0 | 0 | 0 | 0 | |
+
 ## Problems
 
 - Communities where product mentions were unwelcome:

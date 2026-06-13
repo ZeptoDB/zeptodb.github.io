@@ -14,7 +14,8 @@
     "growth:validate": "node scripts/growth-validate.mjs",
     "growth:links": "node scripts/growth-build-links.mjs",
     "growth:search": "node scripts/growth-search-queue.mjs",
-    "growth:score": "node scripts/growth-score-opportunities.mjs"
+    "growth:score": "node scripts/growth-score-opportunities.mjs",
+    "growth:ai-search": "node scripts/growth-ai-search-measure.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.2",

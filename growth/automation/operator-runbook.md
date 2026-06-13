@@ -56,6 +56,18 @@ Use:
 growth/ai-search-prompts.csv
 ```
 
+Generate the weekly prompt queue:
+
+```bash
+pnpm growth:ai-search -- --mode=queue --date=YYYY-MM-DD
+```
+
+Create placeholder rows for the citation log:
+
+```bash
+pnpm growth:ai-search -- --mode=template --date=YYYY-MM-DD --append=true
+```
+
 Record:
 
 - engine
@@ -64,6 +76,12 @@ Record:
 - which URL is cited
 - whether the answer is accurate
 - next fix
+
+Summarize the run:
+
+```bash
+pnpm growth:ai-search -- --mode=report --date=YYYY-MM-DD
+```
 
 ## Kill Switches
 

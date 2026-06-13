@@ -22,6 +22,17 @@ Qualified discovery:
 - Competitors cited.
 - Missing page needed.
 
+Run the weekly prompt set with:
+
+```bash
+pnpm growth:ai-search -- --mode=queue --date=YYYY-MM-DD
+pnpm growth:ai-search -- --mode=template --date=YYYY-MM-DD --append=true
+pnpm growth:ai-search -- --mode=report --date=YYYY-MM-DD
+```
+
+The source prompt set is `growth/ai-search-prompts.csv`; the measurement log is
+`growth/ai-search-citation-log.csv`.
+
 ### Search Console
 
 - Indexed pages.

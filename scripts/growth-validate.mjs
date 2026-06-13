@@ -45,6 +45,26 @@ const checks = [
     minRows: 8,
     requiredHeaders: ['id', 'path', 'source', 'medium', 'campaign', 'content', 'term'],
   },
+  {
+    path: 'growth/ai-search-prompts.csv',
+    minRows: 20,
+    requiredHeaders: ['engine', 'prompt', 'expected_zeptodb_page', 'priority', 'notes'],
+  },
+  {
+    path: 'growth/ai-search-citation-log.csv',
+    minRows: 1,
+    requiredHeaders: [
+      'date',
+      'engine',
+      'prompt',
+      'zeptodb_appeared',
+      'cited_url',
+      'answer_accuracy',
+      'competitors_cited',
+      'next_fix',
+      'notes',
+    ],
+  },
 ];
 
 const validPostures = new Set(['listen_only', 'draft_only', 'comment_only', 'post_and_reply', 'owned_channel', 'submit_when_ready', 'post_only', 'manual_only', 'submit_pr']);
@@ -112,6 +132,19 @@ for (const check of checks) {
     for (const [index, record] of records.entries()) {
       if (!validPostures.has(record.posture)) {
         errors.push(`${check.path}:${index + 2}: invalid posture ${record.posture}`);
+      }
+    }
+  }
+
+  if (check.path.endsWith('ai-search-prompts.csv')) {
+    for (const [index, record] of records.entries()) {
+      const priority = Number(record.priority);
+      if (!Number.isInteger(priority) || priority < 1 || priority > 3) {
+        errors.push(`${check.path}:${index + 2}: invalid priority ${record.priority}`);
+      }
+
+      if (!record.expected_zeptodb_page.startsWith('https://zeptodb.com/')) {
+        errors.push(`${check.path}:${index + 2}: expected page must be a zeptodb.com URL`);
       }
     }
   }
