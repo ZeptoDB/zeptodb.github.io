@@ -1,0 +1,79 @@
+name: Weekly AI Search Measurement
+
+on:
+  schedule:
+    # Monday 09:00 KST / Monday 00:00 UTC
+    - cron: '0 0 * * 1'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-measurement-issue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build weekly measurement issue
+        id: issue
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_date="$(date -u +%F)"
+          body="$RUNNER_TEMP/ai-search-measurement-$run_date.md"
+
+          {
+            echo "# Weekly AI Search Measurement - $run_date"
+            echo
+            echo "Run the queue below in ChatGPT Search, Google AI Mode, Bing/Copilot, and Perplexity."
+            echo "Then paste the CSV rows into \`growth/ai-search-citation-log.csv\`, replacing blanks with observed results."
+            echo
+            echo "## Queue"
+            echo
+            pnpm growth:ai-search -- --mode=queue --date="$run_date" --priority=2
+            echo
+            echo "## CSV Rows"
+            echo
+            echo '```csv'
+            pnpm growth:ai-search -- --mode=template --date="$run_date" --priority=2
+            echo '```'
+            echo
+            echo "## Current Report"
+            echo
+            pnpm growth:ai-search -- --mode=report --date="$run_date"
+            echo
+            echo "## After Manual Checks"
+            echo
+            echo "1. Fill \`zeptodb_appeared\`, \`cited_url\`, \`answer_accuracy\`, \`competitors_cited\`, and \`next_fix\`."
+            echo "2. Run \`pnpm growth:ai-search -- --mode=report --date=$run_date\`."
+            echo "3. Turn every repeated miss into an answer-page, comparison-page, or benchmark-proof update."
+          } > "$body"
+
+          {
+            echo "run_date=$run_date"
+            echo "body=$body"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Weekly AI search measurement - ${{ steps.issue.outputs.run_date }}" \
+            --body-file "${{ steps.issue.outputs.body }}"

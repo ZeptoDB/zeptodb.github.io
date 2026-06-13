@@ -50,6 +50,9 @@ growth/campaigns/week-01-reddit-response-templates.md
 
 ## Weekly AI Visibility Test
 
+GitHub Actions creates a weekly measurement issue every Monday at 09:00 KST.
+Use that issue as the checklist for the manual AI-search checks.
+
 Use:
 
 ```text
