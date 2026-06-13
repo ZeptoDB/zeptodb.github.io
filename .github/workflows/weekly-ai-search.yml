@@ -58,6 +58,20 @@ jobs:
             echo
             pnpm growth:ai-search -- --mode=report --date="$run_date"
             echo
+            echo "## Next Automated Content Action"
+            echo
+            echo "Generate the next AI-answer-page draft from the backlog:"
+            echo
+            echo '```bash'
+            echo "pnpm growth:answer-page"
+            echo '```'
+            echo
+            echo "Publish only after review with:"
+            echo
+            echo '```bash'
+            echo "pnpm growth:answer-page -- --mode=publish --slug=<draft-slug>"
+            echo '```'
+            echo
             echo "## After Manual Checks"
             echo
             echo "1. Fill \`zeptodb_appeared\`, \`cited_url\`, \`answer_accuracy\`, \`competitors_cited\`, and \`next_fix\`."
