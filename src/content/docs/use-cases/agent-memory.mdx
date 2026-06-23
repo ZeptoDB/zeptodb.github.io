@@ -185,7 +185,7 @@ This keeps the agent path inspectable: what the agent saw, which memories it use
     Pair tick-by-tick market state with strategy memory, risk decisions, execution outcomes, and compliance replay.
   </Card>
   <Card title="Robotics agents" icon="star">
-    Keep sensor fusion data, action outcomes, operator interventions, and policy notes together as replayable episodes.
+    Keep sensor fusion data, action outcomes, operator interventions, and policy notes together as replayable episodes. The Physical AI Action-Outcome line is currently research-only; see the grounded overview before treating it as a production feature.
   </Card>
   <Card title="Observability agents" icon="approve-check-circle">
     Join metrics, traces, deploys, incidents, runbooks, cache hits, LLM calls, and remediation actions in one timeline.
@@ -230,3 +230,5 @@ Talk to us about your agent workflow: [Contact Sales →](/contact/)
 ## Start in Python
 
 If you want the shortest runnable path, use the [Agent Memory Python Quickstart](/use-cases/agent-memory-python-quickstart/). It walks through memory writes, context retrieval, cache lookup, provider fallback, and decision write-back.
+
+For robot and embodied-agent memory, read [Physical AI Memory and Action-Outcome Memory](/blog/physical-ai-action-outcome-memory/). It separates available ROS 2/time-series/Agent Memory product surfaces from research-only Action-Outcome experiments.

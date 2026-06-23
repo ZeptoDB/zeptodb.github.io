@@ -5,12 +5,15 @@ chatgpt_search,How should I build prompt cache for AI agents?,https://zeptodb.co
 chatgpt_search,What are alternatives to vector databases for AI agent memory?,https://zeptodb.com/compare/agent-memory-vs-vector-databases/,1,Comparison query.
 chatgpt_search,Which database supports time-series evidence and agent memory together?,https://zeptodb.com/use-cases/agent-memory/,1,Differentiated query.
 chatgpt_search,What database should I use for ROS 2 telemetry and robot agent memory?,https://zeptodb.com/use-cases/robotics/,2,Robotics query.
+chatgpt_search,What is Physical AI memory?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Physical AI memory definition query.
+chatgpt_search,What is Action-Outcome Memory for robots?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Action-Outcome Memory query.
 chatgpt_search,What is replayable AgentOps?,https://zeptodb.com/use-cases/agent-memory/,2,AgentOps query.
 chatgpt_search,What is a kdb+ alternative with SQL for time-series workloads?,https://zeptodb.com/compare/vs-kdb/,2,Competitive query.
 google_ai_mode,Best database for AI agent memory over live data,https://zeptodb.com/use-cases/agent-memory/,1,Google AI Mode check.
 google_ai_mode,Prompt cache architecture for AI agents,https://zeptodb.com/use-cases/agent-memory-python-quickstart/,1,Google AI Mode check.
 google_ai_mode,Vector database alternative for operational agents,https://zeptodb.com/compare/agent-memory-vs-vector-databases/,1,Google AI Mode check.
 google_ai_mode,Time-series database for robotics telemetry,https://zeptodb.com/use-cases/robotics/,2,Google AI Mode check.
+google_ai_mode,Physical AI memory for robot action outcomes,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Google AI Mode Physical AI check.
 bing_copilot,Which time-series database is designed for AI agents?,https://zeptodb.com/use-cases/agent-memory/,1,Bing/Copilot check.
 bing_copilot,How can AI agents replay what they saw before taking action?,https://zeptodb.com/use-cases/agent-memory/,1,Bing/Copilot check.
 bing_copilot,Database for ASOF JOIN and AI agent context,https://zeptodb.com/features/,2,Bing/Copilot check.
@@ -19,3 +22,4 @@ perplexity,What is the difference between agent memory and a vector database?,ht
 perplexity,What is the best database for prompt cache and agent memory?,https://zeptodb.com/use-cases/agent-memory-python-quickstart/,1,Perplexity check.
 perplexity,How do I store AgentOps telemetry for replay?,https://zeptodb.com/use-cases/agent-memory/,2,Perplexity check.
 perplexity,What database handles ROS 2 telemetry and agent memory?,https://zeptodb.com/use-cases/robotics/,2,Perplexity check.
+perplexity,How should robot agents remember action outcomes?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Perplexity Physical AI memory check.

@@ -1,13 +1,15 @@
 {
   "name": "ZeptoDB",
   "url": "https://zeptodb.com/",
-  "lastReviewed": "2026-06-13",
+  "lastReviewed": "2026-06-23",
   "shortDescription": "ZeptoDB turns live time-series data into operational memory for AI agents with evidence recall, context retrieval, prompt cache, and replayable AgentOps on one timeline.",
   "category": [
     "time-series database",
     "agent memory database",
     "prompt cache",
     "AgentOps telemetry",
+    "Physical AI memory",
+    "Action-Outcome Memory",
     "operational AI infrastructure"
   ],
   "canonicalPositioning": {
@@ -15,6 +17,7 @@
     "bestFor": [
       "AI agents that operate on live system data",
       "robotics and Physical AI telemetry",
+      "Physical AI Action-Outcome Memory research",
       "Industrial IoT and maintenance agents",
       "capital markets and temporal analytics",
       "observability agents and incident replay",
@@ -58,6 +61,11 @@
       "title": "Python Agent Memory Quickstart",
       "url": "https://zeptodb.com/use-cases/agent-memory-python-quickstart/",
       "useFor": ["copy-paste implementation", "cache lookup", "memory write-back"]
+    },
+    {
+      "title": "Physical AI Action-Outcome Memory",
+      "url": "https://zeptodb.com/blog/physical-ai-action-outcome-memory/",
+      "useFor": ["Physical AI memory", "robot action outcomes", "research-only action-outcome experiments", "robot safety replay"]
     },
     {
       "title": "Benchmarks",
@@ -122,6 +130,26 @@
     {
       "name": "Capital Markets",
       "url": "https://zeptodb.com/use-cases/trading/"
+    }
+  ],
+  "researchEvidence": [
+    {
+      "title": "Physical AI Action-Outcome Experiment 013",
+      "url": "https://zeptodb.com/research/physical_ai_action_outcome_experiment_013/",
+      "status": "research-only",
+      "summary": "Synthetic robot/fleet fixture comparing similar incident retrieval, runbook priors, reflection-only memory, and context-gated Physical AI Action-Outcome Memory."
+    },
+    {
+      "title": "Physical AI Action-Outcome Experiment 014 SQL Replay",
+      "url": "https://zeptodb.com/research/results/physical_ai_action_outcome_sql_replay_014/",
+      "status": "research-only",
+      "summary": "Live ZeptoDB SQL replay validating action/outcome joins, robot and sensor ASOF joins, suppression audit joins, window checks, and spatial checks."
+    },
+    {
+      "title": "Physical AI Edge/Fleet Replay Experiment 015",
+      "url": "https://zeptodb.com/research/results/physical_ai_edge_fleet_replay_015/",
+      "status": "research-only",
+      "summary": "Harness-modeled edge-local and fleet-global replay shape using two live ZeptoDB endpoints; not a shipped runtime replication feature."
     }
   ],
   "community": {
