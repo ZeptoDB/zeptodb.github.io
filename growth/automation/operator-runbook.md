@@ -37,7 +37,16 @@ growth/draft-queue.md
 growth/campaigns/week-01-reddit-response-templates.md
 ```
 
-6. Publish only where the autonomy level permits it.
+6. Generate the daily Reddit agent-memory queue.
+
+```bash
+pnpm growth:reddit-daily -- --comments=3 --phase=reputation
+```
+
+GitHub Actions also creates a daily issue from this queue. Use it to pick real
+threads, adapt the draft, and log the outcome. Do not auto-post Reddit replies.
+
+7. Publish only where the autonomy level permits it.
 
 ## After Publishing Owned Content
 

@@ -1,0 +1,75 @@
+name: Daily Reddit Agent Memory Queue
+
+on:
+  schedule:
+    # Daily 14:00 UTC / 23:00 KST / morning US.
+    - cron: '0 14 * * *'
+  workflow_dispatch:
+    inputs:
+      comments:
+        description: 'Number of comment candidates to prepare'
+        required: false
+        default: '3'
+      phase:
+        description: 'reputation, soft, or direct'
+        required: false
+        default: 'reputation'
+      promo_max:
+        description: 'Maximum disclosed ZeptoDB mentions'
+        required: false
+        default: '0'
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  create-reddit-queue:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout site repo
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      - name: Build daily Reddit queue
+        id: queue
+        shell: bash
+        run: |
+          set -euo pipefail
+          run_date="$(date -u +%F)"
+          comments="${{ github.event_name == 'workflow_dispatch' && inputs.comments || '3' }}"
+          phase="${{ github.event_name == 'workflow_dispatch' && inputs.phase || 'reputation' }}"
+          promo_max="${{ github.event_name == 'workflow_dispatch' && inputs.promo_max || '0' }}"
+          body="$RUNNER_TEMP/reddit-agent-memory-$run_date.md"
+
+          pnpm growth:reddit-daily -- \
+            --date="$run_date" \
+            --comments="$comments" \
+            --phase="$phase" \
+            --promo-max="$promo_max" \
+            --output="$body"
+
+          {
+            echo "run_date=$run_date"
+            echo "body=$body"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue create \
+            --title "Daily Reddit agent memory queue - ${{ steps.queue.outputs.run_date }}" \
+            --body-file "${{ steps.queue.outputs.body }}"
