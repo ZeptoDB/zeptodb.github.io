@@ -16,8 +16,7 @@
     "growth:search": "node scripts/growth-search-queue.mjs",
     "growth:score": "node scripts/growth-score-opportunities.mjs",
     "growth:ai-search": "node scripts/growth-ai-search-measure.mjs",
-    "growth:answer-page": "node scripts/growth-answer-page.mjs",
-    "growth:reddit-daily": "node scripts/growth-reddit-daily.mjs"
+    "growth:answer-page": "node scripts/growth-answer-page.mjs"
   },
   "dependencies": {
     "@astrojs/sitemap": "^3.7.2",

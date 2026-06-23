@@ -21,7 +21,6 @@ The system should be able to run unattended for:
 - AI visibility prompt tests
 - owned content draft generation
 - Threads draft and scheduling queue
-- Reddit discovery and comment draft queue
 - weekly reporting
 
 The system should not run unattended for:
@@ -49,8 +48,6 @@ The system should not run unattended for:
 - `operator-runbook.md`: daily and weekly run loop.
 - `user-action-checklist.md`: concrete setup tasks for the human owner.
 - `measurement-plan.md`: visibility, citation, traffic, and conversion metrics.
-- `../reddit-agent-memory-playbook.md`: Reddit-specific reputation and comment
-  guardrails.
 
 ## Current Command Surface
 
@@ -59,7 +56,6 @@ pnpm growth:validate
 pnpm growth:links
 pnpm growth:search -- --communities=10 --keywords=25 --per-community=3
 pnpm growth:score
-pnpm growth:reddit-daily -- --comments=3 --phase=reputation
 ```
 
 ## Next Build Targets
