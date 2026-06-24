@@ -19,13 +19,13 @@ hero:
     - text: Agent Memory
       link: /use-cases/agent-memory/
       icon: right-arrow
-    - text: Talk to Sales
-      link: /contact/
-      icon: right-arrow
-      variant: secondary
     - text: GitHub
       link: https://github.com/zeptodb/zeptodb
       icon: external
+      variant: secondary
+    - text: Quick Start
+      link: /getting-started/quick_start/
+      icon: right-arrow
       variant: minimal
 ---
 
@@ -184,7 +184,7 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 | **Python path** | IPC | serialized | serialized | serialized | **522ns zero-copy** |
 | **Agent memory** | separate stack | separate stack | separate stack | separate stack | **native memory + cache layer** |
 | **Prompt cache** | separate stack | separate stack | separate stack | separate stack | **exact + semantic lookup** |
-| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **BUSL-1.1 + Free Community / Enterprise** |
+| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **BUSL-1.1 + Free Community** |
 
 Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vector-databases/) · [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
 
@@ -200,5 +200,5 @@ Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vect
   <LinkCard title="Logistics & Edge Automation" description="AGV geofences, RFID timelines, sorter metrics, and cold-chain audit" href="/use-cases/logistics/" />
   <LinkCard title="Features" description="Time-series engine, memory layer, APIs, storage, and security" href="/features/" />
   <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and Agent Memory recall" href="/benchmarks/" />
-  <LinkCard title="Talk to Sales" description="Discuss agent workflows, deployment shape, support, and Enterprise requirements" href="/contact/" />
+  <LinkCard title="GitHub" description="Read the source, file issues, and follow community discussions" href="https://github.com/zeptodb/zeptodb" />
 </CardGrid>

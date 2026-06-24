@@ -57,7 +57,6 @@ measurement notes from the benchmark documentation.
 - Integrations: https://zeptodb.com/integrations/
 - Security: https://zeptodb.com/security/
 - Pricing: https://zeptodb.com/pricing/
-- Contact: https://zeptodb.com/contact/
 
 ## Comparison Pages
 
@@ -119,11 +118,8 @@ production robot control, certified safety, or runtime edge-to-fleet replication
 - Discussions: https://github.com/zeptodb/zeptodb/discussions
 - Discord: https://discord.gg/PAtzvCa7
 
-## Contact
+ZeptoDB is currently GitHub-first and does not route readers into a procurement
+or meeting flow. Use Issues for bugs and feature requests, Discussions for
+roadmap and architecture questions, and Discord for lightweight community chat.
 
-Enterprise, pilot, and deployment inquiries:
-
-- Email: skswlsaks@gmail.com
-- Contact page: https://zeptodb.com/contact/
-
-Last reviewed: 2026-06-13
+Last reviewed: 2026-06-24

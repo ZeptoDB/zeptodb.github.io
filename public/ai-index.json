@@ -158,10 +158,6 @@
     "discussions": "https://github.com/zeptodb/zeptodb/discussions",
     "discord": "https://discord.gg/PAtzvCa7"
   },
-  "contact": {
-    "email": "skswlsaks@gmail.com",
-    "url": "https://zeptodb.com/contact/"
-  },
   "crawlPolicy": {
     "robots": "https://zeptodb.com/robots.txt",
     "llms": "https://zeptodb.com/llms.txt",

@@ -3,7 +3,7 @@ title: "Pricing"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB pricing — free Community for the time-series core and Agent Memory, Enterprise for clustering, SSO, compliance, advanced connectors, and support"
+description: "ZeptoDB pricing — free Community usage, GitHub-first support, and transparent feature gates"
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
@@ -27,44 +27,50 @@ import { Card, CardGrid } from '@astrojs/starlight/components';
 
     [Get started →](/getting-started/quick_start/)
   </Card>
-  <Card title="Enterprise" icon="approve-check-circle">
-    **License key required — [Talk to Sales →](/contact/)**
+  <Card title="GitHub-first support" icon="approve-check-circle">
+    **Community support through GitHub**
 
-    For teams that need clustered time-series, SSO, compliance evidence, deployment support, and a name on the pager.
+    ZeptoDB is keeping public adoption on GitHub for now. Use the repository for source, issues, discussions, and roadmap feedback.
 
-    Everything in Community, plus:
+    - Source and releases: [github.com/zeptodb/zeptodb](https://github.com/zeptodb/zeptodb)
+    - Bug reports and feature requests: [GitHub Issues](https://github.com/zeptodb/zeptodb/issues)
+    - Architecture and usage questions: [GitHub Discussions](https://github.com/zeptodb/zeptodb/discussions)
+    - Community chat: [Discord](https://discord.gg/PAtzvCa7)
 
-    - Multi-node time-series clustering with automatic sharding
-    - SSO / OIDC integration (Okta, Auth0, Azure AD, Google Workspace)
-    - Audit log export for SIEM integration
-    - Advanced RBAC with per-tenant namespace isolation
-    - Kafka, AWS Kinesis, ROS 2, OPC-UA, MQTT, and Telegraf deployment support
-    - Migration tools (kdb+ / ClickHouse / DuckDB / TimescaleDB)
-    - Geo-replication for time-series deployments
-    - Rolling upgrades with zero downtime
-    - Multi-node Agent Memory guidance for routed writes, fan-out search/context, cluster stats, replica WAL policy, and owner-failover reporting
-    - Priority support with SLA
-    - Long-term support releases
-
-    [Talk to Sales →](/contact/)
+    [Open GitHub →](https://github.com/zeptodb/zeptodb)
   </Card>
 </CardGrid>
 
 ---
 
-## 30-day free trial
+## Feature gates
 
-Try every Enterprise feature for 30 days — no credit card, no sales call required.
+Some capabilities are still license-gated in the codebase and docs. This page lists them for transparency, but the website does not currently route readers into a procurement or meeting flow.
+
+- Multi-node time-series clustering with automatic sharding
+- SSO / OIDC integration (Okta, Auth0, Azure AD, Google Workspace)
+- Audit log export for SIEM integration
+- Advanced RBAC with per-tenant namespace isolation
+- Kafka, AWS Kinesis, ROS 2, OPC-UA, MQTT, and Telegraf deployment support
+- Migration tools (kdb+ / ClickHouse / DuckDB / TimescaleDB)
+- Geo-replication for time-series deployments
+- Rolling upgrades with zero downtime
+- Multi-node Agent Memory guidance for routed writes, fan-out search/context, cluster stats, replica WAL policy, and owner-failover reporting
+- Long-term support releases
+
+---
+
+## Local feature-gate trial
+
+You can generate a local 30-day trial key from an admin endpoint:
 
 ```bash
-# Generate a trial license (single-node, all Enterprise features enabled)
+# Generate a trial license (single-node, all gated features enabled)
 curl -X POST http://localhost:8123/admin/license/trial \
   -H "Authorization: Bearer $ADMIN_KEY"
 ```
 
-Trial keys are single-node (`max_nodes=1`) with all Enterprise features enabled. After 30 days, the instance gracefully downgrades to Community edition.
-
-Ready to run it across a cluster or bring Enterprise into procurement? [Contact Sales →](/contact/)
+Trial keys are single-node (`max_nodes=1`) with all gated features enabled. After 30 days, the instance gracefully downgrades to Community edition.
 
 ---
 
@@ -73,8 +79,22 @@ Ready to run it across a cluster or bring Enterprise into procurement? [Contact 
 **Is ZeptoDB Community really free?**
 Yes. Community includes the full single-node time-series core, SQL, HTTP API, Python DSL, Arrow Flight, Parquet HDB, and Agent Memory for local pilots and single-node production systems.
 
-**What requires an Enterprise license?**
-Multi-node time-series clustering, SSO/OIDC, audit log export, advanced RBAC, Kafka/Kinesis/industrial connector deployment support, migration tools, geo-replication, rolling upgrades, LTS releases, and priority support.
+**What is the support model right now?**
+GitHub-first. Use [Issues](https://github.com/zeptodb/zeptodb/issues) for bugs and feature requests, and [Discussions](https://github.com/zeptodb/zeptodb/discussions) for architecture questions or roadmap feedback.
+
+**What requires a license gate?**
+The gated surfaces are:
+
+- Multi-node time-series clustering with automatic sharding
+- SSO / OIDC integration (Okta, Auth0, Azure AD, Google Workspace)
+- Audit log export for SIEM integration
+- Advanced RBAC with per-tenant namespace isolation
+- Kafka, AWS Kinesis, ROS 2, OPC-UA, MQTT, and Telegraf deployment support
+- Migration tools (kdb+ / ClickHouse / DuckDB / TimescaleDB)
+- Geo-replication for time-series deployments
+- Rolling upgrades with zero downtime
+- Multi-node Agent Memory guidance for routed writes, fan-out search/context, cluster stats, replica WAL policy, and owner-failover reporting
+- Long-term support releases
 
 **Is Agent Memory cluster-wide today?**
 Agent Memory has a routed multi-node operating path for writes, point reads, fan-out memory search/context, semantic-cache fan-out, owner-local persistence, replica WAL durability policy, cluster-scoped stats, and owner-failover reporting. Shard migration dual-write/catch-up remains future work.
@@ -89,4 +109,4 @@ Fully offline — RS256 signature verification with no phone-home. Load via envi
 You get a warning before expiry, then a grace period where the deployment continues working. After the grace period, the instance downgrades to Community edition. No data is locked.
 
 **Do you offer managed cloud hosting?**
-Not yet. It is on the roadmap. For now, see our [Production Deployment](/deployment/production_deployment/) and [Kubernetes Operations](/operations/kubernetes_operations/) guides, or [talk to us](/contact/) about a bespoke deployment.
+Not right now. For self-hosting, see [Production Deployment](/deployment/production_deployment/) and [Kubernetes Operations](/operations/kubernetes_operations/). For roadmap questions, use [GitHub Discussions](https://github.com/zeptodb/zeptodb/discussions).
