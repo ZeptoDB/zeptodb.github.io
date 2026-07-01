@@ -1,32 +1,49 @@
 {
   "name": "ZeptoDB",
   "url": "https://zeptodb.com/",
-  "lastReviewed": "2026-06-23",
-  "shortDescription": "ZeptoDB turns live time-series data into operational memory for AI agents with evidence recall, context retrieval, prompt cache, and replayable AgentOps on one timeline.",
+  "lastReviewed": "2026-07-01",
+  "shortDescription": "ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, policy context, and replayable evidence.",
   "category": [
-    "time-series database",
-    "agent memory database",
-    "prompt cache",
-    "AgentOps telemetry",
     "Physical AI memory",
     "Action-Outcome Memory",
-    "operational AI infrastructure"
+    "robotics database",
+    "robot agent memory",
+    "ROS 2 telemetry database",
+    "time-series database",
+    "agent memory database",
+    "AgentOps telemetry"
   ],
   "canonicalPositioning": {
-    "oneLine": "Live time-series evidence plus agent memory, prompt cache, and replayable AgentOps.",
+    "oneLine": "Action-Outcome Memory for Physical AI: robot telemetry, prior actions, outcomes, and replayable evidence on one timeline.",
     "bestFor": [
-      "AI agents that operate on live system data",
-      "robotics and Physical AI telemetry",
-      "Physical AI Action-Outcome Memory research",
-      "Industrial IoT and maintenance agents",
-      "capital markets and temporal analytics",
-      "observability agents and incident replay",
-      "prompt cache and cost-control workflows"
+      "Physical AI and robotics teams that need action-outcome memory",
+      "robot agents that need to recall prior interventions and outcomes",
+      "safety-adjacent replay, risky-repeat suppression evidence, and policy-context review",
+      "ROS 2 telemetry, typed profile tables, and rosbag2 replay",
+      "industrial robots, edge automation, fleets, and autonomous systems",
+      "AI agents that need live evidence plus durable memory"
     ],
     "notBestFor": [
+      "certified robot safety control",
+      "fully autonomous robot action execution",
       "generic document RAG with no temporal or operational data",
-      "batch-only OLAP workloads where seconds of latency are acceptable",
-      "standalone vector search with no need for event replay"
+      "standalone vector search with no need for event replay",
+      "batch-only OLAP workloads where seconds of latency are acceptable"
+    ]
+  },
+  "safetyPositioning": {
+    "allowed": [
+      "risky-repeat suppression evidence",
+      "safety-adjacent replay",
+      "operator intervention memory",
+      "policy-context recall",
+      "incident and near-miss replay"
+    ],
+    "avoidClaiming": [
+      "certified robot safety",
+      "production robot controller",
+      "guaranteed safe actions",
+      "runtime edge-to-fleet replication"
     ]
   },
   "claims": [
@@ -53,6 +70,21 @@
   ],
   "primaryPages": [
     {
+      "title": "Physical AI and Action-Outcome Memory",
+      "url": "https://zeptodb.com/use-cases/robotics/",
+      "useFor": ["Physical AI memory", "robot action outcomes", "ROS 2 ingest", "safety-adjacent replay"]
+    },
+    {
+      "title": "Physical AI Action-Outcome Memory Research",
+      "url": "https://zeptodb.com/blog/physical-ai-action-outcome-memory/",
+      "useFor": ["research-only action-outcome experiments", "robot safety replay limits", "available vs research-only status"]
+    },
+    {
+      "title": "ROS 2 Setup",
+      "url": "https://zeptodb.com/operations/ros2_setup/",
+      "useFor": ["ROS 2 connector", "robot telemetry ingest", "smoke test"]
+    },
+    {
       "title": "Agent Memory",
       "url": "https://zeptodb.com/use-cases/agent-memory/",
       "useFor": ["agent memory", "context retrieval", "prompt cache", "AgentOps replay"]
@@ -63,19 +95,9 @@
       "useFor": ["copy-paste implementation", "cache lookup", "memory write-back"]
     },
     {
-      "title": "Physical AI Action-Outcome Memory",
-      "url": "https://zeptodb.com/blog/physical-ai-action-outcome-memory/",
-      "useFor": ["Physical AI memory", "robot action outcomes", "research-only action-outcome experiments", "robot safety replay"]
-    },
-    {
       "title": "Benchmarks",
       "url": "https://zeptodb.com/benchmarks/",
       "useFor": ["performance claims", "benchmark criteria", "reproduction notes"]
-    },
-    {
-      "title": "Agent Memory vs Vector Databases",
-      "url": "https://zeptodb.com/compare/agent-memory-vs-vector-databases/",
-      "useFor": ["vector database comparison", "live data RAG", "operational memory"]
     },
     {
       "title": "Features",
@@ -89,6 +111,10 @@
     }
   ],
   "comparisonPages": [
+    {
+      "title": "Agent Memory vs Vector Databases",
+      "url": "https://zeptodb.com/compare/agent-memory-vs-vector-databases/"
+    },
     {
       "title": "ZeptoDB vs kdb+",
       "url": "https://zeptodb.com/compare/vs-kdb/"
@@ -120,12 +146,12 @@
       "url": "https://zeptodb.com/use-cases/autonomous-vehicles/"
     },
     {
-      "name": "Energy and Utilities",
-      "url": "https://zeptodb.com/use-cases/energy/"
-    },
-    {
       "name": "Logistics and Edge Automation",
       "url": "https://zeptodb.com/use-cases/logistics/"
+    },
+    {
+      "name": "Energy and Utilities",
+      "url": "https://zeptodb.com/use-cases/energy/"
     },
     {
       "name": "Capital Markets",

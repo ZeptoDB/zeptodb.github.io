@@ -3,22 +3,25 @@ import Default from '@astrojs/starlight/components/Head.astro';
 
 const siteUrl = 'https://zeptodb.com';
 const description =
-  'ZeptoDB turns live time-series data into operational memory for AI agents with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python.';
+  'ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, and replayable evidence.';
 const keywords = [
+  'Action-Outcome Memory',
+  'Physical AI memory',
+  'robot action memory',
+  'robot safety replay',
+  'robotics database',
+  'ROS 2 database',
   'agent memory database',
   'AI agent memory',
   'time-series database',
   'AgentOps telemetry',
-  'Physical AI memory',
-  'Action-Outcome Memory',
-  'robot agent memory',
   'prompt cache',
   'context retrieval',
   'microsecond database',
   'zero-copy Python',
 ].join(', ');
 const ogImage = new URL('/og-default.png', Astro.site);
-const ogImageAlt = 'ZeptoDB: agent memory for live time-series data';
+const ogImageAlt = 'ZeptoDB: Action-Outcome Memory for Physical AI';
 const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
 const googleSiteVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 const bingSiteVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION?.trim();
@@ -52,15 +55,16 @@ const jsonLd = JSON.stringify({
       name: 'ZeptoDB',
       url: siteUrl,
       applicationCategory: 'Database',
-      applicationSubCategory: 'Agent memory and time-series database',
+      applicationSubCategory: 'Physical AI action-outcome memory database',
       operatingSystem: 'Linux',
       description,
       keywords,
       featureList: [
+        'Action-Outcome Memory for Physical AI',
+        'ROS 2 telemetry ingest and replay',
+        'Robot action and outcome evidence replay',
         'Agent Memory with tenant-scoped recall',
-        'Exact and semantic prompt cache',
         'Microsecond time-series queries',
-        'AgentOps telemetry tables',
         'Zero-copy Python integration',
       ],
       offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },

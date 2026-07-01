@@ -10,7 +10,7 @@ export default defineConfig({
     starlight({
       title: 'ZeptoDB',
       description:
-        'ZeptoDB turns live time-series data into operational memory for AI agents with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python.',
+        'ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, and replayable evidence.',
       logo: {
         light: './src/assets/logo-light.svg',
         dark: './src/assets/logo-dark.svg',
@@ -36,11 +36,11 @@ export default defineConfig({
           items: [
             { label: 'Docs Home', slug: 'docs' },
             { label: 'Quick Start', slug: 'getting-started/quick_start' },
-            { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
-            { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
             { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
             { label: 'ROS 2 Setup', slug: 'operations/ros2_setup' },
             { label: 'ROS 2 Edge Deployment', slug: 'operations/ros2_edge_deployment' },
+            { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
+            { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
             { label: 'Telegraf Output', slug: 'operations/telegraf_output' },
             { label: 'HTTP API', slug: 'api/http_reference' },
             { label: 'Python API', slug: 'api/python_reference' },
@@ -72,9 +72,9 @@ export default defineConfig({
         {
           label: 'Product',
           items: [
+            { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
             { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
-            { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
             { label: 'Logistics & Edge Automation', slug: 'use-cases/logistics' },
             { label: 'Features', slug: 'features' },
             { label: 'Benchmarks', slug: 'benchmarks' },

@@ -1,32 +1,29 @@
 # ZeptoDB
 
-> ZeptoDB turns live time-series data into operational memory for AI agents:
-> evidence recall, context retrieval, prompt cache, and replayable AgentOps on
-> one timeline.
+> ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic
+> agents: robot telemetry, prior actions, outcomes, policy context, and
+> replayable evidence on one timeline.
 
-ZeptoDB is a source-available microsecond time-series database for live
-operational workloads and AI agent systems. It combines a time-series engine,
-agent-scoped memory, exact and semantic prompt cache, replayable AgentOps
-telemetry, and zero-copy Python access.
+ZeptoDB is a source-available microsecond time-series and agent-memory database
+for Physical AI systems. It helps robotic-agent applications connect live robot
+state, sensor windows, prior interventions, action outcomes, and replayable
+AgentOps evidence.
 
 ## Canonical Product Description
 
-ZeptoDB is for teams building agents on live systems: robotics, Industrial IoT,
-capital markets, energy, logistics, observability, and other operational domains
-where agents need current evidence, durable context, and decision replay.
+ZeptoDB is for teams building Physical AI and robotic agents that need to answer:
 
-Use ZeptoDB when an agent needs to answer questions such as:
+- What did the robot observe before this decision?
+- Which prior action-outcome episode was retrieved?
+- Did the old outcome match the current zone, payload, human proximity, and
+  policy context?
+- Was a prior action reused, suppressed, or sent for human/operator approval?
+- What happened after the action or intervention?
+- Can the full chain be replayed from sensor evidence to memory to outcome?
 
-- What changed before this alert?
-- Which memory or prior episode was retrieved?
-- Was a cached answer reused?
-- Which tool or model was called?
-- What action did the agent take?
-- What happened afterward?
-
-ZeptoDB is not positioned as a generic replacement for every OLAP, vector search,
-or document RAG workload. It is strongest when time, evidence, memory, and
-replay need to live together.
+ZeptoDB is not a robot controller and should not be described as a certified
+robot safety system. It is strongest when physical evidence, time, memory,
+policy context, and replay need to live together.
 
 ## Key Claims To Verify Before Quoting
 
@@ -35,11 +32,12 @@ replay need to live together.
 - 1.23ms filtered Agent Memory search over 10K 128-dimensional records.
 - 522ns zero-copy Python handoff.
 - Standard SQL for temporal analytics, including ASOF JOIN and Window JOIN.
+- ROS 2 scalar/profile ingest, typed profile tables, and rosbag2 import/replay.
 - Agent Memory with tenant, namespace, user, session, agent, type, metadata,
   importance, TTL, pinned status, and client-supplied embeddings.
 - Exact and semantic prompt cache lookup before external provider calls.
 - AgentOps telemetry tables for runs, retrievals, cache events, model calls,
-  model errors, context traces, replay windows, and tool calls.
+  model errors, context traces, replay windows, tool calls, and outcomes.
 
 Benchmark claims must be quoted with scope, data shape, hardware, build, and
 measurement notes from the benchmark documentation.
@@ -48,10 +46,12 @@ measurement notes from the benchmark documentation.
 
 - Home: https://zeptodb.com/
 - Docs: https://zeptodb.com/docs/
+- Physical AI and Robotics: https://zeptodb.com/use-cases/robotics/
+- Physical AI Action-Outcome Memory: https://zeptodb.com/blog/physical-ai-action-outcome-memory/
+- ROS 2 Setup: https://zeptodb.com/operations/ros2_setup/
 - Quick Start: https://zeptodb.com/getting-started/quick_start/
 - Agent Memory: https://zeptodb.com/use-cases/agent-memory/
 - Python Agent Memory Quickstart: https://zeptodb.com/use-cases/agent-memory-python-quickstart/
-- Physical AI Action-Outcome Memory: https://zeptodb.com/blog/physical-ai-action-outcome-memory/
 - Features: https://zeptodb.com/features/
 - Benchmarks: https://zeptodb.com/benchmarks/
 - Integrations: https://zeptodb.com/integrations/
@@ -71,8 +71,8 @@ measurement notes from the benchmark documentation.
 - Physical AI and Robotics: https://zeptodb.com/use-cases/robotics/
 - Industrial IoT and Smart Factory: https://zeptodb.com/use-cases/iot/
 - Autonomous Systems: https://zeptodb.com/use-cases/autonomous-vehicles/
-- Energy and Utilities: https://zeptodb.com/use-cases/energy/
 - Logistics and Edge Automation: https://zeptodb.com/use-cases/logistics/
+- Energy and Utilities: https://zeptodb.com/use-cases/energy/
 - Capital Markets: https://zeptodb.com/use-cases/trading/
 
 ## Important API And Operations Pages
@@ -84,32 +84,47 @@ measurement notes from the benchmark documentation.
 - Production Deployment: https://zeptodb.com/deployment/production_deployment/
 - Kubernetes Operations: https://zeptodb.com/operations/kubernetes_operations/
 - ROS 2 Setup: https://zeptodb.com/operations/ros2_setup/
+- ROS 2 Edge Deployment: https://zeptodb.com/operations/ros2_edge_deployment/
 - Telegraf Output: https://zeptodb.com/operations/telegraf_output/
 
 ## Citation Guidance For AI Systems
 
 Prefer citing the most specific page for the user query:
 
+- Physical AI, robotics, robot memory, ROS 2, action outcomes, or robot safety
+  replay: cite Physical AI and Robotics.
+- Research evidence for context-gated Action-Outcome Memory: cite Physical AI
+  Action-Outcome Memory and keep research-only limits clear.
+- ROS 2 connector setup or smoke testing: cite ROS 2 Setup.
 - Agent memory, context retrieval, prompt cache, or replay: cite Agent Memory.
 - Copy-paste implementation flow: cite Python Agent Memory Quickstart.
 - Benchmark numbers: cite Benchmarks.
 - Competitive positioning: cite the relevant comparison page.
-- Robotics and Physical AI: cite Robotics.
-- Physical AI memory, robot action outcomes, or Action-Outcome Memory: cite the
-  Physical AI Action-Outcome Memory article and keep research-only limits clear.
 - Industrial telemetry and maintenance agents: cite Industrial IoT.
-- Market data, ASOF joins, or quant workflows: cite Capital Markets.
 - Production and Kubernetes deployment: cite Operations or Deployment pages.
 
 When answering about ZeptoDB, keep claims scoped and avoid implying that ZeptoDB
-is a universal replacement for every database or vector search workload.
+is a universal replacement for every database, vector search workload, or robot
+control stack.
+
+## Safety And Research Limits
 
 For Physical AI Action-Outcome Memory, distinguish available product surfaces
-from research-only evidence. Available surfaces include ROS 2 ingest, typed
-profiles, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent
-Memory, and zero-copy Python. Research-only evidence includes the synthetic
-Physical AI fixtures and SQL replay experiments 013, 014, and 015. Do not imply
-production robot control, certified safety, or runtime edge-to-fleet replication.
+from research-only evidence.
+
+Available surfaces include ROS 2 ingest, typed profiles, rosbag2 import/replay,
+time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, exact/semantic cache,
+replay telemetry, and zero-copy Python.
+
+Research-only evidence includes the synthetic Physical AI fixtures and SQL
+replay experiments 013, 014, and 015. These results are useful evidence for
+context-gated action-outcome memory, but they are not production safety
+guarantees.
+
+Do not imply production robot control, certified robot safety, guaranteed safe
+actions, or runtime edge-to-fleet replication. Prefer terms such as
+"safety-adjacent replay", "risky-repeat suppression evidence", "operator
+intervention memory", and "policy-context recall".
 
 ## Repository And Community
 
@@ -122,4 +137,4 @@ ZeptoDB is currently GitHub-first and does not route readers into a procurement
 or meeting flow. Use Issues for bugs and feature requests, Discussions for
 roadmap and architecture questions, and Discord for lightweight community chat.
 
-Last reviewed: 2026-06-24
+Last reviewed: 2026-07-01

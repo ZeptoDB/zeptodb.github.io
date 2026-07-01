@@ -1,54 +1,56 @@
 ---
 title: ZeptoDB
-description: "ZeptoDB turns live time-series data into operational memory for AI agents with microsecond evidence recall, context retrieval, prompt cache, and zero-copy Python."
+description: "ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, policy context, and replayable evidence."
 template: splash
 head:
   - tag: title
-    content: "ZeptoDB | Agent Memory for Live Time-Series Data"
+    content: "ZeptoDB | Action-Outcome Memory for Physical AI"
   - tag: meta
     attrs:
       property: og:title
-      content: "ZeptoDB | Agent Memory for Live Time-Series Data"
+      content: "ZeptoDB | Action-Outcome Memory for Physical AI"
   - tag: meta
     attrs:
       name: twitter:title
-      content: "ZeptoDB | Agent Memory for Live Time-Series Data"
+      content: "ZeptoDB | Action-Outcome Memory for Physical AI"
 hero:
-  tagline: "Operational memory for AI agents running on live systems. ZeptoDB captures event streams, recalls evidence in microseconds, reduces repeated model calls, and leaves a replayable trail from signal to decision."
+  tagline: "Action-Outcome Memory for Physical AI. ZeptoDB keeps robot state, sensor evidence, prior actions, outcomes, and policy context on one timeline so robotic agents can recall what worked, avoid risky repeats, and replay why a recommendation was made."
   actions:
-    - text: Agent Memory
-      link: /use-cases/agent-memory/
+    - text: Physical AI Memory
+      link: /use-cases/robotics/
       icon: right-arrow
+    - text: Action-Outcome Research
+      link: /blog/physical-ai-action-outcome-memory/
+      icon: right-arrow
+      variant: secondary
     - text: GitHub
       link: https://github.com/zeptodb/zeptodb
       icon: external
-      variant: secondary
-    - text: Quick Start
-      link: /getting-started/quick_start/
-      icon: right-arrow
       variant: minimal
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-## Time-series data becomes agent memory
+## Memory for robots that act in the world
 
-AI agents fail in production when they cannot see the latest facts, remember what worked last time, or explain why they acted. Most teams patch that gap with a time-series database, a vector store, a prompt cache, and a separate observability stack.
+Physical AI agents need more than chat history or a detached vector index. A robot decision depends on the physical situation: pose, sensor window, payload, zone, human proximity, policy context, the action taken, and what happened afterward.
 
-ZeptoDB makes that one operational path. The time-series engine stores the raw operational truth: ticks, sensor readings, traces, incidents, tool calls, robot state, and market events. The Agent Memory layer stores agent-scoped context beside it: memories, embeddings, retrieval filters, token-budgeted context, exact prompt cache hits, semantic cache hits, and AgentOps telemetry.
+ZeptoDB is the database layer for that memory loop. It stores high-frequency telemetry and agent memory on the same timeline, then lets an application retrieve prior action-outcome episodes with the live evidence needed to decide whether the old outcome is appropriate to reuse.
+
+ZeptoDB is not a robot controller and does not claim certified robot safety. Its role is to provide the memory, evidence, replay, and policy-context substrate that Physical AI systems can use before and after an action.
 
 <CardGrid stagger>
-  <Card title="5.52M observations/sec" icon="rocket">
-    Lock-free ingestion captures the live event stream agents need to reason over: telemetry, logs, trades, tool calls, and sensor data.
+  <Card title="Action-outcome episodes" icon="open-book">
+    Store what the robot observed, which context was retrieved, what action was recommended or taken, and what outcome followed.
   </Card>
-  <Card title="272μs evidence recall" icon="seti:clock">
-    The time-series core retrieves recent facts and aligned events at microsecond latency before the agent acts.
+  <Card title="Context-gated recall" icon="approve-check-circle">
+    Compare prior outcomes against current time, zone, payload, human proximity, sensor pattern, and policy context before reuse.
   </Card>
-  <Card title="1.23ms filtered memory search" icon="star">
-    Agent Memory searches 10K 128-dimensional records with tenant/session filters, ranking, and context assembly for prompt-time recall.
+  <Card title="Replayable evidence" icon="seti:clock">
+    Join memory records back to robot state, sensor summaries, operator interventions, cache events, and tool/model calls.
   </Card>
-  <Card title="522ns to Python" icon="seti:python">
-    Query results move into NumPy, Pandas, and PyTorch without serialization, keeping the model loop close to live data.
+  <Card title="Fast telemetry foundation" icon="rocket">
+    Ingest live robot and edge telemetry, retrieve evidence at microsecond scale, and hand data to Python without serialization.
   </Card>
 </CardGrid>
 
@@ -56,135 +58,113 @@ Benchmark claims are defined by hardware, build, data shape, scope, and measurem
 
 ---
 
-## Business case for production agents
-
-<CardGrid>
-  <Card title="Ship agents on live data" icon="rocket">
-    Build maintenance, risk, robotics, observability, and grid agents that ask the database for current evidence and durable context in the same turn.
-
-    [Agent Memory →](/use-cases/agent-memory/)
-  </Card>
-  <Card title="Reduce model spend" icon="approve-check-circle">
-    Put exact and semantic cache lookup before the provider call. Avoid repeated LLM work on recurring operational questions, alerts, and support workflows.
-
-    [Python Quickstart →](/use-cases/agent-memory-python-quickstart/)
-  </Card>
-  <Card title="Shorten investigations" icon="seti:clock">
-    Reconstruct what the agent saw, which memories it retrieved, whether it reused a response, which tool it called, and what happened next.
-
-    [Benchmarks →](/benchmarks/)
-  </Card>
-  <Card title="Consolidate the stack" icon="star">
-    Replace a fragile chain of TSDB + vector database + cache + log store for operational agents with one timeline and standard SQL.
-
-    [Agent Memory vs Vector DBs →](/compare/agent-memory-vs-vector-databases/)
-  </Card>
-</CardGrid>
-
----
-
-## How live data and agent memory work together
+## The Physical AI memory loop
 
 <CardGrid>
   <Card title="Observe" icon="rocket">
-    Ingest real-time events from exchanges, ROS 2 robots, factories, logistics edges, fleets, grids, applications, or agent tools through HTTP, Arrow IPC, MessagePack, Telegraf, Kinesis, Kafka, MQTT, and OPC-UA paths. The system keeps the ordered timeline intact.
+    Capture ROS 2 telemetry, typed robot profiles, sensor summaries, incidents, operator interventions, and edge events as ordered time-series data.
   </Card>
-  <Card title="Remember" icon="open-book">
-    Store agent memories with tenant, namespace, user, session, agent, type, metadata, importance, TTL, pinned status, and client-supplied embeddings.
+  <Card title="Recall" icon="open-book">
+    Retrieve prior episodes, reflections, policy notes, and similar action outcomes from Agent Memory with tenant, session, robot, and metadata filters.
   </Card>
-  <Card title="Recall" icon="seti:clock">
-    Retrieve by time, scope, semantics, importance, recency, access count, and token budget. Assemble context locally or across Agent Memory nodes without dumping the whole past into a prompt.
+  <Card title="Gate" icon="approve-check-circle">
+    Check whether a prior successful action still matches the current temporal, spatial, payload, policy, and human-proximity context.
   </Card>
-  <Card title="Act" icon="approve-check-circle">
-    Reuse exact or semantically similar prompt responses, call a provider on cache miss, write back new memory, and keep AgentOps events in ordinary time-series tables.
+  <Card title="Act" icon="star">
+    Let the application decide, call a model or tool on cache miss, write the decision back, and keep the full action path inspectable.
   </Card>
-</CardGrid>
-
----
-
-## What agents can do with both layers
-
-<CardGrid>
-  <Card title="Ask temporal questions" icon="seti:clock">
-    "What changed before the alert?", "What did the agent do after this signal?", "Which similar episodes ended badly?" Time-series gives the order; memory gives the learned context.
-  </Card>
-  <Card title="Ground decisions in evidence" icon="approve-check-circle">
-    Attach every recommendation to raw events, prior actions, retrieved memories, cache hits, tool calls, and model calls. Debug agent behavior as a replayable timeline.
-  </Card>
-  <Card title="Avoid repeated model calls" icon="star">
-    Exact and semantic prompt cache lookup runs before an external provider call. Reuse prior responses when your application policy allows it.
-  </Card>
-  <Card title="Build vertical agents" icon="rocket">
-    Industrial agents, trading agents, fleet agents, observability agents, robotics agents, and support agents can share one substrate for live facts and durable context.
+  <Card title="Replay" icon="seti:clock">
+    Reconstruct the chain from live evidence to retrieved memory, proposed action, suppression, outcome, and reflection.
   </Card>
 </CardGrid>
 
 ---
 
-## Built for real-time agent workloads
+## Safety-adjacent robot workflows
+
+ZeptoDB should be described as safety-adjacent infrastructure, not as a certified safety system. It helps applications keep the evidence needed for guardrails, reviews, and cautious reuse of prior outcomes.
 
 <CardGrid>
-  <Card title="AI Agents & AgentOps" icon="star">
-    Agent-scoped working memory, context retrieval, exact/semantic cache, cluster-scoped stats, provider adapters, LangGraph-style examples, and telemetry tables for runs, retrievals, cache events, LLM calls/errors, context traces, replay windows, and tool calls.
-
-    [Agent Memory →](/use-cases/agent-memory/)
+  <Card title="Risky-repeat avoidance" icon="approve-check-circle">
+    Suppress a prior action recommendation when the current zone, payload, sensor motif, or policy context does not match the old successful episode.
   </Card>
+  <Card title="Intervention memory" icon="open-book">
+    Keep human/operator interventions, rollback notes, and recovery actions beside the raw robot timeline that made them necessary.
+  </Card>
+  <Card title="Policy evidence" icon="star">
+    Attach approval requirements, geofence context, risk tier, and allowed-action metadata to the memory record an agent retrieves.
+  </Card>
+  <Card title="Incident replay" icon="seti:clock">
+    Review what the robot saw, what memory was retrieved, whether a recommendation was reused or suppressed, and what happened afterward.
+  </Card>
+</CardGrid>
+
+---
+
+## Available today vs research-only
+
+| Status | What belongs here |
+| --- | --- |
+| **Available product surface** | ROS 2 scalar/profile ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, exact/semantic cache, replay telemetry, zero-copy Python |
+| **Research-only evidence** | Context-gated Physical AI Action-Outcome Memory experiments, synthetic robot/fleet fixtures, SQL replay harnesses, edge/fleet replay shape |
+| **Not claimed** | Fully autonomous robot control, certified robot safety, runtime edge-to-fleet replication, or a production control plane that executes robot actions |
+
+Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog/physical-ai-action-outcome-memory/).
+
+---
+
+## Why Physical AI teams pick ZeptoDB
+
+- **One timeline for sensor evidence and decisions.** Store raw robot events and agent memory records beside the workflows that consume them.
+- **Memory with physical context.** Retrieve by time, robot, site, zone, session, payload, metadata, TTL, importance, pinned status, recency, and access count.
+- **Replay instead of detached recall.** A memory is useful only when the system can replay the telemetry and outcome that made it true.
+- **Fast enough for robot-adjacent loops.** Microsecond time-series recall, millisecond-scale memory search, exact/semantic cache lookup, and zero-copy Python access.
+- **Open implementation path.** Use GitHub, ROS 2 setup docs, Python helpers, HTTP APIs, and benchmark notes to inspect what exists today.
+
+---
+
+## Built for Physical AI and adjacent systems
+
+<CardGrid>
   <Card title="Physical AI & Robotics" icon="star">
     ROS 2 typed profiles, rosbag2 replay, sensor fusion, and action history become replayable episodes. A robot agent can recall what it saw, what it tried, and which previous intervention worked.
 
     [Physical AI →](/use-cases/robotics/)
   </Card>
-  <Card title="Industrial IoT & Smart Factory" icon="star">
-    Factory telemetry becomes operational memory. Maintenance agents can combine vibration history, work orders, previous diagnoses, and live alarms.
+  <Card title="Industrial Robots & Smart Factory" icon="star">
+    Factory telemetry becomes operational memory. Maintenance and quality agents can combine sensor history, work orders, operator notes, and safety procedures.
 
     [Industrial IoT →](/use-cases/iot/)
   </Card>
   <Card title="Autonomous Systems" icon="star">
-    Fleet logs, scenario mining, and agent decisions stay on one timeline. Reproduce a decision from raw sensor data through retrieved context.
+    Fleet logs, scenario mining, disengagement notes, and agent decisions stay on one timeline for scenario replay and evidence review.
 
     [Autonomous Systems →](/use-cases/autonomous-vehicles/)
-  </Card>
-  <Card title="Energy & Utilities" icon="star">
-    Grid agents can reason over PMU streams, incident memory, operator actions, and historical patterns without losing the timing of the event.
-
-    [Energy & Utilities →](/use-cases/energy/)
   </Card>
   <Card title="Logistics & Edge Automation" icon="star">
     AGV pose, RFID, sorter, cold-chain, and yard events become spatially queryable timelines for replay, geofencing, and exception agents.
 
     [Logistics →](/use-cases/logistics/)
   </Card>
-  <Card title="Capital Markets" icon="star">
-    Trading agents can pair tick-by-tick market state with strategy memory, risk decisions, cache hits, and compliance-ready replay.
+  <Card title="AgentOps for Embodied Agents" icon="star">
+    Store retrievals, cache events, model calls/errors, context traces, replay windows, tool calls, and outcomes as ordinary time-series tables.
 
-    [Capital Markets →](/use-cases/trading/)
+    [Agent Memory →](/use-cases/agent-memory/)
   </Card>
 </CardGrid>
 
 ---
 
-## Why teams pick ZeptoDB
-
-- **One timeline for facts and decisions.** Store raw events in the time-series engine and agent memory records beside the workflows that consume them.
-- **Fast enough for the agent loop.** Microsecond time-series recall, millisecond-scale memory search, exact/semantic prompt cache lookup, and zero-copy Python access.
-- **A clearer business case.** Reduce duplicate provider calls, shorten incident investigations, and give compliance teams a replayable trail instead of a disconnected prompt log.
-- **Context with operational filters.** Tenant, namespace, user, session, agent, type, TTL, importance, pinned status, recency, and access count are first-class retrieval signals.
-- **Not just a vector database.** ZeptoDB does not replace the live operational database with a detached vector index. The memory layer sits beside the event stream that explains why the memory matters.
-- **Production-shaped surfaces.** HTTP endpoints, Python helpers, Prometheus metrics, sidecar snapshots, MessagePack ingest, Telegraf output, Kinesis streams, ROS 2, OPC-UA, and examples for provider cache and LangGraph-style flows.
-
----
-
 ## How it compares
 
-| | **kdb+** | **ClickHouse** | **InfluxDB** | **TimescaleDB** | **ZeptoDB** |
-|---|---|---|---|---|---|
-| **Time-series latency** | μs | ~5ms | ~15ms | ~10ms | **272μs** |
-| **Ingestion** | ~5M/sec | 100K/sec | 50K/sec | 50K/sec | **5.52M/sec** |
-| **Temporal joins** | ASOF | limited | no | workaround | **ASOF + Window JOIN** |
-| **Python path** | IPC | serialized | serialized | serialized | **522ns zero-copy** |
-| **Agent memory** | separate stack | separate stack | separate stack | separate stack | **native memory + cache layer** |
-| **Prompt cache** | separate stack | separate stack | separate stack | separate stack | **exact + semantic lookup** |
-| **License** | $100K+/yr | OSS | OSS / Cloud | OSS / Cloud | **BUSL-1.1 + Free Community** |
+| | **Vector DB only** | **Generic TSDB** | **Prompt cache only** | **ZeptoDB** |
+|---|---|---|---|---|
+| **Robot telemetry timeline** | separate | native | no | **native time-series** |
+| **Action-outcome memory** | text-like recall | manual schema | no | **memory beside evidence** |
+| **Temporal joins** | no | varies | no | **ASOF + Window JOIN** |
+| **Policy/context gates** | application-only | application-only | no | **queryable evidence + memory metadata** |
+| **Replay path** | detached from sensors | telemetry only | response only | **sensor → memory → action → outcome** |
+| **Python path** | serialized | usually serialized | n/a | **522ns zero-copy** |
 
 Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vector-databases/) · [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
 
@@ -193,12 +173,11 @@ Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vect
 ## Start building
 
 <CardGrid>
-  <LinkCard title="Agent Memory" description="How live time-series becomes context, cache, and replay for agents" href="/use-cases/agent-memory/" />
-  <LinkCard title="Python Agent Memory Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
-  <LinkCard title="Quick Start" description="First query or agent memory loop in minutes" href="/getting-started/quick_start/" />
-  <LinkCard title="Physical AI & ROS 2" description="Typed robot telemetry, rosbag2 replay, and sensor timelines" href="/use-cases/robotics/" />
-  <LinkCard title="Logistics & Edge Automation" description="AGV geofences, RFID timelines, sorter metrics, and cold-chain audit" href="/use-cases/logistics/" />
-  <LinkCard title="Features" description="Time-series engine, memory layer, APIs, storage, and security" href="/features/" />
-  <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and Agent Memory recall" href="/benchmarks/" />
+  <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, rosbag2 replay, action memory, and safety-adjacent replay" href="/use-cases/robotics/" />
+  <LinkCard title="Physical AI Action-Outcome Memory" description="What ZeptoDB has actually validated, with research-only limits kept clear" href="/blog/physical-ai-action-outcome-memory/" />
+  <LinkCard title="ROS 2 Setup" description="Build and smoke test the ROS 2 connector path" href="/operations/ros2_setup/" />
+  <LinkCard title="Agent Memory" description="Memory records, context retrieval, cache lookup, and replay for agents" href="/use-cases/agent-memory/" />
+  <LinkCard title="Python Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
+  <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and memory recall" href="/benchmarks/" />
   <LinkCard title="GitHub" description="Read the source, file issues, and follow community discussions" href="https://github.com/zeptodb/zeptodb" />
 </CardGrid>

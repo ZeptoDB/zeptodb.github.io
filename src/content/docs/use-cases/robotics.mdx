@@ -1,16 +1,85 @@
 ---
-title: "Physical AI & Robotics"
+title: "Physical AI & Action-Outcome Memory"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB for robotic agents — ROS 2 ingest, sensor fusion, action memory, RL feature stores, and replayable real-time decisions"
+description: "ZeptoDB for Physical AI and robotic agents — ROS 2 ingest, sensor replay, action-outcome memory, risky-repeat suppression evidence, and safety-adjacent robot workflows."
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Robotic agents need more than fast telemetry. They need a memory of what the robot observed, what action was taken, which context was retrieved, and what happened afterward. ZeptoDB keeps the high-frequency sensor timeline and the agent memory timeline together.
+Physical AI agents need a memory of the physical world, not only a memory of text. A robot decision depends on what the robot observed, which action was taken, whether a human intervened, which policy context applied, and what happened afterward.
 
-ZeptoDB's current product surface covers ROS 2 ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, zero-copy Python, and Agent Memory. The more specific Physical AI Action-Outcome Memory experiments are research-only; they are useful evidence for the product direction, not a claim that ZeptoDB is a production robot controller.
+ZeptoDB keeps high-frequency robot telemetry and agent memory on the same timeline. The product surface available today covers ROS 2 ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, zero-copy Python, and Agent Memory. The more specific context-gated Physical AI Action-Outcome Memory experiments are research-only; they are useful evidence for the product direction, not a claim that ZeptoDB is a production robot controller or certified safety system.
+
+---
+
+## What ZeptoDB does for Physical AI
+
+<CardGrid>
+  <Card title="Record the situation" icon="rocket">
+    Capture robot state, sensor summaries, site, zone, payload, human proximity, operator interventions, and incident markers as ordered time-series evidence.
+  </Card>
+  <Card title="Remember the action" icon="open-book">
+    Store the retrieved context, policy note, proposed action, executed action, rollback path, outcome, and reflection as agent memory.
+  </Card>
+  <Card title="Gate the reuse" icon="approve-check-circle">
+    Let applications check whether a prior successful action still fits the current temporal, spatial, payload, and policy context.
+  </Card>
+  <Card title="Replay the decision" icon="seti:clock">
+    Reconstruct the chain from sensor window to retrieved memory, recommendation, suppression, intervention, outcome, and follow-up note.
+  </Card>
+</CardGrid>
+
+---
+
+## The Action-Outcome loop
+
+```text
+robot state + sensor window
+  -> retrieved prior episodes
+  -> policy and context gate
+  -> recommended or suppressed action
+  -> observation window
+  -> outcome and reflection
+```
+
+For robots, a similar memory is not enough. The old outcome has to be checked against the current physical situation: zone, topology, payload, human proximity, environment, sensor motif, current policy, and whether a human approval path is required.
+
+ZeptoDB provides the data substrate for that loop. It does not decide the action by itself. Your application, model, controller, or operator workflow remains responsible for policy and execution.
+
+---
+
+## Safety-adjacent workflows
+
+Use these as cautious product claims. ZeptoDB helps store and replay the evidence that robot applications need for guardrails; it is not a certified safety layer.
+
+<CardGrid>
+  <Card title="Risky-repeat suppression" icon="approve-check-circle">
+    Store why a prior action was suppressed when the current payload, zone, sensor motif, or policy context no longer matched the old successful episode.
+  </Card>
+  <Card title="Operator intervention memory" icon="open-book">
+    Keep human override, manual recovery, rollback, and inspection notes beside the telemetry that triggered the intervention.
+  </Card>
+  <Card title="Policy-aware recall" icon="star">
+    Attach allowed-action metadata, human-approval requirements, risk tier, geofence, and site policy context to each action-outcome episode.
+  </Card>
+  <Card title="Incident and near-miss replay" icon="seti:clock">
+    Ask what the robot saw, which memory was retrieved, whether an old action was reused or blocked, and what changed afterward.
+  </Card>
+</CardGrid>
+
+---
+
+## Available today vs research-only
+
+| Status | Physical AI scope |
+|--------|-------------------|
+| Available today | ROS 2 scalar/profile ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, exact/semantic cache, replay telemetry, zero-copy Python |
+| Research-only | Context-gated Physical AI Action-Outcome Memory experiments, synthetic robot/fleet fixtures, SQL replay harnesses, edge/fleet replay shape |
+| Not claimed | Fully autonomous robot control, certified robot safety, runtime edge-to-fleet replication, or a production control plane that executes robot actions |
+
+Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog/physical-ai-action-outcome-memory/).
 
 ---
 
@@ -18,19 +87,19 @@ ZeptoDB's current product surface covers ROS 2 ingest, typed profile tables, ros
 
 <CardGrid>
   <Card title="522ns to tensor" icon="seti:python">
-    Zero-copy path from column store to NumPy and PyTorch. Online inference and offline training share the same SQL and the same data.
+    Zero-copy path from column store to NumPy and PyTorch. Online inference and offline evaluation can share the same SQL and the same data.
   </Card>
   <Card title="Nanosecond ASOF JOIN" icon="seti:clock">
-    Time-align heterogeneous streams — LiDAR, stereo cameras, IMU, tactile, proprioception — with nanosecond precision. Point-in-time correct, always.
+    Time-align heterogeneous streams such as camera frames, IMU, tactile, proprioception, odometry, and LaserScan telemetry.
   </Card>
   <Card title="5.52M events/sec" icon="rocket">
-    Ingest 10KHz+ sensors from a fleet of robots without backpressure. Lock-free MPMC ring buffer, zero allocation on the hot path.
+    Ingest high-frequency robot and edge telemetry with a lock-free MPMC ring buffer and zero allocation on the hot path.
   </Card>
   <Card title="Episodes on S3" icon="star">
-    Replay petabyte-scale Parquet episodes for offline RL training, imitation learning, and regression tests. Hot + cold in one query.
+    Replay Parquet episodes for offline evaluation, imitation-learning datasets, regression tests, and incident review.
   </Card>
   <Card title="Action memory" icon="open-book">
-    Store retrieved context, operator interventions, policy notes, tool calls, and action outcomes beside the raw sensor stream.
+    Store retrieved context, operator interventions, policy notes, tool calls, action outcomes, and reflections beside the raw sensor stream.
   </Card>
   <Card title="ROS 2 bridge" icon="star">
     Subscribe to scalar topics, standard ROS 2 profiles, or typed profile tables; import and replay the same profiles from rosbag2.
@@ -47,26 +116,21 @@ ZeptoDB's current product surface covers ROS 2 ingest, typed profile tables, ros
 - Window JOIN with ±N ms tolerance for clock drift across heterogeneous buses
 - Nanosecond-precision timestamps end-to-end — parser to column store
 
-### Feature store for RL and imitation learning
-- Rolling statistics (EMA, stddev, percentiles) computed in SQL at query time
-- Zero-copy NumPy / PyTorch handoff for online inference loops
-- Parquet HDB replay for offline training with the exact same feature definitions
+### Action-outcome memory for robot behavior
+- Store memory records for failed grasps, successful recoveries, operator corrections, risky-repeat suppressions, and safety interventions
+- Retrieve similar episodes before an agent recommends a plan
+- Compare old outcomes against current payload, site, zone, sensor pattern, and policy context
+- Replay the chain from sensor data to retrieved context to action outcome
 
-### Fleet telemetry & diagnostics
+### Fleet telemetry and diagnostics
 - Ingest telemetry from thousands of robots or drones simultaneously
-- Real-time anomaly detection with window functions — motor current, joint torque, battery
-- Historical forensics from Parquet HDB when something goes wrong in the field
+- Detect anomalies with window functions for motor current, joint torque, battery, temperature, and localization drift
+- Keep historical forensics in Parquet HDB when something goes wrong in the field
 
 ### Sim-to-real evaluation
-- Treat simulation rollouts and real-robot episodes as the same schema
+- Treat simulation rollouts and real-robot episodes as compatible schemas
 - Compare policy performance across batches with standard SQL aggregates
-- Versioned datasets via immutable Parquet snapshots
-
-### Agent memory for robot behavior
-- Store memory records for failed grasps, successful recoveries, operator corrections, and safety interventions
-- Retrieve similar episodes before an agent chooses a plan
-- Replay the chain from sensor data to retrieved context to action outcome
-- Cache repeated diagnostic responses during fleet operations
+- Version datasets with immutable Parquet snapshots
 
 ---
 
@@ -95,14 +159,14 @@ Current public evidence:
 - Experiment 014 replayed the same Physical AI memory shape through live ZeptoDB SQL tables, including action/outcome JOINs, robot and sensor ASOF JOINs, ROW_NUMBER/LAG windows, suppression audit JOINs, and a spatial `ST_Within` check.
 - Experiment 015 modeled an edge-local and fleet-global split with two live ZeptoDB endpoints. This was a research harness, not a shipped runtime replication feature.
 
-Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog/physical-ai-action-outcome-memory/).
+These are research fixture results, not production safety guarantees.
 
 ---
 
 ## Example: sensor fusion pipeline
 
 ```sql
--- Align LiDAR scans with the most recent IMU sample and camera frame
+-- Align LiDAR scans with the most recent IMU sample and camera frame.
 SELECT
     l.ts,
     l.point_cloud,
@@ -121,7 +185,7 @@ import torch
 
 conn = zeptodb.connect("localhost:8123")
 
-# Query → NumPy → Tensor in microseconds, no serialization
+# Query -> NumPy -> Tensor in microseconds, no serialization.
 result = conn.query(
     "SELECT accel_x, accel_y, accel_z FROM imu_readings WHERE ts > now()-1s"
 )
@@ -145,8 +209,6 @@ tensor = torch.from_numpy(result.to_numpy())  # zero-copy view
 
 ---
 
-## Why this matters
-
-Physical AI teams routinely assemble Kafka, Parquet, Redis, vector search, and a custom ASOF-JOIN service, then spend quarters keeping the stack coherent. ZeptoDB collapses the hot path into one operational model: raw sensor facts, temporal joins, agent memory, cache lookup, and replayable AgentOps telemetry.
+## Start from GitHub
 
 Build from the public repo, or open an issue with your pipeline shape: [GitHub →](https://github.com/zeptodb/zeptodb) · [Issues →](https://github.com/zeptodb/zeptodb/issues)
