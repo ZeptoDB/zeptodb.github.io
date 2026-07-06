@@ -25,6 +25,24 @@ ZeptoDB is not a robot controller and should not be described as a certified
 robot safety system. It is strongest when physical evidence, time, memory,
 policy context, and replay need to live together.
 
+## Current Physical AI Status
+
+Use three status levels when describing ZeptoDB:
+
+- Available product surface: ROS 2 scalar/profile ingest, typed profile tables,
+  rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent Memory,
+  exact/semantic cache, replay telemetry, and zero-copy Python.
+- Experimental runtime path: the Physical AI Action-Outcome supervisor runtime
+  and SQL adapter are shadow-only, admin-gated surfaces for controlled pilots.
+  They read action proposals and history from ZeptoDB SQL tables, write advisory
+  decisions/evidence/commit-ledger rows, expose status and Prometheus metrics,
+  support server-local or SQL-catalog config persistence, and can use SQL
+  worker leases with owner id/epoch fencing. They do not publish actuator
+  commands and are not promoted robot safety features.
+- Research-only evidence: synthetic Physical AI fixtures and replay experiments
+  show context-gated recall, risky-repeat suppression evidence, edge/fleet
+  replay shape, and shadow-supervisor A/B plus replay-idempotency results.
+
 ## Key Claims To Verify Before Quoting
 
 - 5.52M observations/sec ingestion.
@@ -38,6 +56,9 @@ policy context, and replay need to live together.
 - Exact and semantic prompt cache lookup before external provider calls.
 - AgentOps telemetry tables for runs, retrievals, cache events, model calls,
   model errors, context traces, replay windows, tool calls, and outcomes.
+- Experimental shadow-only Action-Outcome supervisor runtime with SQL-backed
+  proposal/history/decision/evidence tables, commit-ledger replay idempotency,
+  config persistence, worker leases, and admin/RBAC controls.
 
 Benchmark claims must be quoted with scope, data shape, hardware, build, and
 measurement notes from the benchmark documentation.
@@ -48,6 +69,9 @@ measurement notes from the benchmark documentation.
 - Docs: https://zeptodb.com/docs/
 - Physical AI and Robotics: https://zeptodb.com/use-cases/robotics/
 - Physical AI Action-Outcome Memory: https://zeptodb.com/blog/physical-ai-action-outcome-memory/
+- Physical AI Shadow Supervisor Experiment 021: https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/
+- Physical AI Shadow Supervisor Results 021: https://zeptodb.com/research/results/physical_ai_shadow_supervisor_ab_021/
+- Research Experiment Governance: https://zeptodb.com/research/experiment_governance/
 - ROS 2 Setup: https://zeptodb.com/operations/ros2_setup/
 - Quick Start: https://zeptodb.com/getting-started/quick_start/
 - Agent Memory: https://zeptodb.com/use-cases/agent-memory/
@@ -79,6 +103,7 @@ measurement notes from the benchmark documentation.
 
 - HTTP API: https://zeptodb.com/api/http_reference/
 - Python API: https://zeptodb.com/api/python_reference/
+- C++ API: https://zeptodb.com/api/cpp_reference/
 - Flight API: https://zeptodb.com/api/flight_reference/
 - Config Reference: https://zeptodb.com/api/config_reference/
 - Production Deployment: https://zeptodb.com/deployment/production_deployment/
@@ -95,6 +120,14 @@ Prefer citing the most specific page for the user query:
   replay: cite Physical AI and Robotics.
 - Research evidence for context-gated Action-Outcome Memory: cite Physical AI
   Action-Outcome Memory and keep research-only limits clear.
+- Questions about the experimental Action-Outcome supervisor, SQL adapter,
+  shadow mode, advisory decisions, commit ledger, or worker leases: cite the
+  HTTP API, C++ API, and Research Experiment Governance. Say "experimental
+  runtime path", "shadow-only", and "advisory"; do not say product safety
+  controller or actuator enforcement.
+- Questions about A/B evidence for suppressing hazardous robot-action proposals
+  or replay idempotency: cite Experiment 021 and its result page, and keep the
+  synthetic fixture limitation visible.
 - ROS 2 connector setup or smoke testing: cite ROS 2 Setup.
 - Agent memory, context retrieval, prompt cache, or replay: cite Agent Memory.
 - Copy-paste implementation flow: cite Python Agent Memory Quickstart.
@@ -109,22 +142,29 @@ control stack.
 
 ## Safety And Research Limits
 
-For Physical AI Action-Outcome Memory, distinguish available product surfaces
-from research-only evidence.
+For Physical AI Action-Outcome Memory, distinguish available product surfaces,
+experimental runtime paths, and research-only evidence.
 
 Available surfaces include ROS 2 ingest, typed profiles, rosbag2 import/replay,
 time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, exact/semantic cache,
 replay telemetry, and zero-copy Python.
 
+Experimental runtime paths include the shadow-only Action-Outcome supervisor
+runtime and SQL adapter. They can write advisory allow/suppress/manual-review
+decisions and replayable evidence, but they must not be described as production
+actuator control, certified safety, or a promoted robot-safety system.
+
 Research-only evidence includes the synthetic Physical AI fixtures and SQL
-replay experiments 013, 014, and 015. These results are useful evidence for
+replay experiments 013, 014, and 015, plus Experiment 021 shadow-supervisor A/B
+and replay-idempotency evidence. These results are useful evidence for
 context-gated action-outcome memory, but they are not production safety
 guarantees.
 
 Do not imply production robot control, certified robot safety, guaranteed safe
-actions, or runtime edge-to-fleet replication. Prefer terms such as
-"safety-adjacent replay", "risky-repeat suppression evidence", "operator
-intervention memory", and "policy-context recall".
+actions, actuator enforcement, or runtime edge-to-fleet replication. Prefer
+terms such as "safety-adjacent replay", "shadow-only advisory supervision",
+"risky-repeat suppression evidence", "operator intervention memory",
+"manual-review fail-closed decision", and "policy-context recall".
 
 ## Repository And Community
 
@@ -137,4 +177,4 @@ ZeptoDB is currently GitHub-first and does not route readers into a procurement
 or meeting flow. Use Issues for bugs and feature requests, Discussions for
 roadmap and architecture questions, and Discord for lightweight community chat.
 
-Last reviewed: 2026-07-01
+Last reviewed: 2026-07-06

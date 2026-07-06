@@ -5,8 +5,11 @@ priority,title,target_slug,primary_query,canonical_page,status,notes
 1,Prompt Cache Architecture for AI Agents,/blog/prompt-cache-architecture-ai-agents/,prompt cache architecture AI agents,/use-cases/agent-memory-python-quickstart/,planned,Cost and cache query page.
 1,Time-Series Database for AI Agents,/blog/time-series-database-for-ai-agents/,time-series database for AI agents,/features/,planned,Core GEO page.
 1,Physical AI Memory and Action-Outcome Memory,/blog/physical-ai-action-outcome-memory/,physical AI memory,/use-cases/robotics/,published,Grounded page separating available product surfaces from research-only experiments.
+1,What is a Physical AI Shadow Supervisor?,/blog/physical-ai-shadow-supervisor/,Physical AI shadow supervisor,/api/http_reference/,planned,Direct answer page for the experimental shadow-only supervisor and advisory limits.
+1,Action-Outcome Supervisor for Robot Agents,/blog/action-outcome-supervisor-robot-agents/,Action-Outcome supervisor robot agents,/api/http_reference/,planned,Explain proposals decisions evidence commit ledger and no actuator control.
 2,ZeptoDB vs ClickHouse for Real-Time Agent Workloads,/compare/vs-clickhouse/,ClickHouse alternative real-time agents,/compare/vs-clickhouse/,existing,Add agent-loop framing if needed.
 2,ZeptoDB vs kdb+,/compare/vs-kdb/,kdb alternative SQL time-series,/compare/vs-kdb/,existing,Add concise FAQ if needed.
 2,ROS 2 Telemetry Database for Physical AI,/blog/ros2-telemetry-database-physical-ai/,ROS 2 telemetry database,/use-cases/robotics/,planned,Robotics GEO page.
+2,Robot Action Replay and Risky Repeat Suppression,/blog/robot-action-replay-risky-repeat-suppression/,risky repeat suppression robot actions,/blog/physical-ai-action-outcome-memory/,planned,Bridge research evidence to Physical AI memory page.
 2,AgentOps Replay: What Did The Agent Know When It Acted?,/blog/agentops-replay-what-did-the-agent-know/,AgentOps replay,/use-cases/agent-memory/,planned,Replay and observability page.
 2,ASOF JOIN and Temporal SQL for Agent Context,/blog/asof-join-temporal-sql-agent-context/,ASOF JOIN agent context,/features/,planned,Temporal SQL educational page.

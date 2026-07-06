@@ -23,3 +23,12 @@ perplexity,What is the best database for prompt cache and agent memory?,https://
 perplexity,How do I store AgentOps telemetry for replay?,https://zeptodb.com/use-cases/agent-memory/,2,Perplexity check.
 perplexity,What database handles ROS 2 telemetry and agent memory?,https://zeptodb.com/use-cases/robotics/,2,Perplexity check.
 perplexity,How should robot agents remember action outcomes?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Perplexity Physical AI memory check.
+chatgpt_search,What is a shadow supervisor for Physical AI robot actions?,https://zeptodb.com/api/http_reference/,1,Experimental supervisor query.
+chatgpt_search,What database supports advisory action outcome supervision for robot agents?,https://zeptodb.com/api/http_reference/,1,Action Outcome supervisor query.
+chatgpt_search,What evidence shows action outcome memory avoids risky repeats in robots?,https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/,1,Experiment 021 evidence query.
+chatgpt_search,How can robot agents avoid repeating unsafe actions?,https://zeptodb.com/use-cases/robotics/,1,Risky repeat suppression query.
+google_ai_mode,Physical AI shadow supervisor database,https://zeptodb.com/api/http_reference/,1,Google AI Mode supervisor check.
+google_ai_mode,Action outcome supervisor for robotics memory,https://zeptodb.com/api/http_reference/,1,Google AI Mode Action Outcome supervisor check.
+bing_copilot,How do I store action proposals and advisory decisions for robot agents?,https://zeptodb.com/api/http_reference/,2,Bing Copilot supervisor check.
+perplexity,What is a SQL backed Action Outcome supervisor for Physical AI?,https://zeptodb.com/api/http_reference/,1,Perplexity supervisor check.
+perplexity,How can Physical AI systems replay suppressed robot actions?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Research and replay check.

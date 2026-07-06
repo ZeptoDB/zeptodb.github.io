@@ -82,6 +82,16 @@ robotics,robot agent memory,problem,1,/use-cases/robotics/,Strong fit.
 robotics,sensor fusion time-series,problem,2,/use-cases/robotics/,Good feature route.
 robotics,10kHz sensor data database,problem,2,/use-cases/robotics/,Performance fit.
 robotics,robot decision replay,problem,1,/use-cases/robotics/,Differentiated.
+physical_ai_supervisor,Physical AI shadow supervisor,category,1,/api/http_reference/,Emerging experimental runtime path.
+physical_ai_supervisor,Action-Outcome supervisor,category,1,/api/http_reference/,Experimental shadow-only API.
+physical_ai_supervisor,robot action supervision,problem,1,/use-cases/robotics/,Safety-adjacent workflow.
+physical_ai_supervisor,advisory robot decisions,problem,2,/api/http_reference/,Shadow-only positioning.
+physical_ai_supervisor,risky repeat suppression,problem,1,/use-cases/robotics/,Core Physical AI memory query.
+physical_ai_supervisor,manual review robot actions,problem,2,/blog/physical-ai-action-outcome-memory/,Fail-closed language.
+physical_ai_supervisor,SQL backed action supervisor,solution,1,/api/http_reference/,Specific API fit.
+physical_ai_supervisor,robot decision ledger,solution,2,/api/http_reference/,Idempotency angle.
+physical_ai_supervisor,action outcome evidence,problem,1,/blog/physical-ai-action-outcome-memory/,Core category phrase.
+physical_ai_supervisor,shadow mode robot safety,problem,2,/research/physical_ai_shadow_supervisor_ab_experiment_021/,Research query with safety caveat.
 iot,industrial IoT database,category,1,/use-cases/iot/,High fit.
 iot,smart factory telemetry,problem,1,/use-cases/iot/,High fit.
 iot,OPC-UA time-series,solution,2,/integrations/,Integration route.
