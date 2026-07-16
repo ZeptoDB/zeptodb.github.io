@@ -28,8 +28,8 @@ InfluxDB is a popular time-series database for monitoring and IoT. ZeptoDB targe
 | **Cardinality** | No limit (symbol-partitioned) | High cardinality issues |
 | **JIT Compilation** | LLVM JIT | ✗ |
 | **Feed Handlers** | FIX, ITCH, Binance, Kafka | Telegraf plugins |
-| **Clustering** | Multi-node auto-sharding | Enterprise only (paid) |
-| **License** | BUSL-1.1, free Community | MIT (OSS) / Proprietary (Cloud) |
+| **Clustering** | Multi-node auto-sharding | Cloud/proprietary options vary by deployment |
+| **License** | BUSL-1.1 with Additional Use Grant | MIT (OSS) / proprietary cloud options |
 
 ---
 

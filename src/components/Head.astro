@@ -1,5 +1,6 @@
 ---
 import Default from '@astrojs/starlight/components/Head.astro';
+import socialPreviews from '../generated/social-previews.json';
 
 const siteUrl = 'https://zeptodb.com';
 const description =
@@ -20,8 +21,10 @@ const keywords = [
   'microsecond database',
   'zero-copy Python',
 ].join(', ');
-const ogImage = new URL('/og-default.png', Astro.site);
-const ogImageAlt = 'ZeptoDB: Action-Outcome Memory for Physical AI';
+const pathname = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const socialPreview = socialPreviews[pathname] || socialPreviews[decodeURIComponent(pathname)];
+const ogImage = new URL(socialPreview?.image || '/og-default.png', Astro.site);
+const ogImageAlt = socialPreview?.alt || 'ZeptoDB: Action-Outcome Memory for Physical AI';
 const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
 const googleSiteVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 const bingSiteVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION?.trim();
@@ -81,8 +84,8 @@ const jsonLd = JSON.stringify({
 <meta name="keywords" content={keywords} />
 <meta name="theme-color" content="#0a0e17" />
 <meta property="og:image" content={ogImage.href} />
-<meta property="og:image:width" content="1200" />
-<meta property="og:image:height" content="630" />
+<meta property="og:image:width" content={String(socialPreview?.width || 1200)} />
+<meta property="og:image:height" content={String(socialPreview?.height || 630)} />
 <meta property="og:image:alt" content={ogImageAlt} />
 <meta name="twitter:image" content={ogImage.href} />
 <meta name="twitter:image:alt" content={ogImageAlt} />
@@ -92,71 +95,217 @@ const jsonLd = JSON.stringify({
 
 {gaMeasurementId && (
   <>
-    <script async src={`https://www.googletagmanager.com/gtag/js?id=${gaMeasurementId}`}></script>
     <script define:vars={{ gaMeasurementId }}>
-      window.dataLayer = window.dataLayer || [];
-      function gtag() {
-        window.dataLayer.push(arguments);
-      }
-      window.gtag = window.gtag || gtag;
-      window.gtag('js', new Date());
-      window.gtag('config', gaMeasurementId, {
-        send_page_view: true,
-      });
-    </script>
-    <script is:inline>
-      function sendGaEvent(name, params) {
-        if (typeof window.gtag !== 'function') return;
-        window.gtag('event', name, params);
-      }
+      (() => {
+        if (window.__zeptoAnalyticsBound) return;
+        window.__zeptoAnalyticsBound = true;
 
-      document.addEventListener('click', (event) => {
-        const link = event.target?.closest?.('a[href]');
-        if (!link) return;
+        const campaignKeys = ['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'];
+        const storageKey = 'zeptodb_campaign_context';
 
-        const href = link.getAttribute('href');
-        if (!href) return;
-
-        let url;
-        try {
-          url = new URL(href, window.location.href);
-        } catch {
-          return;
+        function contentGroup(pathname) {
+          if (pathname === '/') return 'home';
+          if (pathname.startsWith('/research/')) return 'research';
+          if (pathname.startsWith('/use-cases/')) return 'use_case';
+          if (pathname.startsWith('/benchmarks/')) return 'benchmark';
+          if (pathname.startsWith('/compare/')) return 'comparison';
+          if (pathname.startsWith('/blog/')) return 'blog';
+          if (/^\/(docs|getting-started|api|deployment|operations|feeds)\//.test(pathname)) return 'documentation';
+          return 'project';
         }
 
-        const params = {
-          link_url: url.href,
-          link_text: (link.textContent || link.getAttribute('aria-label') || '').trim().slice(0, 100),
+        function campaignContext() {
+          const params = new URLSearchParams(window.location.search);
+          const current = {};
+          for (const key of campaignKeys) {
+            const value = params.get(key);
+            if (value) current[key] = value.slice(0, 100);
+          }
+
+          try {
+            if (Object.keys(current).length) {
+              window.sessionStorage.setItem(storageKey, JSON.stringify(current));
+              return current;
+            }
+            return JSON.parse(window.sessionStorage.getItem(storageKey) || '{}');
+          } catch {
+            return current;
+          }
+        }
+
+        function cleanText(value, fallback = '') {
+          return String(value || fallback).replace(/\s+/g, ' ').trim().slice(0, 100);
+        }
+
+        function navigationArea(element) {
+          if (element.closest('#zd-mobile-nav')) return 'mobile_navigation';
+          if (element.closest('.top-nav')) return 'primary_navigation';
+          if (element.closest('aside, .sidebar-pane')) return 'sidebar';
+          if (element.closest('footer')) return 'footer';
+          if (element.closest('header, .header')) return 'header';
+          return 'content';
+        }
+
+        function internalDestination(pathname) {
+          if (pathname.startsWith('/research/')) return 'research';
+          if (pathname.startsWith('/use-cases/action-outcome-memory/')) return 'action_outcome';
+          if (pathname.includes('quick_start') || pathname.includes('quickstart')) return 'quickstart';
+          if (pathname.startsWith('/benchmarks/')) return 'benchmark';
+          if (pathname.startsWith('/use-cases/')) return 'use_case';
+          if (pathname.startsWith('/compare/')) return 'comparison';
+          if (pathname.startsWith('/blog/')) return 'blog';
+          if (/^\/(docs|getting-started|api|deployment|operations|feeds)\//.test(pathname)) return 'documentation';
+          if (pathname.startsWith('/community/')) return 'community';
+          return 'internal';
+        }
+
+        function eventForDestination(destination) {
+          return {
+            research: 'research_click',
+            action_outcome: 'action_outcome_click',
+            quickstart: 'quickstart_click',
+            benchmark: 'benchmark_click',
+            use_case: 'use_case_click',
+            comparison: 'comparison_click',
+            blog: 'blog_click',
+            documentation: 'docs_click',
+            community: 'community_click',
+          }[destination] || 'internal_link_click';
+        }
+
+        const baseContext = () => ({
           page_path: window.location.pathname,
-        };
+          page_title: document.title.slice(0, 100),
+          content_group: contentGroup(window.location.pathname),
+          ...campaignContext(),
+        });
 
-        if (url.protocol === 'mailto:') {
-          sendGaEvent('email_click', params);
-          return;
+        const productionHosts = new Set(['zeptodb.com', 'www.zeptodb.com', 'zeptodb.github.io']);
+        const shouldTransmit = productionHosts.has(window.location.hostname);
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          window.dataLayer.push(arguments);
         }
+        window.gtag = window.gtag || gtag;
+        if (shouldTransmit && !document.querySelector('script[data-zeptodb-ga]')) {
+          const loader = document.createElement('script');
+          loader.async = true;
+          loader.src = `https://www.googletagmanager.com/gtag/js?id=${encodeURIComponent(gaMeasurementId)}`;
+          loader.dataset.zeptodbGa = 'true';
+          document.head.appendChild(loader);
+        }
+        window.gtag('js', new Date());
+        window.gtag('config', gaMeasurementId, {
+          send_page_view: true,
+          ...baseContext(),
+        });
+        document.documentElement.dataset.analyticsReady = 'true';
+        document.documentElement.dataset.analyticsMode = shouldTransmit ? 'production' : 'preview';
 
-        if (url.origin === window.location.origin && url.pathname.startsWith('/contact')) {
-          sendGaEvent('contact_click', params);
-          return;
+        function sendGaEvent(name, params = {}) {
+          if (typeof window.gtag !== 'function') return;
+          document.documentElement.dataset.analyticsLastEvent = name;
+          window.gtag('event', name, { ...baseContext(), ...params });
         }
+        window.zeptoAnalytics = { track: sendGaEvent };
 
-        if (url.hostname.includes('github.com')) {
-          sendGaEvent('github_click', params);
-          return;
-        }
+        document.addEventListener('click', (event) => {
+          const target = event.target instanceof Element ? event.target : null;
+          if (!target) return;
 
-        if (url.hostname.includes('discord.gg') || url.hostname.includes('discord.com')) {
-          sendGaEvent('discord_click', params);
-          return;
-        }
+          const copyButton = target.closest('button');
+          const copyLabel = cleanText(
+            copyButton?.getAttribute('aria-label'),
+            copyButton?.textContent,
+          ).toLowerCase();
+          const isCodeCopy = copyButton && (
+            copyLabel.includes('copy') ||
+            copyButton.closest('.copy') !== null
+          );
+          if (isCodeCopy) {
+            sendGaEvent('code_copy', {
+              nav_area: navigationArea(copyButton),
+              code_language: copyButton.closest('figure, pre')?.querySelector('[data-language]')?.getAttribute('data-language') || 'unknown',
+            });
+          }
 
-        if (url.origin !== window.location.origin) {
-          sendGaEvent('outbound_click', {
-            ...params,
-            outbound_domain: url.hostname,
-          });
+          const link = target.closest('a[href]');
+          if (!link) return;
+          const href = link.getAttribute('href');
+          if (!href || href.startsWith('#')) return;
+
+          let url;
+          try {
+            url = new URL(href, window.location.href);
+          } catch {
+            return;
+          }
+
+          if (!['http:', 'https:'].includes(url.protocol)) return;
+
+          const linkContext = {
+            link_url: url.href.slice(0, 500),
+            link_text: cleanText(link.textContent, link.getAttribute('aria-label')),
+            link_domain: url.hostname,
+            destination_path: url.pathname,
+            nav_area: navigationArea(link),
+          };
+
+          if (url.origin === window.location.origin) {
+            const destination = internalDestination(url.pathname);
+            sendGaEvent(eventForDestination(destination), {
+              ...linkContext,
+              destination_group: destination,
+            });
+            return;
+          }
+
+          if (url.hostname === 'github.com' || url.hostname.endsWith('.github.com')) {
+            const githubTarget = url.pathname.includes('/issues')
+              ? 'issue'
+              : url.pathname.includes('/discussions')
+                ? 'discussion'
+                : url.pathname.includes('/stargazers')
+                  ? 'stargazers'
+                  : 'repository';
+            sendGaEvent('github_click', { ...linkContext, github_target: githubTarget });
+            return;
+          }
+
+          if (url.hostname.includes('discord.gg') || url.hostname.includes('discord.com')) {
+            sendGaEvent('community_click', { ...linkContext, community_platform: 'discord' });
+            return;
+          }
+
+          if (['x.com', 'twitter.com', 'threads.net', 'linkedin.com', 'reddit.com'].some((domain) => url.hostname.endsWith(domain))) {
+            sendGaEvent('social_click', { ...linkContext, social_platform: url.hostname.replace(/^www\./, '') });
+            return;
+          }
+
+          sendGaEvent('outbound_click', linkContext);
+        }, { capture: true });
+
+        const scrollThresholds = [25, 50, 75, 90];
+        const sentThresholds = new Set();
+        let scrollTicking = false;
+        function measureScrollDepth() {
+          scrollTicking = false;
+          const scrollable = document.documentElement.scrollHeight - window.innerHeight;
+          if (scrollable <= 0) return;
+          const percent = Math.min(100, Math.round((window.scrollY / scrollable) * 100));
+          for (const threshold of scrollThresholds) {
+            if (percent >= threshold && !sentThresholds.has(threshold)) {
+              sentThresholds.add(threshold);
+              sendGaEvent('scroll_depth', { percent_scrolled: threshold });
+            }
+          }
         }
-      });
+        window.addEventListener('scroll', () => {
+          if (scrollTicking) return;
+          scrollTicking = true;
+          window.requestAnimationFrame(measureScrollDepth);
+        }, { passive: true });
+      })();
     </script>
   </>
 )}

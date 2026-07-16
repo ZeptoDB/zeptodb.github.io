@@ -110,20 +110,20 @@ PERF04 HTTP throughput (sustained)
 
 ## arm64 Production Readiness
 
-The conclusion is straightforward: arm64 (Graviton) is production-ready for ZeptoDB on EKS.
+The conclusion for this benchmark suite is straightforward: arm64 (Graviton) reached parity with x86_64 for ZeptoDB on EKS.
 
 - **Functional parity**: 76/76 tests pass on both architectures
 - **Operational parity**: no meaningful difference in startup, update, failover, or throughput
-- **Cost advantage**: ~20% EC2 savings on Graviton instances
+- **Instance efficiency**: Graviton showed lower EC2 cost for this benchmark environment
 - **No code changes**: same container image build pipeline, same Helm chart, same configuration
 
-The only consideration is instance type availability — Graviton instances may have different spot pricing and AZ coverage than their x86 equivalents. This is an infrastructure planning concern, not a ZeptoDB concern.
+The only consideration is instance type availability — Graviton instances may have different spot-market availability and AZ coverage than their x86 equivalents. This is an infrastructure planning concern, not a ZeptoDB concern.
 
 <CardGrid>
   <Card title="76/76 PASS" icon="approve-check">
     Full K8s compatibility + HA/performance suites passing on both amd64 and arm64 EKS.
   </Card>
-  <Card title="~20% cost savings" icon="rocket">
+  <Card title="Lower EC2 cost in this run" icon="rocket">
     Graviton instances cost less with no functional or operational penalty.
   </Card>
   <Card title="7 bugs fixed" icon="setting">

@@ -5,7 +5,7 @@ description: "How ZeptoDB evolved its authentication from static JWT keys to ful
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-Enterprise databases need to integrate with existing identity infrastructure. ZeptoDB's SSO journey went from static JWT keys to a full multi-IdP authentication system with OIDC discovery, server-side sessions, and token refresh — all without breaking the existing API key auth.
+Operational databases often need to integrate with existing identity infrastructure. ZeptoDB's SSO journey went from static JWT keys to a full multi-IdP authentication system with OIDC discovery, server-side sessions, and token refresh — all without breaking the existing API key auth.
 
 ---
 
@@ -54,7 +54,7 @@ The `JwtValidator` gained a `KeyResolver` callback — when no static PEM is con
 
 ## Phase 2: Multi-IdP Identity Provider
 
-Real enterprises use multiple identity providers. `SsoIdentityProvider` routes tokens by issuer:
+Real organizations often use multiple identity providers. `SsoIdentityProvider` routes tokens by issuer:
 
 ```cpp
 IdpConfig okta;
