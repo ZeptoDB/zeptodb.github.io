@@ -9,7 +9,7 @@
  */
 
 import { readdir, readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
-import { join, relative, basename, dirname } from 'node:path';
+import { join, relative, basename, dirname, posix } from 'node:path';
 import { existsSync } from 'node:fs';
 
 const SOURCE = process.argv[2] || process.env.ZEPTODB_DOCS_PATH || join(import.meta.dirname, '..', '..', 'zeptodb', 'docs');
@@ -26,6 +26,11 @@ const MANUAL_FILES = new Set(['index.md']);
 const INTERNAL_FILES = new Set([
   'backlog.md', 'completed.md', 'api_reference.md',
   'brand_guidelines.md', 'parquet_s3_activation.md', 'web_ui.md',
+]);
+const PUBLIC_DOC_ALIASES = new Map([
+  ['deployment/kubernetes_ops.md', 'operations/kubernetes_operations.md'],
+  ['deployment/monitoring.md', 'operations/production_operations.md'],
+  ['ops/rolling_upgrade.md', 'operations/rolling_upgrade.md'],
 ]);
 
 function extractTitle(content) {
@@ -63,35 +68,137 @@ function addFrontmatter(content, fallbackTitle) {
  *
  * Handles: UPPER.md, path/UPPER.md, ../path/UPPER.md, UPPER_ko.md, #anchors
  */
-function rewriteLinks(content, isKorean) {
-  return content.replace(
+function rewriteLinks(content, isKorean, rel) {
+  const rewrittenDocs = content.replace(
     /\]\(([^)]*\.md(?:#[^)]*)?)\)/g,
     (match, rawHref) => {
+      if (/^[a-z][a-z0-9+.-]*:/i.test(rawHref)) return match;
+
       // Split anchor
       const [pathPart, anchor] = rawHref.split('#');
       const anchorSuffix = anchor ? `#${anchor}` : '';
+      const isKoLink = /(?:\.ko|_ko)\.md$/i.test(pathPart);
 
-      // Strip leading docs/ prefix (some files use docs/design/foo.md)
-      let p = pathPart.replace(/^docs\//, '/');
-
-      // Handle _ko.md suffix — strip it (Korean files live under ko/ already)
-      const isKoLink = p.endsWith('_ko.md');
-      if (isKoLink) {
-        p = p.replace(/_ko\.md$/, '.md');
+      let targetRel;
+      if (pathPart.startsWith('/docs/')) {
+        targetRel = pathPart.slice('/docs/'.length);
+      } else if (pathPart.startsWith('docs/')) {
+        targetRel = pathPart.slice('docs/'.length);
+      } else if (pathPart.startsWith('/')) {
+        targetRel = pathPart.slice(1);
+      } else {
+        targetRel = posix.normalize(posix.join(posix.dirname(rel), pathPart));
       }
 
-      // Lowercase and strip .md extension, add trailing slash
-      p = p.replace(/\.md$/, '').replace(/[A-Z]/g, c => c.toLowerCase()) + '/';
+      const normalizedTarget = targetRel.toLowerCase();
+      targetRel = PUBLIC_DOC_ALIASES.get(normalizedTarget) || targetRel;
+      const publicTarget = targetRel.toLowerCase();
+      const topDirectory = publicTarget.split('/')[0];
+      const isInternal = INTERNAL.has(topDirectory) || INTERNAL_FILES.has(publicTarget);
+
+      if (targetRel.startsWith('../') || isInternal) {
+        const repoPath = targetRel.startsWith('../')
+          ? posix.normalize(posix.join('docs', posix.dirname(rel), pathPart))
+          : posix.join('docs', targetRel);
+        return `](https://github.com/zeptodb/zeptodb/blob/main/${repoPath}${anchorSuffix})`;
+      }
+
+      let route = targetRel
+        .replace(/(?:\.ko|_ko)\.md$/i, '.md')
+        .replace(/\.md$/i, '')
+        .toLowerCase();
 
       // If the link targets a Korean doc but we're in English content, prefix with /ko
       if (isKoLink && !isKorean) {
-        // Make absolute: /ko/<resolved path>
-        p = p.startsWith('/') ? `/ko${p}` : `/ko/${p}`;
+        route = `ko/${route}`;
       }
 
-      return `](${p}${anchorSuffix})`;
+      return `](/${route}/${anchorSuffix})`;
     }
   );
+
+  return rewrittenDocs.replace(
+    /\]\((\.\.?\/[^)#]+)(#[^)]*)?\)/g,
+    (match, rawPath, anchor = '') => {
+      const repoPath = posix.normalize(posix.join('docs', posix.dirname(rel), rawPath));
+      const githubView = rawPath.endsWith('/') ? 'tree' : 'blob';
+      return `](https://github.com/zeptodb/zeptodb/${githubView}/main/${repoPath}${anchor})`;
+    },
+  );
+}
+
+function stripSection(content, headingPattern) {
+  const lines = content.split('\n');
+  const out = [];
+  let skipping = false;
+  let skipLevel = 0;
+
+  for (const line of lines) {
+    const heading = line.match(/^(#{2,6})\s+/);
+    if (!skipping && headingPattern.test(line)) {
+      skipping = true;
+      skipLevel = heading[1].length;
+      continue;
+    }
+    if (skipping && heading && heading[1].length <= skipLevel) {
+      skipping = false;
+      skipLevel = 0;
+    }
+    if (!skipping) out.push(line);
+  }
+
+  return out.join('\n');
+}
+
+function sanitizePublicDocs(content, rel) {
+  let out = content;
+
+  out = out
+    .replace(/Enterprise Security Operations Guide/g, 'Security Operations Guide')
+    .replace(/Enterprise security guide/g, 'Security guide')
+    .replace(/enterprise factory workloads/gi, 'multi-site factory workloads')
+    .replace(/enterprise workflows/gi, 'operator workflows')
+    .replace(/enterprise data streaming ecosystem/gi, 'data streaming ecosystem')
+    .replace(/enterprise schema registry integration/gi, 'schema registry integration')
+    .replace(/enterprise controls/gi, 'organization controls')
+    .replace(/enterprise complexity/gi, 'real operational complexity')
+    .replace(/enterprise adoption/gi, 'adoption')
+    .replace(/Enterprise buyers/gi, 'Operations teams')
+    .replace(/Enterprise feature additions/g, 'Advanced feature additions')
+    .replace(/Enterprise support/g, 'Community support')
+    .replace(/enterprise support/gi, 'community support')
+    .replace(/enterprise-sales/gi, 'launch')
+    .replace(/sales differentiator/gi, 'technical differentiator')
+    .replace(/sales cycles/gi, 'adoption cycles')
+    .replace(/sales estimates/gi, 'public estimates')
+    .replace(/procurement/gi, 'adoption review')
+    .replace(/managed cloud/gi, 'hosted')
+    .replace(/cloud marketplace/gi, 'deployment catalog')
+    .replace(/pricing page/gi, 'public site page')
+    .replace(/pricing pages/gi, 'public site pages')
+    .replace(/pricing/gi, 'cost model');
+
+  out = out
+    .split('\n')
+    .filter((line) => !/upgrade_url|zeptodb\.com\/pricing|Book a Demo|mailto:sales@zeptodb\.com/i.test(line))
+    .join('\n');
+
+  const normalizedRel = rel.toLowerCase();
+  if (normalizedRel === 'api/http_reference.md') {
+    out = out.replace(/^\| `POST` \| `\/admin\/license\/trial`.*\n?/gm, '');
+    out = stripSection(out, /^#{2,6}\s+`?POST \/admin\/license\/trial`?|^#{2,6}\s+.*Generate 30-day trial/i);
+    out = out
+      .replace(/trial\/expiry status/gi, 'feature-gate status')
+      .replace(/trial\/expiry/gi, 'feature-gate')
+      .replace(/,?\s*"trial":\s*(true|false),?\n/g, '\n')
+      .replace(/Enterprise edition:/g, 'Licensed feature-gate example:')
+      .replace(/Enterprise trial key/gi, 'local feature-gate key')
+      .replace(/30-day trial/gi, 'local feature-gate')
+      .replace(/trial keys/gi, 'local feature-gate keys')
+      .replace(/trial key/gi, 'local feature-gate key');
+  }
+
+  return out;
 }
 
 async function getAllMdFiles(dir, base = dir) {
@@ -121,8 +228,8 @@ async function main() {
   const manualDir = join(import.meta.dirname, '..', 'src', 'content', 'docs-manual');
   // Save manual files
   const manualEntries = [
-    'index.mdx', 'docs.mdx', 'features.mdx', 'pricing.mdx', 'integrations.mdx',
-    'security.mdx', 'community.mdx', 'about.mdx', 'contact.md',
+    'index.mdx', 'docs.mdx', 'features.mdx', 'integrations.mdx',
+    'security.mdx', 'community.mdx', 'about.mdx',
   ];
   const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog', 'research'];
   for (const f of manualEntries) {
@@ -158,24 +265,26 @@ async function main() {
     const name = basename(rel);
     const dir = dirname(rel);
 
+    const normalizedRel = rel.toLowerCase();
+
     // Skip root index.md — we have a custom index.mdx
-    if (rel === 'index.md') continue;
+    if (normalizedRel === 'index.md') continue;
     // Skip internal standalone files
-    if (INTERNAL_FILES.has(rel)) continue;
+    if (INTERNAL_FILES.has(normalizedRel)) continue;
 
     if (name.endsWith('.ko.md')) {
       // Korean → ko/ subdirectory, strip .ko
       const enName = name.replace('.ko.md', '.md').toLowerCase();
       const destPath = join(DEST, 'ko', dir.toLowerCase(), enName);
       await mkdir(dirname(destPath), { recursive: true });
-      const rewritten = rewriteLinks(content, true);
+      const rewritten = sanitizePublicDocs(rewriteLinks(content, true, rel), rel);
       await writeFile(destPath, addFrontmatter(rewritten, enName.replace('.md', '')));
       koCount++;
     } else {
       // English — lowercase filename
       const destPath = join(DEST, dir.toLowerCase(), name.toLowerCase());
       await mkdir(dirname(destPath), { recursive: true });
-      const rewritten = rewriteLinks(content, false);
+      const rewritten = sanitizePublicDocs(rewriteLinks(content, false, rel), rel);
       await writeFile(destPath, addFrontmatter(rewritten, name.replace('.md', '')));
       enCount++;
     }

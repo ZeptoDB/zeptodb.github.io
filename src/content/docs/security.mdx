@@ -47,19 +47,19 @@ In cluster mode, Agent Memory supports routed writes, point reads, fan-out searc
 
 ## Compliance
 
-ZeptoDB ships the evidence primitives teams need across agentic operations, finance, industrial, automotive, and utilities:
+ZeptoDB exposes evidence primitives that can support security and compliance reviews across agentic operations, finance, industrial, automotive, and utilities:
 
 | Standard | Relevance | Status |
 |----------|-----------|--------|
-| SOC2 Type II | Audit logging, RBAC, encryption, change evidence | Ready |
-| MiFID II | Trade audit trail, access controls, decision replay | Ready |
-| GDPR | Namespace isolation, deletion support, tenant scoping | Ready |
-| PCI DSS | TLS 1.3, access controls, audit logging | Ready |
-| IEC 62443 | Industrial control systems authN/authZ and audit | Evidence-ready |
-| ISO / SAE 21434 | Automotive cybersecurity and replayable data handling | Evidence-ready |
-| NERC CIP | Electric utility operational monitoring | Evidence-ready |
+| SOC2 Type II | Audit logging, RBAC, encryption, change evidence | Evidence surface |
+| MiFID II | Trade audit trail, access controls, decision replay | Evidence surface |
+| GDPR | Namespace isolation, deletion support, tenant scoping | Evidence surface |
+| PCI DSS | TLS 1.3, access controls, audit logging | Evidence surface |
+| IEC 62443 | Industrial control systems authN/authZ and audit | Evidence surface |
+| ISO / SAE 21434 | Automotive cybersecurity and replayable data handling | Evidence surface |
+| NERC CIP | Electric utility operational monitoring | Evidence surface |
 
-Regulated deployments typically want SSO, audit export, namespace isolation, and deployment review — all available on the Enterprise tier.
+Regulated deployments should review SSO, audit export, namespace isolation, and deployment controls against their own operating requirements.
 
 ---
 
@@ -108,32 +108,14 @@ For detailed configuration, see the [Security Operations Guide](/api/security_op
 
 ---
 
-## Edition availability
+## Security review boundaries
 
-| Feature | Community | Enterprise |
-|---------|:---------:|:----------:|
-| Agent Memory | ✓ | ✓ |
-| Exact / semantic prompt cache | ✓ | ✓ |
-| Agent Memory sidecar snapshots | ✓ | ✓ |
-| TLS 1.3 / mTLS | ✓ | ✓ |
-| API key authentication | ✓ | ✓ |
-| Basic RBAC | ✓ | ✓ |
-| Rate limiting | ✓ | ✓ |
-| Audit logging | ✓ | ✓ |
-| SSO / OIDC | — | ✓ |
-| Audit log export | — | ✓ |
-| Advanced RBAC | — | ✓ |
-| Multi-node time-series clustering | — | ✓ |
-| Multi-node Agent Memory operations guidance | — | ✓ |
+| Area | Current review stance |
+|------|-----------------------|
+| Agent Memory | Tenant and namespace scoping, TTL/capacity controls, and replayable deletion tombstones should be tested against your application policy. |
+| Prompt cache | Applications own prompt content, model calls, provider credentials, and cache reuse policy. |
+| SSO / OIDC | Validate identity-provider configuration, token lifetime, role mapping, and audit logging before production use. |
+| Multi-node operation | Validate routing, failover, metrics, rollback, and recovery behavior in a controlled environment. |
+| Physical AI supervisor paths | Treat as shadow-only advisory surfaces unless a separate operator-controlled promotion gate approves a narrower runtime scope. |
 
-Enterprise-gated endpoints return HTTP 402 with an upgrade URL:
-
-```json
-{
-  "error": "enterprise_required",
-  "message": "SSO requires Enterprise license",
-  "upgrade_url": "https://zeptodb.com/pricing"
-}
-```
-
-See [Pricing](/pricing/) for edition details and trial information, or use [GitHub Discussions](https://github.com/zeptodb/zeptodb/discussions) for deployment and security questions.
+Use [GitHub Discussions](https://github.com/zeptodb/zeptodb/discussions) for deployment and security questions.

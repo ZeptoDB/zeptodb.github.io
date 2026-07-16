@@ -55,7 +55,7 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 
     [Feed Handler Guide →](/feeds/feed_handler_guide/)
 
-    > Kafka connector requires Enterprise license.
+    > Kafka connector behavior should be validated in your deployment shape before relying on it.
   </Card>
   <Card title="FIX 4.4" icon="star">
     Native FIX parser for market-data and order feeds. Trading agents can pair tick data with strategy memory and decision replay.
@@ -82,7 +82,7 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
 
     [ROS 2 Setup →](/operations/ros2_setup/) · [Edge Deployment →](/operations/ros2_edge_deployment/) · [C++ Reference →](/api/cpp_reference/#ros-2-connector)
 
-    > ROS 2 connector support requires `-DZEPTO_USE_ROS2=ON`; IoT connectors require an Enterprise license.
+    > ROS 2 connector support requires `-DZEPTO_USE_ROS2=ON`; IoT connectors should be validated against your edge and operations requirements.
   </Card>
 </CardGrid>
 
@@ -167,4 +167,4 @@ See [SSO Integration Guide →](/api/sso_integration_guide/)
 | JDBC / ODBC | Planned | Tableau, Excel, BI tools |
 | DuckDB | Planned | Arrow zero-copy JOIN delegation |
 
-Interested in an integration, or want to prioritize one? [Open an issue on GitHub](https://github.com/zeptodb/zeptodb/issues) or start a [GitHub Discussion](https://github.com/zeptodb/zeptodb/discussions).
+Interested in an integration, or want to compare implementation notes? [Open an issue on GitHub](https://github.com/zeptodb/zeptodb/issues) or start a [GitHub Discussion](https://github.com/zeptodb/zeptodb/discussions).

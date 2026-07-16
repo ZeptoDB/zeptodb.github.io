@@ -8,11 +8,12 @@
   "scripts": {
     "sync-docs": "node scripts/sync-docs.mjs",
     "dev": "astro dev",
-    "build": "node scripts/sync-docs.mjs && astro build",
+    "build": "node scripts/sync-docs.mjs && node scripts/growth-social-assets.mjs && ASTRO_TELEMETRY_DISABLED=1 astro build",
     "preview": "astro preview",
     "astro": "astro",
     "growth:validate": "node scripts/growth-validate.mjs",
     "growth:links": "node scripts/growth-build-links.mjs",
+    "growth:social-assets": "node scripts/growth-social-assets.mjs",
     "growth:search": "node scripts/growth-search-queue.mjs",
     "growth:score": "node scripts/growth-score-opportunities.mjs",
     "growth:ai-search": "node scripts/growth-ai-search-measure.mjs",

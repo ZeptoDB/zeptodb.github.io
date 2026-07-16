@@ -47,6 +47,9 @@ jobs:
         env:
           ZEPTODB_DOCS_PATH: zeptodb-source/docs
 
+      - name: Generate social preview images
+        run: node scripts/growth-social-assets.mjs
+
       - name: Build site
         run: npx astro build
         env:

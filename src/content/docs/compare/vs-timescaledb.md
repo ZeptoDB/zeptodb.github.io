@@ -48,7 +48,7 @@ TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpo
 - Existing PostgreSQL infrastructure and expertise
 - Need for full PostgreSQL ecosystem (PostGIS, extensions, etc.)
 - Continuous aggregates for pre-computed rollups
-- Managed cloud service preference (Timescale Cloud)
+- Preference for a hosted PostgreSQL-compatible service
 - Workloads where 10ms latency is acceptable
 
 ---

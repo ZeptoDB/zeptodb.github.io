@@ -80,7 +80,6 @@ measurement notes from the benchmark documentation.
 - Benchmarks: https://zeptodb.com/benchmarks/
 - Integrations: https://zeptodb.com/integrations/
 - Security: https://zeptodb.com/security/
-- Pricing: https://zeptodb.com/pricing/
 
 ## Comparison Pages
 
