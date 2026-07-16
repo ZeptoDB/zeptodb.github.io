@@ -112,8 +112,8 @@ async function getAllMdFiles(dir, base = dir) {
 
 async function main() {
   if (!existsSync(SOURCE)) {
-    console.error(`Source not found: ${SOURCE}`);
-    process.exit(1);
+    console.warn(`Source not found: ${SOURCE}. Keeping existing src/content/docs.`);
+    return;
   }
 
   // Clean dest (preserve manually managed files)
@@ -124,7 +124,7 @@ async function main() {
     'index.mdx', 'docs.mdx', 'features.mdx', 'pricing.mdx', 'integrations.mdx',
     'security.mdx', 'community.mdx', 'about.mdx', 'contact.md',
   ];
-  const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog'];
+  const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog', 'research'];
   for (const f of manualEntries) {
     const src = join(DEST, f);
     if (existsSync(src)) {

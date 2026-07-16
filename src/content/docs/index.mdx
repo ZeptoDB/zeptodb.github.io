@@ -19,8 +19,8 @@ hero:
     - text: Physical AI Memory
       link: /use-cases/robotics/
       icon: right-arrow
-    - text: Action-Outcome Research
-      link: /blog/physical-ai-action-outcome-memory/
+    - text: Action-Outcome Evidence
+      link: /research/action-outcome-evidence/
       icon: right-arrow
       variant: secondary
     - text: GitHub
@@ -55,6 +55,27 @@ ZeptoDB is not a robot controller and does not claim certified robot safety. Its
 </CardGrid>
 
 Benchmark claims are defined by hardware, build, data shape, scope, and measurement protocol. See the [benchmark criteria and reproduction notes](/benchmarks/#benchmark-criteria) before comparing or republishing a single number.
+
+## What the Action-Outcome research has validated
+
+ZeptoDB's current Action-Outcome research track has moved from offline comparison into native SQL replay, edge/fleet feed replay, shadow supervisor tests, and a documented controlled-pilot boundary.
+
+<CardGrid>
+  <Card title="15/15 hazardous proposals suppressed" icon="approve-check-circle">
+    Shadow supervisor tests blocked every hazardous baseline proposal while allowing every safe context-gated proposal.
+  </Card>
+  <Card title="52/52 feed events acknowledged" icon="seti:clock">
+    Edge-to-fleet replay converged through bounded batches, duplicate handling, late arrivals, outage retry, and restart reload.
+  </Card>
+  <Card title="Native SQL replay passed" icon="rocket">
+    Robot state ASOF JOINs, sensor ASOF JOINs, action/outcome JOINs, suppression audit JOINs, ROW_NUMBER, LAG, and spatial checks all pass in live ZeptoDB SQL.
+  </Card>
+  <Card title="Controlled pilot, not GA" icon="open-book">
+    The runtime path is deliberately bounded: admin-gated, shadow/pilot scoped, monitored, and not described as a broad autonomous control feature.
+  </Card>
+</CardGrid>
+
+[Action-Outcome Memory →](/use-cases/action-outcome-memory/) · [Research evidence →](/research/action-outcome-evidence/) · [Grounded overview →](/blog/physical-ai-action-outcome-memory/)
 
 ---
 
@@ -174,7 +195,9 @@ Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vect
 
 <CardGrid>
   <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, rosbag2 replay, action memory, and safety-adjacent replay" href="/use-cases/robotics/" />
-  <LinkCard title="Physical AI Action-Outcome Memory" description="What ZeptoDB has actually validated, with research-only limits kept clear" href="/blog/physical-ai-action-outcome-memory/" />
+  <LinkCard title="Action-Outcome Memory" description="Physical AI action, recovery, suppression, and outcome memory" href="/use-cases/action-outcome-memory/" />
+  <LinkCard title="Action-Outcome Evidence" description="Experiment 013-023 results, runtime maturity, and controlled-pilot boundaries" href="/research/action-outcome-evidence/" />
+  <LinkCard title="Physical AI Research Overview" description="What ZeptoDB has actually validated, with research-only limits kept clear" href="/blog/physical-ai-action-outcome-memory/" />
   <LinkCard title="ROS 2 Setup" description="Build and smoke test the ROS 2 connector path" href="/operations/ros2_setup/" />
   <LinkCard title="Agent Memory" description="Memory records, context retrieval, cache lookup, and replay for agents" href="/use-cases/agent-memory/" />
   <LinkCard title="Python Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />

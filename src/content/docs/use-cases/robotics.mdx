@@ -110,6 +110,12 @@ Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog
 
 ## Where it fits in the stack
 
+### Action-Outcome Memory for robot decisions
+- Store the action the agent proposed, the action that was allowed or suppressed, and the outcome that followed
+- Compare similar robot incidents against current topology, temporal motif, and change context before repeating a historical action
+- Keep edge-local suppression decisions separate from fleet-global audit and policy learning
+- Replay why a proposal was allowed, suppressed, or escalated to manual review
+
 ### Sensor fusion for perception
 - Direct ROS 2 topic ingest for scalar `std_msgs`, IMU, JointState, Odometry, TF, and LaserScan telemetry
 - ASOF JOIN across LiDAR point clouds, camera frames, IMU, and depth streams
@@ -131,6 +137,31 @@ Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog
 - Treat simulation rollouts and real-robot episodes as compatible schemas
 - Compare policy performance across batches with standard SQL aggregates
 - Version datasets with immutable Parquet snapshots
+
+[Action-Outcome Memory →](/use-cases/action-outcome-memory/)
+
+---
+
+## Current Action-Outcome evidence
+
+ZeptoDB's Physical AI research track now has concrete action/outcome evidence behind it:
+
+<CardGrid>
+  <Card title="15/15 hazardous proposals suppressed" icon="approve-check-circle">
+    Shadow supervisor tests blocked every hazardous baseline proposal and routed those decisions to manual review.
+  </Card>
+  <Card title="5/5 safe proposals allowed" icon="star">
+    Context-gated recovery proposals were allowed across the five robot incident families in the fixture.
+  </Card>
+  <Card title="52/52 edge/fleet ACK convergence" icon="seti:clock">
+    Bounded edge-to-fleet replay handled duplicate, late, outage, and restart cases while converging fleet audit rows.
+  </Card>
+  <Card title="Controlled pilot boundary" icon="open-book">
+    The SQL/HTTP adapter is admin-gated and pilot-scoped, with explicit non-goals and rollback requirements.
+  </Card>
+</CardGrid>
+
+[Research evidence →](/research/action-outcome-evidence/)
 
 ---
 

@@ -1,0 +1,132 @@
+---
+title: "Action-Outcome Evidence"
+description: "Evidence from ZeptoDB Action-Outcome Memory experiments: Physical AI comparison, native SQL replay, edge/fleet feed replay, shadow supervisor, node replacement, and commit-ledger stress."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+This page summarizes the Action-Outcome Memory evidence currently visible in the ZeptoDB repo. It is written as product evidence, not as a GA claim.
+
+The important distinction: **completed experiment validation is not the same as promoted product readiness**. The current path supports research evidence, experimental runtime paths, and controlled pilots with explicit boundaries.
+
+---
+
+## Evidence summary
+
+| Experiment | What it tested | Result |
+|---|---|---|
+| 013 | Physical AI action recommendation baselines vs context-gated Action-Outcome Memory | Context-gated variant reached 1.00 recovery Top-1 and 1.00 risky-repeat avoidance. |
+| 014 | Native ZeptoDB SQL replay of robot action/outcome evidence | Overall SQL replay passed, including ASOF JOINs, suppression audit JOINs, windows, and spatial checks. |
+| 016 | Bounded edge-to-fleet feed replay | 52/52 feed events acknowledged through duplicate, late, outage, and restart scenarios. |
+| 021 | Shadow supervisor A/B and durability replay | 15/15 hazardous proposals suppressed, 5/5 safe proposals allowed, restart replay skipped 20/20 duplicates. |
+| 022 | Supervisor node replacement | Expired lease takeover fenced stale owner and converged commit, decision, and evidence rows. |
+| 023 | Commit-ledger stress | 12/12 proposals converged after injected projection faults and runtime restarts. |
+
+---
+
+## What actually improved
+
+<CardGrid>
+  <Card title="Recovered the right action" icon="approve-check-circle">
+    The context-gated variant selected `reroute_zone`, `safe_stop_clean_lens`, `pause_recalibrate`, `reroute_cold_dock`, and `return_to_base` for the five Physical AI query families.
+  </Card>
+  <Card title="Avoided unsafe repeats" icon="star">
+    Similar-incident retrieval, runbook priors, and reflection-only memory repeated the hazardous Top-1 action on hard distractors. Context-gating did not.
+  </Card>
+  <Card title="Kept the audit trail" icon="open-book">
+    Suppressed misleading evidence is not discarded. It remains queryable through suppression audit JOINs for later inspection.
+  </Card>
+  <Card title="Survived replay and restart" icon="seti:clock">
+    Decision and commit ledgers preserve idempotency when a runtime restarts or replays already-seen proposals.
+  </Card>
+</CardGrid>
+
+---
+
+## SQL replay surface
+
+Experiment 014 validates that the Physical AI fixture is not only a Python research artifact. It materializes into live ZeptoDB SQL tables and passes:
+
+- failed-repeat JOIN,
+- context top-action JOIN,
+- suppression audit JOIN,
+- action/outcome JOIN,
+- robot state ASOF JOIN,
+- sensor ASOF JOIN,
+- ROW_NUMBER window,
+- LAG window,
+- spatial `ST_Within`.
+
+The key product claim is narrow and useful: ZeptoDB can keep robot state, sensor summaries, actions, outcomes, recommendations, retrieval evidence, and suppressions in one replayable SQL path.
+
+---
+
+## Edge/fleet replay surface
+
+Experiment 016 validates the edge/fleet split:
+
+| Signal | Result |
+|---|---:|
+| Edge outbox events | 52 |
+| Fleet acknowledged events | 52 |
+| Duplicate inbox attempts | 1 |
+| Late inbox attempts | 2 |
+| Outage telemetry rows | 1 |
+| Restart reload telemetry rows | 1 |
+
+This matters because robot safety decisions cannot wait for a central fleet layer. The edge node can make immediate suppression/recovery decisions while the fleet node receives bounded evidence later for audit and policy learning.
+
+---
+
+## Shadow supervisor surface
+
+Experiment 021 tested the supervisor before widening runtime scope.
+
+| Metric | Value |
+|---|---:|
+| Total shadow proposals | 20 |
+| Hazardous baseline proposals | 15 |
+| Suppressed hazardous proposals | 15 |
+| Safe context-gated proposals | 5 |
+| Allowed safe proposals | 5 |
+| Restart duplicate skips | 20 |
+
+The supervisor is intentionally shadow-oriented. Hazardous baseline proposals are suppressed to manual review; safe context-gated proposals are allowed in the fixture. This is evidence for controlled shadow pilots, not a promise of autonomous actuation.
+
+---
+
+## Runtime maturity
+
+| Component | Status | Boundary |
+|---|---|---|
+| Action-Outcome research fixture | Research complete | Evidence and comparison only. |
+| Native SQL replay | Research complete | Validates table/query shape, not broad production automation. |
+| Edge/fleet feed replay | Research complete | Deterministic replay semantics, not generic replication. |
+| Edge/fleet C++ connector and SQL/HTTP adapter | Experimental runtime path | Admin-gated, bounded, pilot-scoped. |
+| Action-Outcome supervisor runtime | Experimental runtime path | Shadow-only; SQL lease is not consensus. |
+| Edge/fleet controlled pilot | Controlled pilot | One approved environment at a time; no GA/SLA language. |
+
+---
+
+## Promotion gates
+
+Before broader promotion, the ZeptoDB path still needs:
+
+- 24h+ live pilot soak and fault windows,
+- dashboard and alert evidence for worker lag, ACK gaps, retries, failures, late events, and admin audit events,
+- documented supported schemas, limits, rollback, and non-goals,
+- release-grade x86_64 and aarch64 verification,
+- a new production gate for moving from controlled pilot to Limited Operator Feature.
+
+This explicit boundary is part of the point. Action-Outcome Memory is useful because it preserves evidence, including the evidence that a runtime is not ready for a broader claim yet.
+
+---
+
+## Product pages
+
+<CardGrid>
+  <LinkCard title="Action-Outcome Memory" description="The product use case and runtime shape" href="/use-cases/action-outcome-memory/" />
+  <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, and replayable robot timelines" href="/use-cases/robotics/" />
+  <LinkCard title="Agent Memory" description="Live evidence, memory retrieval, prompt cache, and AgentOps replay" href="/use-cases/agent-memory/" />
+  <LinkCard title="Benchmarks" description="Benchmark criteria and performance scope" href="/benchmarks/" />
+</CardGrid>

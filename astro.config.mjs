@@ -37,6 +37,7 @@ export default defineConfig({
             { label: 'Docs Home', slug: 'docs' },
             { label: 'Quick Start', slug: 'getting-started/quick_start' },
             { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
+            { label: 'Action-Outcome Memory', slug: 'use-cases/action-outcome-memory' },
             { label: 'ROS 2 Setup', slug: 'operations/ros2_setup' },
             { label: 'ROS 2 Edge Deployment', slug: 'operations/ros2_edge_deployment' },
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
@@ -74,6 +75,7 @@ export default defineConfig({
           items: [
             { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
+            { label: 'Action-Outcome Memory', slug: 'use-cases/action-outcome-memory' },
             { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
             { label: 'Logistics & Edge Automation', slug: 'use-cases/logistics' },
             { label: 'Features', slug: 'features' },
@@ -81,6 +83,12 @@ export default defineConfig({
             { label: 'Security', slug: 'security' },
             { label: 'Integrations', slug: 'integrations' },
             { label: 'Community', slug: 'community' },
+          ],
+        },
+        {
+          label: 'Research',
+          items: [
+            { label: 'Action-Outcome Evidence', slug: 'research/action-outcome-evidence' },
           ],
         },
         {

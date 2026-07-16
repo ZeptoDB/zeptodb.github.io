@@ -1,0 +1,146 @@
+---
+title: "Action-Outcome Memory"
+template: splash
+prev: false
+next: false
+description: "ZeptoDB Action-Outcome Memory for Physical AI: store actions, context, outcomes, suppressions, and fleet audit evidence on one replayable time-series substrate."
+---
+
+import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+
+Physical AI agents need more than perception and fast telemetry. They need memory of what was tried, what happened afterward, and whether the same action should be repeated, suppressed, or escalated in the next similar context.
+
+ZeptoDB is building that as Action-Outcome Memory: a time-series memory plane for robot operations, edge safety decisions, fleet audit, and policy improvement.
+
+> Every action becomes evidence. Every outcome becomes memory. Every future decision can be checked against what actually happened before.
+
+---
+
+## The problem
+
+Robots, drones, mobile fleets, cold-chain systems, and industrial agents increasingly make operational decisions in real environments. A generic log can show that an action happened. It usually cannot answer the higher-value question:
+
+**Should this action be repeated in this context?**
+
+That requires keeping the full sequence intact:
+
+1. robot state before the decision,
+2. sensor summaries near the decision,
+3. retrieved historical incidents,
+4. selected or suppressed actions,
+5. recovery outcome,
+6. fleet-level audit after delayed consolidation.
+
+This is a time-series problem as much as an AI problem. The value is not just text memory or vector recall. The value is replaying action evidence with SQL, ASOF JOINs, windows, suppression audits, and bounded edge-to-fleet transfer.
+
+---
+
+## What the current research shows
+
+<CardGrid>
+  <Card title="1.00 recovery Top-1" icon="approve-check-circle">
+    In the Physical AI fixture, the context-gated Action-Outcome variant selected the expected recovery action across all five incident families.
+  </Card>
+  <Card title="1.00 risky-repeat avoidance" icon="star">
+    Similar-incident, runbook-prior, and reflection-only baselines repeated hazardous actions. The context-gated variant avoided them.
+  </Card>
+  <Card title="32 suppressions exposed" icon="open-book">
+    Misleading historical successes are still retained for audit, but down-weighted before action aggregation.
+  </Card>
+  <Card title="Native SQL replay passed" icon="seti:clock">
+    The result survives live ZeptoDB materialization through action/outcome JOINs, ASOF joins, ROW_NUMBER, LAG, and spatial checks.
+  </Card>
+</CardGrid>
+
+[Read the evidence table →](/research/action-outcome-evidence/)
+
+---
+
+## Runtime shape
+
+```text
+edge event
+  -> robot state / sensor summary
+  -> historical action outcomes
+  -> context gate
+  -> allow, suppress, or manual review
+  -> decision ledger
+  -> edge outbox
+  -> bounded fleet feed
+  -> fleet audit and policy learning
+```
+
+ZeptoDB's current path separates immediate edge behavior from fleet-wide learning:
+
+- **Edge-local memory** makes the immediate safety decision.
+- **Fleet-global memory** receives evidence later for audit, replay, and policy improvement.
+- **ACK ledgers** make delivery boundaries explicit.
+- **Commit ledgers** make supervisor decisions idempotent across replay and restart.
+- **Admin-gated runtimes** keep pilot scope explicit instead of pretending this is default-on autonomy.
+
+---
+
+## What ZeptoDB provides
+
+<CardGrid>
+  <Card title="Temporal evidence" icon="seti:clock">
+    Store robot incidents, state, sensor summaries, actions, retrieval evidence, suppressions, outcomes, and ACK rows as queryable time-series tables.
+  </Card>
+  <Card title="SQL replay" icon="rocket">
+    Use ASOF JOIN, action/outcome JOIN, suppression audit JOIN, ROW_NUMBER, LAG, and spatial predicates to replay why an action was allowed or suppressed.
+  </Card>
+  <Card title="Bounded edge-to-fleet feed" icon="approve-check-circle">
+    Transfer decision, retrieval, and suppression evidence through bounded batches with duplicate, late, outage, and restart handling.
+  </Card>
+  <Card title="Shadow supervisor" icon="open-book">
+    Test recommendations in shadow mode, suppress hazardous proposals, preserve manual-review decisions, and avoid duplicate work after restart.
+  </Card>
+</CardGrid>
+
+---
+
+## Maturity boundary
+
+This is an active product track, not a loose idea. It is also not a broad GA control feature today.
+
+| Area | Current status |
+|---|---|
+| Offline Physical AI comparison | Research complete |
+| Native ZeptoDB SQL replay | Research complete |
+| Edge/fleet bounded feed semantics | Research complete |
+| C++ connector and SQL/HTTP runtime path | Experimental runtime path |
+| Action-Outcome shadow supervisor | Experimental runtime path |
+| Edge/fleet SQL/HTTP adapter | Controlled pilot scope |
+| Default-on operator feature / GA autonomous control | Not promoted |
+
+The current supported language is: **controlled pilot / controlled shadow pilot**, with explicit non-goals, monitoring, rollback, and promotion gates.
+
+---
+
+## Where it applies
+
+<CardGrid>
+  <Card title="Warehouse robots" icon="rocket">
+    Avoid repeating risky route decisions after slip, occlusion, geofence, or localization incidents.
+  </Card>
+  <Card title="Robot arms" icon="star">
+    Suppress repeated torque-limit increases when similar recoveries required pause, recalibration, or speed reduction.
+  </Card>
+  <Card title="Drones and mobile robots" icon="seti:clock">
+    Compare continue-mission, return-to-base, clean-sensor, and navigation-mode actions against previous outcomes.
+  </Card>
+  <Card title="Cold-chain and logistics" icon="approve-check-circle">
+    Preserve action, environmental context, and recovery outcome for fleet-level audit after edge decisions.
+  </Card>
+</CardGrid>
+
+---
+
+## Next steps
+
+<CardGrid>
+  <LinkCard title="Research Evidence" description="Experiment 013-023 results and maturity boundaries" href="/research/action-outcome-evidence/" />
+  <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, edge telemetry, and replayable robot episodes" href="/use-cases/robotics/" />
+  <LinkCard title="Agent Memory" description="Live evidence, scoped recall, prompt cache, and AgentOps replay" href="/use-cases/agent-memory/" />
+  <LinkCard title="Research Overview" description="Grounded Physical AI memory scope, limits, and research-only claims" href="/blog/physical-ai-action-outcome-memory/" />
+</CardGrid>
