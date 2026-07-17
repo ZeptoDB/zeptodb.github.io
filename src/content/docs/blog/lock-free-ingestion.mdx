@@ -1,6 +1,7 @@
 ---
 title: "Lock-Free Ingestion at 5.52M Events/sec"
 description: "Inside ZeptoDB's MPMC ring buffer — design decisions, SIMD batch copy, and Highway vectorization."
+publishedAt: 2026-04-07
 ---
 
 ZeptoDB ingests 5.52 million events per second on a single node. This post explains how — from the lock-free ring buffer to Highway SIMD batch copy to the LLVM JIT query engine that processes the data.

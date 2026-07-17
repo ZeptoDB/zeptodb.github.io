@@ -4,10 +4,13 @@ description: "Evidence from ZeptoDB Action-Outcome Memory experiments: Physical 
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import ResearchCatalog from '../../../components/ResearchCatalog.astro';
 
-This page summarizes the Action-Outcome Memory evidence currently visible in the ZeptoDB repo. It is written as product evidence, not as a GA claim.
-
-The important distinction: **completed experiment validation is not the same as promoted product readiness**. The current path supports research evidence, experimental runtime paths, and controlled pilots with explicit boundaries.
+<div data-pagefind-weight="10">
+  <p>This page summarizes the Action-Outcome Memory evidence currently visible in the ZeptoDB repo. It is written as product evidence, not as a GA claim.</p>
+  <p>Use it as the starting point for action outcome research: it connects each action outcome experiment to interpreted results, raw artifacts, limitations, and readiness boundaries.</p>
+  <p>The important distinction: <strong>completed experiment validation is not the same as promoted product readiness</strong>. The current path supports research evidence, experimental runtime paths, and controlled pilots with explicit boundaries.</p>
+</div>
 
 ---
 
@@ -15,12 +18,12 @@ The important distinction: **completed experiment validation is not the same as 
 
 | Experiment | What it tested | Result |
 |---|---|---|
-| 013 | Physical AI action recommendation baselines vs context-gated Action-Outcome Memory | Context-gated variant reached 1.00 recovery Top-1 and 1.00 risky-repeat avoidance. |
-| 014 | Native ZeptoDB SQL replay of robot action/outcome evidence | Overall SQL replay passed, including ASOF JOINs, suppression audit JOINs, windows, and spatial checks. |
-| 016 | Bounded edge-to-fleet feed replay | 52/52 feed events acknowledged through duplicate, late, outage, and restart scenarios. |
-| 021 | Shadow supervisor A/B and durability replay | 15/15 hazardous proposals suppressed, 5/5 safe proposals allowed, restart replay skipped 20/20 duplicates. |
-| 022 | Supervisor node replacement | Expired lease takeover fenced stale owner and converged commit, decision, and evidence rows. |
-| 023 | Commit-ledger stress | 12/12 proposals converged after injected projection faults and runtime restarts. |
+| [013](/research/physical_ai_action_outcome_experiment_013/) | Physical AI action recommendation baselines vs context-gated Action-Outcome Memory | Context-gated variant reached 1.00 recovery Top-1 and 1.00 risky-repeat avoidance. |
+| [014](/research/physical_ai_action_outcome_sql_replay_experiment_014/) | Native ZeptoDB SQL replay of robot action/outcome evidence | Overall SQL replay passed, including ASOF JOINs, suppression audit JOINs, windows, and spatial checks. |
+| [016](/research/physical_ai_edge_fleet_feed_replay_experiment_016/) | Bounded edge-to-fleet feed replay | 52/52 feed events acknowledged through duplicate, late, outage, and restart scenarios. |
+| [021](/research/physical_ai_shadow_supervisor_ab_experiment_021/) | Shadow supervisor A/B and durability replay | 15/15 hazardous proposals suppressed, 5/5 safe proposals allowed, restart replay skipped 20/20 duplicates. |
+| [022](/research/physical_ai_supervisor_node_replacement_experiment_022/) | Supervisor node replacement | Expired lease takeover fenced stale owner and converged commit, decision, and evidence rows. |
+| [023](/research/physical_ai_supervisor_commit_ledger_stress_experiment_023/) | Commit-ledger stress | 12/12 proposals converged after injected projection faults and runtime restarts. |
 
 ---
 
@@ -119,6 +122,14 @@ Before broader promotion, the ZeptoDB path still needs:
 - a new production gate for moving from controlled pilot to Limited Operator Feature.
 
 This explicit boundary is part of the point. Action-Outcome Memory is useful because it preserves evidence, including the evidence that a runtime is not ready for a broader claim yet.
+
+---
+
+## Full research catalog
+
+Every public experiment, supporting research note, and generated result artifact is linked below. Start with the experiment record for interpretation; open the raw artifact when you need the underlying tables and replay output.
+
+<ResearchCatalog />
 
 ---
 

@@ -1,0 +1,182 @@
+---
+import { getCollection } from 'astro:content';
+
+const entries = (await getCollection('docs'))
+  .filter((entry) => entry.id.startsWith('research/') && entry.id !== 'research/action-outcome-evidence')
+  .map((entry) => ({
+    id: entry.id,
+    title: entry.data.title,
+    description: entry.data.description || 'Experiment notes, evidence, and reproducibility details.',
+    href: `/${entry.id}/`,
+  }));
+
+function experimentNumber(id: string) {
+  const matches = [...id.matchAll(/(?:experiment_|_)(\d{3})(?=_|$)/g)];
+  return Number(matches.at(-1)?.[1] || 0);
+}
+
+function byExperimentThenTitle(a: (typeof entries)[number], b: (typeof entries)[number]) {
+  return experimentNumber(b.id) - experimentNumber(a.id) || a.title.localeCompare(b.title);
+}
+
+const resultArtifacts = entries
+  .filter((entry) => entry.id.startsWith('research/results/'))
+  .sort(byExperimentThenTitle);
+const experimentRecords = entries
+  .filter((entry) => !entry.id.startsWith('research/results/') && /experiment_\d{3}/.test(entry.id))
+  .sort(byExperimentThenTitle);
+const supportingRecords = entries
+  .filter((entry) => !resultArtifacts.includes(entry) && !experimentRecords.includes(entry))
+  .sort((a, b) => a.title.localeCompare(b.title));
+---
+
+<div class="research-catalog" data-pagefind-ignore>
+  <section aria-labelledby="experiment-records-heading">
+    <h3 id="experiment-records-heading">Experiment records</h3>
+    <p class="catalog-intro">Hypotheses, fixture boundaries, measured outcomes, and promotion gates.</p>
+    <ol class="catalog-list">
+      {experimentRecords.map((entry) => (
+        <li>
+          <a href={entry.href}>
+            <span class="experiment-id">EXP {String(experimentNumber(entry.id)).padStart(3, '0')}</span>
+            <span class="entry-copy">
+              <strong>{entry.title}</strong>
+              <span>{entry.description}</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ol>
+  </section>
+
+  <section aria-labelledby="supporting-records-heading">
+    <h3 id="supporting-records-heading">Methods and operating boundaries</h3>
+    <p class="catalog-intro">Schemas, governance, roadmaps, research scans, and runtime plans.</p>
+    <ul class="catalog-list supporting-list">
+      {supportingRecords.map((entry) => (
+        <li>
+          <a href={entry.href}>
+            <span class="entry-copy">
+              <strong>{entry.title}</strong>
+              <span>{entry.description}</span>
+            </span>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <details class="result-artifacts">
+    <summary>Raw result artifacts ({resultArtifacts.length})</summary>
+    <p>Generated tables and replay outputs are kept public for reproducibility, but excluded from site search so that interpreted evidence ranks first.</p>
+    <ul class="artifact-list">
+      {resultArtifacts.map((entry) => (
+        <li><a href={entry.href}>{entry.title}</a></li>
+      ))}
+    </ul>
+  </details>
+</div>
+
+<style>
+  .research-catalog {
+    display: grid;
+    gap: 2rem;
+    margin-block: 1.5rem 2.5rem;
+  }
+
+  .research-catalog section,
+  .research-catalog h3,
+  .catalog-intro {
+    margin-block-start: 0;
+  }
+
+  .catalog-intro,
+  .result-artifacts > p {
+    color: var(--sl-color-gray-2);
+  }
+
+  .catalog-list,
+  .artifact-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .catalog-list {
+    border-block-start: 1px solid var(--sl-color-gray-5);
+  }
+
+  .catalog-list li {
+    border-block-end: 1px solid var(--sl-color-gray-5);
+  }
+
+  .catalog-list a {
+    display: grid;
+    grid-template-columns: 5.25rem minmax(0, 1fr);
+    gap: 1rem;
+    padding-block: 0.9rem;
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .supporting-list a {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .catalog-list a:hover strong,
+  .artifact-list a:hover {
+    color: var(--sl-color-accent-high);
+  }
+
+  .experiment-id {
+    padding-top: 0.12rem;
+    color: var(--sl-color-accent-high);
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+  }
+
+  .entry-copy {
+    display: grid;
+    gap: 0.3rem;
+    min-width: 0;
+  }
+
+  .entry-copy strong {
+    line-height: 1.35;
+  }
+
+  .entry-copy > span {
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
+    line-height: 1.5;
+  }
+
+  .result-artifacts {
+    border-block: 1px solid var(--sl-color-gray-5);
+    padding-block: 1rem;
+  }
+
+  .result-artifacts summary {
+    color: var(--sl-color-white);
+    cursor: pointer;
+    font-weight: 700;
+  }
+
+  .artifact-list {
+    columns: 2 18rem;
+    column-gap: 2rem;
+  }
+
+  .artifact-list li {
+    break-inside: avoid;
+    margin-block: 0.45rem;
+  }
+
+  @media (max-width: 34rem) {
+    .catalog-list a {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 0.35rem;
+    }
+  }
+</style>

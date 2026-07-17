@@ -89,6 +89,10 @@ export default defineConfig({
           label: 'Research',
           items: [
             { label: 'Action-Outcome Evidence', slug: 'research/action-outcome-evidence' },
+            { label: 'Experiment 023: Commit Ledger', slug: 'research/physical_ai_supervisor_commit_ledger_stress_experiment_023' },
+            { label: 'Experiment 022: Node Replacement', slug: 'research/physical_ai_supervisor_node_replacement_experiment_022' },
+            { label: 'Experiment 021: Shadow Supervisor', slug: 'research/physical_ai_shadow_supervisor_ab_experiment_021' },
+            { label: 'Experiment 016: Edge/Fleet Replay', slug: 'research/physical_ai_edge_fleet_feed_replay_experiment_016' },
           ],
         },
         {

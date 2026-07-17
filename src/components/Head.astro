@@ -1,5 +1,4 @@
 ---
-import Default from '@astrojs/starlight/components/Head.astro';
 import socialPreviews from '../generated/social-previews.json';
 
 const siteUrl = 'https://zeptodb.com';
@@ -22,6 +21,15 @@ const keywords = [
   'zero-copy Python',
 ].join(', ');
 const pathname = Astro.url.pathname.endsWith('/') ? Astro.url.pathname : `${Astro.url.pathname}/`;
+const routeData = Astro.locals.starlightRoute;
+const pageData = routeData.entry.data;
+const pageTitle = pageData.title;
+const pageDescription = pageData.description || description;
+const pageUrl = new URL(Astro.url.pathname, siteUrl).href;
+const isBlogPost = /^\/blog\/[^/]+\/$/.test(pathname);
+const isResearchPage = pathname.startsWith('/research/');
+const ogType = isBlogPost || isResearchPage ? 'article' : 'website';
+const publishedAt = pageData.publishedAt?.toISOString();
 const socialPreview = socialPreviews[pathname] || socialPreviews[decodeURIComponent(pathname)];
 const ogImage = new URL(socialPreview?.image || '/og-default.png', Astro.site);
 const ogImageAlt = socialPreview?.alt || 'ZeptoDB: Action-Outcome Memory for Physical AI';
@@ -29,58 +37,97 @@ const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
 const googleSiteVerification = import.meta.env.PUBLIC_GOOGLE_SITE_VERIFICATION?.trim();
 const bingSiteVerification = import.meta.env.PUBLIC_BING_SITE_VERIFICATION?.trim();
 
+const graph: Record<string, unknown>[] = [
+  {
+    '@type': 'Organization',
+    '@id': `${siteUrl}/#organization`,
+    name: 'ZeptoDB',
+    url: siteUrl,
+    sameAs: [
+      'https://github.com/zeptodb/zeptodb',
+      'https://twitter.com/zeptodb',
+      'https://discord.gg/PAtzvCa7',
+    ],
+  },
+  {
+    '@type': 'WebSite',
+    '@id': `${siteUrl}/#website`,
+    name: 'ZeptoDB',
+    url: siteUrl,
+    description,
+    inLanguage: 'en',
+    publisher: { '@id': `${siteUrl}/#organization` },
+  },
+];
+
+if (pathname === '/') {
+  graph.push({
+    '@type': 'SoftwareApplication',
+    '@id': `${siteUrl}/#software`,
+    name: 'ZeptoDB',
+    url: siteUrl,
+    applicationCategory: 'Database',
+    applicationSubCategory: 'Physical AI action-outcome memory database',
+    operatingSystem: 'Linux',
+    description,
+    keywords,
+    featureList: [
+      'Action-Outcome Memory for Physical AI',
+      'ROS 2 telemetry ingest and replay',
+      'Robot action and outcome evidence replay',
+      'Agent Memory with tenant-scoped recall',
+      'Microsecond time-series queries',
+      'Zero-copy Python integration',
+    ],
+    publisher: { '@id': `${siteUrl}/#organization` },
+  });
+} else if (isBlogPost || isResearchPage) {
+  graph.push({
+    '@type': isBlogPost ? 'BlogPosting' : 'TechArticle',
+    '@id': `${pageUrl}#article`,
+    headline: pageTitle,
+    description: pageDescription,
+    url: pageUrl,
+    mainEntityOfPage: pageUrl,
+    inLanguage: 'en',
+    ...(publishedAt ? { datePublished: publishedAt, dateModified: publishedAt } : {}),
+    author: { '@id': `${siteUrl}/#organization` },
+    publisher: { '@id': `${siteUrl}/#organization` },
+  });
+} else {
+  graph.push({
+    '@type': 'WebPage',
+    '@id': `${pageUrl}#webpage`,
+    name: pageTitle,
+    description: pageDescription,
+    url: pageUrl,
+    isPartOf: { '@id': `${siteUrl}/#website` },
+    inLanguage: 'en',
+  });
+}
+
 const jsonLd = JSON.stringify({
   '@context': 'https://schema.org',
-  '@graph': [
-    {
-      '@type': 'Organization',
-      '@id': `${siteUrl}/#organization`,
-      name: 'ZeptoDB',
-      url: siteUrl,
-      sameAs: [
-        'https://github.com/zeptodb/zeptodb',
-        'https://twitter.com/zeptodb',
-        'https://discord.gg/PAtzvCa7',
-      ],
-    },
-    {
-      '@type': 'WebSite',
-      '@id': `${siteUrl}/#website`,
-      name: 'ZeptoDB',
-      url: siteUrl,
-      description,
-      inLanguage: 'en',
-      publisher: { '@id': `${siteUrl}/#organization` },
-    },
-    {
-      '@type': 'SoftwareApplication',
-      '@id': `${siteUrl}/#software`,
-      name: 'ZeptoDB',
-      url: siteUrl,
-      applicationCategory: 'Database',
-      applicationSubCategory: 'Physical AI action-outcome memory database',
-      operatingSystem: 'Linux',
-      description,
-      keywords,
-      featureList: [
-        'Action-Outcome Memory for Physical AI',
-        'ROS 2 telemetry ingest and replay',
-        'Robot action and outcome evidence replay',
-        'Agent Memory with tenant-scoped recall',
-        'Microsecond time-series queries',
-        'Zero-copy Python integration',
-      ],
-      offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD' },
-      publisher: { '@id': `${siteUrl}/#organization` },
-    },
-  ],
+  '@graph': graph,
+});
+
+const resolvedHead = routeData.head.map((item) => {
+  if (item.tag !== 'meta' || item.attrs?.property !== 'og:type') return item;
+  return { ...item, attrs: { ...item.attrs, content: ogType } };
 });
 ---
 
-<Default {...Astro.props}><slot /></Default>
+{!import.meta.env.DEV && (
+  <meta
+    http-equiv="Content-Security-Policy"
+    content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' 'wasm-unsafe-eval' https://www.googletagmanager.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' data: https://fonts.gstatic.com; img-src 'self' data: https:; connect-src 'self' https://www.google-analytics.com https://region1.google-analytics.com https://analytics.google.com; worker-src 'self' blob:; frame-src 'none'"
+  />
+)}
+{resolvedHead.map(({ tag: Tag, attrs, content }) => <Tag {...attrs} set:html={content} />)}
 
 <!-- Starlight already handles og:title, og:description, og:url, og:type, twitter:card, meta description -->
 <!-- We add only what's missing: images and structured data -->
+<meta name="referrer" content="strict-origin-when-cross-origin" />
 <meta name="keywords" content={keywords} />
 <meta name="theme-color" content="#0a0e17" />
 <meta property="og:image" content={ogImage.href} />
@@ -110,6 +157,9 @@ const jsonLd = JSON.stringify({
           if (pathname.startsWith('/benchmarks/')) return 'benchmark';
           if (pathname.startsWith('/compare/')) return 'comparison';
           if (pathname.startsWith('/blog/')) return 'blog';
+          if (pathname.startsWith('/community/')) return 'community';
+          if (/^\/(features|integrations|security)\//.test(pathname)) return 'product_education';
+          if (pathname.startsWith('/about/')) return 'about';
           if (/^\/(docs|getting-started|api|deployment|operations|feeds)\//.test(pathname)) return 'documentation';
           return 'project';
         }
@@ -209,9 +259,19 @@ const jsonLd = JSON.stringify({
         }
         window.zeptoAnalytics = { track: sendGaEvent };
 
+        function currentSearchTerm() {
+          const input = document.querySelector('#starlight__search .pagefind-ui__search-input');
+          return input instanceof HTMLInputElement ? cleanText(input.value).slice(0, 100) : '';
+        }
+
         document.addEventListener('click', (event) => {
           const target = event.target instanceof Element ? event.target : null;
           if (!target) return;
+
+          const searchOpenButton = target.closest('site-search button[data-open-modal]');
+          if (searchOpenButton) {
+            sendGaEvent('search_open', { interaction_method: 'button' });
+          }
 
           const copyButton = target.closest('button');
           const copyLabel = cleanText(
@@ -242,6 +302,15 @@ const jsonLd = JSON.stringify({
           }
 
           if (!['http:', 'https:'].includes(url.protocol)) return;
+
+          if (link.closest('#starlight__search')) {
+            const searchLinks = [...document.querySelectorAll('#starlight__search a[href]')];
+            sendGaEvent('search_result_click', {
+              search_term: currentSearchTerm(),
+              result_position: Math.max(1, searchLinks.indexOf(link) + 1),
+              result_url: url.href.slice(0, 500),
+            });
+          }
 
           const linkContext = {
             link_url: url.href.slice(0, 500),
@@ -284,6 +353,30 @@ const jsonLd = JSON.stringify({
 
           sendGaEvent('outbound_click', linkContext);
         }, { capture: true });
+
+        let searchTimer;
+        let lastSearchTerm = '';
+        document.addEventListener('input', (event) => {
+          const input = event.target;
+          if (!(input instanceof HTMLInputElement) || !input.matches('#starlight__search .pagefind-ui__search-input')) return;
+          window.clearTimeout(searchTimer);
+          const searchTerm = cleanText(input.value).slice(0, 100);
+          if (searchTerm.length < 2 || searchTerm === lastSearchTerm) return;
+          searchTimer = window.setTimeout(() => {
+            lastSearchTerm = searchTerm;
+            const resultCount = document.querySelectorAll('#starlight__search .pagefind-ui__result').length;
+            sendGaEvent('view_search_results', {
+              search_term: searchTerm,
+              visible_result_count: resultCount,
+            });
+          }, 900);
+        });
+
+        window.addEventListener('keydown', (event) => {
+          if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+            sendGaEvent('search_open', { interaction_method: 'keyboard' });
+          }
+        });
 
         const scrollThresholds = [25, 50, 75, 90];
         const sentThresholds = new Set();

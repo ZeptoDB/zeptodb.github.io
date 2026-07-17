@@ -255,4 +255,4 @@ ninja -j$(nproc)
 python3 ../bench/bench_python_zerocopy.py
 ```
 
-See [benchmark source code](https://github.com/zeptodb/zeptodb/tree/main/bench) for full methodology.
+See the [ZeptoDB repository](https://github.com/zeptodb/zeptodb) for source code, benchmark entry points, and release context.

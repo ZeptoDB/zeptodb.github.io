@@ -9,17 +9,6 @@ import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
 
-const repo = 'zeptodb/zeptodb';
-let stars = '';
-try {
-  const res = await fetch(`https://api.github.com/repos/${repo}`);
-  if (res.ok) {
-    const d = await res.json();
-    const s = d.stargazers_count ?? 0;
-    stars = s >= 1000 ? `${(s / 1000).toFixed(1)}k` : String(s);
-  }
-} catch {}
-
 const currentPath = Astro.url.pathname;
 
 const navLinks = [
@@ -126,12 +115,6 @@ function isActive(href: string) {
     <div class="sl-hidden lg:sl-flex right-icons">
       <div class="sl-flex social-icons">
         <SocialIcons />
-        {stars && (
-          <a class="gh-stat" href={`https://github.com/${repo}/stargazers`} target="_blank" rel="noopener" title="Stars">
-            <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
-            <span>{stars}</span>
-          </a>
-        )}
       </div>
       <ThemeSelect />
       <LanguageSelect />
@@ -197,12 +180,6 @@ function isActive(href: string) {
   <div class="zd-mobile-footer">
     <div class="zd-mobile-social">
       <SocialIcons />
-      {stars && (
-        <a class="gh-stat" href={`https://github.com/${repo}/stargazers`} target="_blank" rel="noopener" title="Stars">
-          <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor"><path d="M8 .25a.75.75 0 0 1 .673.418l1.882 3.815 4.21.612a.75.75 0 0 1 .416 1.279l-3.046 2.97.719 4.192a.75.75 0 0 1-1.088.791L8 12.347l-3.766 1.98a.75.75 0 0 1-1.088-.79l.72-4.194L.818 6.374a.75.75 0 0 1 .416-1.28l4.21-.611L7.327.668A.75.75 0 0 1 8 .25z"/></svg>
-          <span>{stars}</span>
-        </a>
-      )}
     </div>
     <div class="zd-mobile-prefs">
       <ThemeSelect />
@@ -381,25 +358,6 @@ function isActive(href: string) {
     color: var(--sl-color-accent);
   }
 
-  /* GitHub stat */
-  .gh-stat {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    font-size: var(--sl-text-xs, 0.75rem);
-    font-weight: 500;
-    color: var(--sl-color-gray-2);
-    text-decoration: none;
-    font-variant-numeric: tabular-nums;
-    transition: color 0.15s;
-  }
-  .gh-stat:hover {
-    color: var(--sl-color-accent);
-  }
-  .gh-stat svg {
-    flex-shrink: 0;
-  }
-
   /* Mobile hamburger button — hidden on wide screens (>= 72rem),
      visible below. Use explicit media queries instead of relying on
      Starlight's `lg:sl-hidden` utility because component-scoped styles
@@ -411,6 +369,11 @@ function isActive(href: string) {
   @media (max-width: 71.99rem) {
     .zd-nav-toggle {
       display: inline-flex;
+    }
+  }
+  @media (max-width: 49.99rem) {
+    :global(:root[data-has-sidebar]) .zd-nav-toggle {
+      display: none;
     }
   }
   .zd-menu-btn {
@@ -552,6 +515,11 @@ function isActive(href: string) {
   @media (min-width: 72rem) {
     body[data-zd-mobile-nav-open] {
       overflow: auto;
+    }
+  }
+  @media (max-width: 49.99rem) {
+    :root[data-has-sidebar] #zd-mobile-nav {
+      display: none;
     }
   }
 </style>

@@ -38,28 +38,91 @@ function extractTitle(content) {
   return match ? match[1].trim() : null;
 }
 
-function extractDescription(body) {
-  // Find first non-empty line that isn't a heading, frontmatter, or markdown syntax
-  const lines = body.split('\n');
-  for (const line of lines) {
+function cleanDescription(value) {
+  return value
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/<[^>]+>/g, ' ')
+    .replace(/[*_`~]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function isMetadataOrCommand(line) {
+  return /^[*_]*(?:generated at|last updated|effective date|date started|status|branch|fixture|fixtures|quality labels?|classification|cluster|owner|command)\s*:/i.test(line)
+    || /^(?:cd |docker |python\d* |pnpm |npm |cargo |cmake |make |\.\/|\$ )/i.test(line)
+    || /^[-*+]\s|^\d+[.)]\s|^>\s|^\|/.test(line);
+}
+
+function fallbackDescription(title) {
+  return `${title} for ZeptoDB, including behavior, configuration, examples, validation, and operational guidance.`;
+}
+
+function extractDescription(body, title) {
+  const paragraphs = [];
+  let paragraph = [];
+  let inCode = false;
+
+  const flush = () => {
+    if (!paragraph.length) return;
+    const clean = cleanDescription(paragraph.join(' '));
+    if (clean.length >= 50) paragraphs.push(clean);
+    paragraph = [];
+  };
+
+  for (const line of body.split('\n')) {
     const trimmed = line.trim();
-    if (!trimmed || trimmed.startsWith('#') || trimmed.startsWith('|') || trimmed.startsWith('```') || trimmed.startsWith('---') || trimmed.startsWith('- [')) continue;
-    // Strip markdown formatting
-    const clean = trimmed.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_`]/g, '').trim();
-    if (clean.length >= 20) return clean.length > 160 ? clean.slice(0, 157) + '...' : clean;
+    if (trimmed.startsWith('```')) {
+      inCode = !inCode;
+      flush();
+      continue;
+    }
+    const candidate = trimmed.replace(/^>\s*/, '');
+    if (inCode || candidate.startsWith('#') || candidate === '---' || isMetadataOrCommand(candidate)) {
+      flush();
+      continue;
+    }
+    if (!candidate) {
+      flush();
+      continue;
+    }
+    paragraph.push(candidate);
   }
-  return '';
+  flush();
+
+  const description = paragraphs[0] || fallbackDescription(title);
+  return description.length > 160 ? `${description.slice(0, 157).trimEnd()}...` : description;
+}
+
+function isWeakDescription(description) {
+  const raw = description.replace(/^['"]|['"]$/g, '').trim();
+  const value = cleanDescription(raw);
+  return raw.startsWith('>')
+    || value.length < 50
+    || /^(?:generated at|last updated|effective date|date started|status|branch|fixture|docker |cd |\.\/)/i.test(value);
 }
 
 function addFrontmatter(content, fallbackTitle) {
-  if (content.startsWith('---')) return content;
+  if (content.startsWith('---')) {
+    const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+    if (!match) return content;
+    const titleLine = match[1].match(/^title:\s*["']?(.*?)["']?\s*$/m);
+    const descriptionLine = match[1].match(/^description:\s*(.*?)\s*$/m);
+    const title = titleLine?.[1] || extractTitle(match[2]) || fallbackTitle;
+    if (descriptionLine && !isWeakDescription(descriptionLine[1])) return content;
+
+    const description = extractDescription(match[2], title).replace(/"/g, '\\"');
+    const nextFrontmatter = descriptionLine
+      ? match[1].replace(/^description:\s*.*$/m, `description: "${description}"`)
+      : `${match[1]}\ndescription: "${description}"`;
+    return `---\n${nextFrontmatter}\n---\n\n${match[2].replace(/^\n+/, '')}`;
+  }
+
   const title = extractTitle(content) || fallbackTitle;
   // Remove the first # heading that matches the title to avoid duplication
   const body = content.replace(/^#\s+.+\n*/m, '');
-  // Auto-generate description from first non-empty paragraph
-  const desc = extractDescription(body);
-  const descLine = desc ? `\ndescription: "${desc.replace(/"/g, '\\"')}"` : '';
-  return `---\ntitle: "${title.replace(/"/g, '\\"')}"${descLine}\n---\n\n${body}`;
+  const description = extractDescription(body, title);
+  return `---\ntitle: "${title.replace(/"/g, '\\"')}"\ndescription: "${description.replace(/"/g, '\\"')}"\n---\n\n${body}`;
 }
 
 /**
@@ -154,6 +217,10 @@ function sanitizePublicDocs(content, rel) {
   let out = content;
 
   out = out
+    .replace(/https:\/\/docs\.zeptodb\.com\/getting-started\/quick_start\/?/gi, '/getting-started/quick_start/')
+    .replace(/https:\/\/docs\.zeptodb\.com\/?/gi, '/docs/')
+    .replace(/https:\/\/discord\.gg\/zeptodb\b/gi, 'https://discord.gg/PAtzvCa7')
+    .replace(/skswlsaks@gmail\.com/gi, '[ZeptoDB community](/community/)')
     .replace(/Enterprise Security Operations Guide/g, 'Security Operations Guide')
     .replace(/Enterprise security guide/g, 'Security guide')
     .replace(/enterprise factory workloads/gi, 'multi-site factory workloads')

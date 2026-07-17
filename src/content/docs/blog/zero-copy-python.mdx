@@ -1,6 +1,7 @@
 ---
 title: "Zero-Copy Python: 522ns to NumPy"
 description: "How ZeptoDB achieves sub-microsecond Python query results using memory-mapped column views."
+publishedAt: 2026-04-07
 ---
 
 Most databases serialize query results into bytes, send them over a socket, and deserialize on the Python side. ZeptoDB skips all of that. A Python query result is a NumPy array that directly references the engine's in-memory column — no copy, no serialization, 522 nanoseconds.

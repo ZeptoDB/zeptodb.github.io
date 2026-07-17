@@ -1,8 +1,8 @@
 #!/usr/bin/env node
 
 import { execFileSync } from 'node:child_process';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
-import { basename, dirname, join } from 'node:path';
+import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { basename, dirname, join, relative, sep } from 'node:path';
 import { readCsv, slug } from './growth-utils.mjs';
 
 const outputDir = 'public/og';
@@ -15,6 +15,13 @@ const topicThemes = [
     accent: '#f472b6',
     second: '#2dd4bf',
     proof: 'Measured evidence from replay and controlled pilots',
+  },
+  {
+    match: /action[- ]outcome memory/i,
+    topic: 'Action-Outcome Memory',
+    accent: '#2dd4bf',
+    second: '#f472b6',
+    proof: 'Connect actions, outcomes, and replayable evidence',
   },
   {
     match: /robot|ros|physical-ai|physical ai/i,
@@ -75,7 +82,7 @@ const topicThemes = [
 ];
 
 const topicOverrides = {
-  '/': 'Live Data Infrastructure',
+  '/': 'Action-Outcome Memory',
   '/features/': 'Live Data Infrastructure',
   '/blog/introducing-zeptodb/': 'Live Data Infrastructure',
   '/research/action-outcome-evidence/': 'Action-Outcome Research',
@@ -263,6 +270,27 @@ async function tryRenderPng(svgPath, pngPath) {
 
 function uniqueRoutes() {
   const routes = new Set(['/']);
+
+  function addContentRoutes(directory) {
+    for (const entry of readdirSync(directory, { withFileTypes: true })) {
+      const fullPath = join(directory, entry.name);
+      if (entry.isDirectory()) {
+        addContentRoutes(fullPath);
+        continue;
+      }
+      if (!/\.mdx?$/.test(entry.name)) continue;
+
+      let route = relative('src/content/docs', fullPath)
+        .split(sep)
+        .join('/')
+        .replace(/\.mdx?$/, '')
+        .replace(/(^|\/)index$/, '');
+      route = route ? `/${route.replace(/^\/+|\/+$/g, '')}/` : '/';
+      routes.add(route);
+    }
+  }
+
+  addContentRoutes('src/content/docs');
   if (existsSync('growth/campaign-links.csv')) {
     for (const record of readCsv('growth/campaign-links.csv').records) {
       if (record.path) routes.add(record.path.endsWith('/') ? record.path : `${record.path}/`);
@@ -289,6 +317,7 @@ function uniqueRoutes() {
 }
 
 async function main() {
+  rmSync(outputDir, { recursive: true, force: true });
   mkdirSync(outputDir, { recursive: true });
   mkdirSync(dirname(manifestPath), { recursive: true });
 
@@ -305,6 +334,7 @@ async function main() {
     const svg = socialSvg({ route, title, description, theme });
     writeFileSync(svgPath, svg);
     const hasPng = await tryRenderPng(svgPath, pngPath);
+    if (hasPng) rmSync(svgPath, { force: true });
     manifest[route] = {
       image: hasPng ? `/og/${pngFilename}` : `/og/${svgFilename}`,
       alt: `ZeptoDB ${theme.topic}: ${title}`,

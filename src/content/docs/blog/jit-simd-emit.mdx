@@ -1,6 +1,7 @@
 ---
 title: "JIT SIMD Emit: Generating AVX2 Vector IR in LLVM"
-description: "How ZeptoDB's JIT engine generates explicit <4 x i64> SIMD vector IR instead of relying on LLVM auto-vectorization — with mask extraction via cttz."
+description: "How ZeptoDB's JIT engine generates four-lane i64 SIMD vector IR in LLVM, including reliable vectorization and cttz mask extraction."
+publishedAt: 2026-05-13
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
