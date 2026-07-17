@@ -142,26 +142,9 @@ Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog
 
 ---
 
-## Current Action-Outcome evidence
+## Evidence behind the workflow
 
-ZeptoDB's Physical AI research track now has concrete action/outcome evidence behind it:
-
-<CardGrid>
-  <Card title="15/15 hazardous proposals suppressed" icon="approve-check-circle">
-    Shadow supervisor tests blocked every hazardous baseline proposal and routed those decisions to manual review.
-  </Card>
-  <Card title="5/5 safe proposals allowed" icon="star">
-    Context-gated recovery proposals were allowed across the five robot incident families in the fixture.
-  </Card>
-  <Card title="52/52 edge/fleet ACK convergence" icon="seti:clock">
-    Bounded edge-to-fleet replay handled duplicate, late, outage, and restart cases while converging fleet audit rows.
-  </Card>
-  <Card title="Controlled pilot boundary" icon="open-book">
-    The SQL/HTTP adapter is admin-gated and pilot-scoped, with explicit non-goals and rollback requirements.
-  </Card>
-</CardGrid>
-
-[Research evidence →](/research/action-outcome-evidence/)
+The experiment track tests context-gated recall, native SQL replay, bounded edge-to-fleet transfer, and shadow-runtime failure cases. Results and limitations are maintained in the [Action-Outcome Experiments hub](/research/action-outcome-evidence/) so this page can stay focused on the robotics workflow.
 
 ---
 
@@ -177,20 +160,6 @@ ZeptoDB includes an optional ROS 2 connector for Physical AI pipelines. Build wi
 - The bridge is read-only: it subscribes to ROS 2 data and imports bags without publishing back into the ROS graph.
 
 Start with the [ROS 2 Setup and Smoke Test](/operations/ros2_setup/), the [ROS 2 Edge Deployment Guide](/operations/ros2_edge_deployment/), and the [C++ ROS 2 connector reference](/api/cpp_reference/#ros-2-connector).
-
----
-
-## Action-Outcome Memory research
-
-The Action-Outcome Memory research line asks whether a robot should reuse a prior action only when the current temporal, spatial, payload, and policy context is compatible with the old outcome.
-
-Current public evidence:
-
-- Experiment 013 compared similar robot incident retrieval, runbook/action priors, reflection-only memory, and context-gated Physical AI Action-Outcome Memory on a synthetic fixture. The context-gated variant reached 1.00 recovery Top-1 hit rate, 1.00 risky-repeat avoidance, and 0.00 hazardous top-action rate on that fixture.
-- Experiment 014 replayed the same Physical AI memory shape through live ZeptoDB SQL tables, including action/outcome JOINs, robot and sensor ASOF JOINs, ROW_NUMBER/LAG windows, suppression audit JOINs, and a spatial `ST_Within` check.
-- Experiment 015 modeled an edge-local and fleet-global split with two live ZeptoDB endpoints. This was a research harness, not a shipped runtime replication feature.
-
-These are research fixture results, not production safety guarantees.
 
 ---
 

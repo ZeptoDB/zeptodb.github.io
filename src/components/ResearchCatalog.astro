@@ -30,58 +30,73 @@ const supportingRecords = entries
   .sort((a, b) => a.title.localeCompare(b.title));
 ---
 
-<div class="research-catalog" data-pagefind-ignore>
-  <section aria-labelledby="experiment-records-heading">
-    <h3 id="experiment-records-heading">Experiment records</h3>
-    <p class="catalog-intro">Hypotheses, fixture boundaries, measured outcomes, and promotion gates.</p>
-    <ol class="catalog-list">
-      {experimentRecords.map((entry) => (
-        <li>
-          <a href={entry.href}>
-            <span class="experiment-id">EXP {String(experimentNumber(entry.id)).padStart(3, '0')}</span>
-            <span class="entry-copy">
-              <strong>{entry.title}</strong>
-              <span>{entry.description}</span>
-            </span>
-          </a>
-        </li>
-      ))}
-    </ol>
-  </section>
+<details class="research-catalog-shell" data-pagefind-ignore>
+  <summary>Browse all experiment and method records ({entries.length})</summary>
+  <div class="research-catalog">
+    <section aria-labelledby="experiment-records-heading">
+      <h3 id="experiment-records-heading">Experiment records</h3>
+      <p class="catalog-intro">Hypotheses, fixture boundaries, measured outcomes, and promotion gates.</p>
+      <ol class="catalog-list">
+        {experimentRecords.map((entry) => (
+          <li>
+            <a href={entry.href}>
+              <span class="experiment-id">EXP {String(experimentNumber(entry.id)).padStart(3, '0')}</span>
+              <span class="entry-copy">
+                <strong>{entry.title}</strong>
+                <span>{entry.description}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ol>
+    </section>
 
-  <section aria-labelledby="supporting-records-heading">
-    <h3 id="supporting-records-heading">Methods and operating boundaries</h3>
-    <p class="catalog-intro">Schemas, governance, roadmaps, research scans, and runtime plans.</p>
-    <ul class="catalog-list supporting-list">
-      {supportingRecords.map((entry) => (
-        <li>
-          <a href={entry.href}>
-            <span class="entry-copy">
-              <strong>{entry.title}</strong>
-              <span>{entry.description}</span>
-            </span>
-          </a>
-        </li>
-      ))}
-    </ul>
-  </section>
+    <section aria-labelledby="supporting-records-heading">
+      <h3 id="supporting-records-heading">Methods and operating boundaries</h3>
+      <p class="catalog-intro">Schemas, governance, roadmaps, technical scans, and runtime plans.</p>
+      <ul class="catalog-list supporting-list">
+        {supportingRecords.map((entry) => (
+          <li>
+            <a href={entry.href}>
+              <span class="entry-copy">
+                <strong>{entry.title}</strong>
+                <span>{entry.description}</span>
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
 
-  <details class="result-artifacts">
-    <summary>Raw result artifacts ({resultArtifacts.length})</summary>
-    <p>Generated tables and replay outputs are kept public for reproducibility, but excluded from site search so that interpreted evidence ranks first.</p>
-    <ul class="artifact-list">
-      {resultArtifacts.map((entry) => (
-        <li><a href={entry.href}>{entry.title}</a></li>
-      ))}
-    </ul>
-  </details>
-</div>
+    <details class="result-artifacts">
+      <summary>Raw result artifacts ({resultArtifacts.length})</summary>
+      <p>Generated tables and replay outputs are kept public for reproducibility, but excluded from site search so that interpreted evidence ranks first.</p>
+      <ul class="artifact-list">
+        {resultArtifacts.map((entry) => (
+          <li><a href={entry.href}>{entry.title}</a></li>
+        ))}
+      </ul>
+    </details>
+  </div>
+</details>
 
 <style>
+  .research-catalog-shell {
+    margin-block: 1.25rem 2.5rem;
+    border-block: 1px solid var(--sl-color-gray-5);
+    padding-block: 1rem;
+  }
+
+  .research-catalog-shell > summary {
+    color: var(--sl-color-white);
+    cursor: pointer;
+    font-weight: 700;
+  }
+
   .research-catalog {
     display: grid;
     gap: 2rem;
-    margin-block: 1.5rem 2.5rem;
+    margin-block: 1.5rem 0;
   }
 
   .research-catalog section,

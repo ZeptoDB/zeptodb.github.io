@@ -1,215 +1,57 @@
 ---
-title: "Physical AI Memory and Action-Outcome Memory"
-description: "A grounded explanation of Physical AI memory, Action-Outcome Memory, and what ZeptoDB has validated so far with ROS-style telemetry, SQL replay, and research-only robot safety fixtures."
+title: "The Robot Memory Experiment That Changed Our Roadmap"
+description: "Why a misleadingly successful robot action changed how ZeptoDB thinks about Physical AI memory, replayable evidence, and experiment-driven product boundaries."
 publishedAt: 2026-07-01
 ---
 
-import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
 
-Physical AI memory is the record a robot or embodied agent can use to answer a practical question:
+A previous action can be successful and still be the wrong answer.
 
-> In a similar physical situation, what did the robot observe, what action was taken, and what happened afterward?
+That sounds obvious until a memory system retrieves the episode with a high similarity score. The incident looks familiar. The old action worked. The reflection is positive. But the payload changed, a person is now inside the work cell, or the successful run happened in a supervised training lane.
 
-That is different from storing chat history or embedding a runbook. For robots, drones, warehouse automation, cold-chain logistics, and industrial arms, memory has to stay attached to event-time telemetry: pose, sensor state, payload, human proximity, environment, policy, action, and outcome.
+That uncomfortable case changed how we think about robot memory.
 
-ZeptoDB's product foundation for this is the time-series and Agent Memory stack: ROS 2 ingest, typed profile tables, rosbag2 import/replay, ASOF JOIN, Window JOIN, zero-copy Python handoff, and agent memory records. The more specific **Physical AI Action-Outcome Memory** work is currently research-only.
+## The result that made us stop
 
-## Honest status
+Our first Physical AI fixture was not designed to prove that retrieval works. Finding a similar incident is the easy part. We wanted to know whether a memory system would repeat an action that looked successful while ignoring the conditions that made it acceptable.
 
-Here is the exact line:
+The non-gated approaches did exactly that on the hard distractors. They found plausible history and ranked the wrong action highly. The context-gated variant treated the old outcome as evidence to evaluate, not an instruction to repeat.
 
-- Available product surface: ROS 2 scalar/profile ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, prompt cache, and replay telemetry.
-- Research-only surface: context-gated Physical AI Action-Outcome Memory experiments, including synthetic robot/fleet fixtures and SQL replay harnesses.
-- Not claimed: fully autonomous robot control, certified robot safety, runtime edge-to-fleet replication, or a production control-plane that executes robot actions.
+That distinction became the center of the work:
 
-The research is still useful because it gives a concrete shape to the memory problem: a robot should not blindly repeat an action just because it worked in a superficially similar episode.
+> Memory for an acting system is not just recall. It is a replayable argument for why a previous outcome does or does not apply now.
 
----
+The measured result and fixture boundaries live in [Experiment 013](/research/physical_ai_action_outcome_experiment_013/). This post is about what we changed because of it.
 
-## What Action-Outcome Memory means
+## What changed in the product direction
 
-Action-Outcome Memory stores an episode as a chain:
+First, we stopped treating Action-Outcome Memory as another semantic retrieval layer. Similarity is useful for finding candidates, but time, topology, payload, policy, and nearby human activity decide whether an outcome is reusable.
 
-```text
-situation -> retrieved context -> policy gate -> action -> observation -> outcome -> reflection
-```
+Second, we made evidence part of the memory object. A recommendation should be traceable back to the robot state, sensor window, retrieved episode, suppression decision, intervention, and eventual outcome. A detached text summary is not enough for incident review.
 
-For Physical AI, that chain should include:
+Third, we separated research completion from product readiness. A fixture can pass while the surrounding runtime is still too narrow for broad promotion. That boundary is not fine print; it is part of the engineering result.
 
-| Memory part | Robot-shaped examples |
-| --- | --- |
-| Situation | robot id, site, zone, payload, human proximity, weather, line/cell state |
-| Telemetry | pose, IMU, odometry, LaserScan, JointState, temperature, torque, battery |
-| Retrieved context | similar incidents, operator interventions, recovery notes, policy constraints |
-| Action | stop, reroute, return to base, recalibrate, slow down, inspect, clean sensor |
-| Observation | post-action sensor window, recovery curve, side effects, recurrence |
-| Outcome | success, partial success, unsafe failure, rollback, insufficient evidence |
-| Reflection | what future agents should reuse or avoid |
+## Why the next experiments moved into failure paths
 
-The key is not only "find a similar incident." The key is deciding whether the old outcome is appropriate to reuse under the current temporal, spatial, and operational context.
+After the first comparison, a better score was no longer the most interesting question. We wanted to know whether the same evidence could survive contact with a real database path.
 
----
+The sequence therefore moved through native SQL materialization, bounded edge-to-fleet replay, shadow decisions, restart idempotency, owner replacement, and projection repair. Each experiment removed one convenient assumption from the previous one.
 
-## Why semantic memory is not enough for robots
+That progression also exposed what ZeptoDB is and is not. It can keep telemetry and action history on one queryable timeline. It can make decision evidence replayable. It is not a robot controller, a certified safety system, or a reason to skip application-level policy and operator review.
 
-Semantic retrieval can find text that sounds similar. Physical AI often needs stricter gates:
+## What we are still trying to learn
+
+The current fixtures are controlled and intentionally small. Real deployments introduce changing schemas, noisy clocks, partial sensors, operator habits, long-lived drift, and failure combinations that no short replay captures.
+
+The next useful evidence is therefore operational: longer shadow runs, visible lag and retry behavior, rollback exercises, architecture coverage, and examples where a context gate should decline to decide because the evidence is insufficient.
+
+That is a less dramatic story than “the robot learned from experience.” It is also the story we can test.
+
+## Read the actual evidence
 
 <CardGrid>
-  <Card title="Temporal motif" icon="seti:clock">
-    Did the sensor pattern evolve the same way before the action, or is the current failure moving faster?
-  </Card>
-  <Card title="Topology and zone" icon="star">
-    Did the prior action happen in the same robot cell, aisle, dock, geofence, or supervised area?
-  </Card>
-  <Card title="Payload and environment" icon="rocket">
-    Was the successful old action tested with the same payload, surface, weather, temperature, or human proximity?
-  </Card>
-  <Card title="Policy context" icon="approve-check-circle">
-    Was the action allowed for this risk tier, and does it require human approval or a rollback path?
-  </Card>
-</CardGrid>
-
-This is where ZeptoDB's time-series foundation matters. The memory entry can be joined back to the telemetry that made it true.
-
----
-
-## What ZeptoDB validated so far
-
-The current public research has three Physical AI Action-Outcome steps.
-
-### Experiment 013: synthetic robot/fleet fixture
-
-Experiment 013 compared four approaches on five synthetic Physical AI incident families:
-
-- similar robot incident retrieval,
-- runbook/action prior,
-- reflection-only memory,
-- context-gated Physical AI Action-Outcome Memory.
-
-The context-gated variant reached:
-
-| Metric | Result |
-| --- | ---: |
-| Recovery Top-1 hit rate | 1.00 |
-| Risky-repeat avoidance | 1.00 |
-| Hazardous top-action rate | 0.00 |
-| Context-gate suppressions | 32 |
-
-The three non-gated baselines each selected the known unsafe top action on the hard distractor fixture. This is a research fixture result, not a production safety guarantee.
-
-### Experiment 014: live ZeptoDB SQL replay
-
-Experiment 014 moved the Physical AI comparison from a Python-only fixture into live ZeptoDB SQL. The replay validated:
-
-- action/outcome JOIN,
-- failed-repeat JOIN,
-- context-gated top-action JOIN,
-- suppression audit JOIN,
-- robot state ASOF JOIN,
-- sensor ASOF JOIN,
-- ROW_NUMBER and LAG window checks,
-- spatial `ST_Within` check.
-
-The replay inserted research rows into Physical AI tables and showed that the context-gated result survived SQL materialization.
-
-### Experiment 015: edge/fleet replay shape
-
-Experiment 015 modeled a two-node split:
-
-- an edge-local node makes the immediate memory decision,
-- a fleet-global node receives slower consolidated evidence for audit and future learning.
-
-The result passed edge and fleet row-count, recovery, suppression, ASOF, window, and consolidation-lag checks. The important limitation: the delayed edge-to-fleet transfer was modeled by a harness writing SQL rows to two live ZeptoDB endpoints. It is not a shipped runtime replication feature.
-
----
-
-## How this maps to the current product
-
-The research does not require pretending ZeptoDB is a robot controller. It maps to product primitives that already exist on the site:
-
-| Product primitive | Physical AI memory role |
-| --- | --- |
-| ROS 2 bridge | Ingest scalar topics, standard message profiles, typed profile tables, and rosbag2 data. |
-| Time-series SQL | Store robot state, sensor summaries, incidents, action outcomes, and evidence windows. |
-| ASOF JOIN | Bind an incident or action to the latest robot state and sensor summary before the action timestamp. |
-| Window functions | Rank candidate recommendations and inspect before/after action sequences. |
-| Spatial predicates | Check pose or event rows against operational zones and geofences. |
-| Agent Memory | Store reflections, policy notes, prior interventions, and reusable action-outcome lessons. |
-| Zero-copy Python | Feed SQL results into evaluation or model pipelines without serializing result arrays. |
-
-That is the credible wedge: Physical AI teams already need temporal telemetry and replay. Action-Outcome Memory turns that replay into a structured learning loop.
-
----
-
-## Example schema sketch
-
-```sql
-CREATE TABLE physical_ai_incidents (
-  ts INT64,
-  query_id STRING,
-  robot_id STRING,
-  site STRING,
-  zone STRING,
-  unsafe_query_action STRING
-);
-
-CREATE TABLE physical_ai_robot_state (
-  ts INT64,
-  robot_id STRING,
-  pose_x DOUBLE,
-  pose_y DOUBLE,
-  payload_kg DOUBLE,
-  human_distance_m DOUBLE
-);
-
-CREATE TABLE physical_ai_action_outcomes (
-  ts INT64,
-  episode_id STRING,
-  robot_id STRING,
-  action STRING,
-  outcome STRING,
-  reflection STRING
-);
-```
-
-Then replay joins the memory path back to the live state:
-
-```sql
-SELECT
-  i.query_id,
-  i.robot_id,
-  i.unsafe_query_action,
-  s.pose_x,
-  s.pose_y,
-  s.human_distance_m
-FROM physical_ai_incidents i
-ASOF JOIN physical_ai_robot_state s
-  ON i.robot_id = s.robot_id AND i.ts >= s.ts;
-```
-
-The actual research replay uses richer tables for retrieval rows, recommendations, suppressions, expected actions, robot state, sensor summaries, and fleet consolidation.
-
----
-
-## When this matters
-
-Physical AI Action-Outcome Memory is worth exploring when a team needs to answer:
-
-- Which previous robot actions worked under similar physical conditions?
-- Which successful-looking prior actions should be suppressed because the context changed?
-- Can we replay the chain from sensor state to retrieved incident to chosen action?
-- Can edge-local memory make a bounded immediate decision while fleet memory audits the outcome later?
-- Can an embodied agent learn from negative outcomes instead of repeating them?
-
-It is less relevant if the workload is only document search, generic chat memory, or batch analytics with no action loop.
-
----
-
-## Read next
-
-<CardGrid>
-  <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, rosbag2 replay, sensor fusion, and robot-agent memory" href="/use-cases/robotics/" />
-  <LinkCard title="Action-Outcome Experiment 013" description="Research-only baseline comparison for context-gated Physical AI memory" href="/research/physical_ai_action_outcome_experiment_013/" />
-  <LinkCard title="Experiment 014 SQL Replay" description="Live ZeptoDB SQL replay of Physical AI action-outcome tables and joins" href="/research/results/physical_ai_action_outcome_sql_replay_014/" />
-  <LinkCard title="Experiment 015 Edge/Fleet Replay" description="Research-only edge-local and fleet-global replay shape" href="/research/results/physical_ai_edge_fleet_replay_015/" />
+  <LinkCard title="Action-Outcome Experiments" description="Result-first summaries, the experiment timeline, limitations, and raw artifacts" href="/research/action-outcome-evidence/" />
+  <LinkCard title="Action-Outcome Memory" description="The episode model, context gates, runtime shape, and current maturity boundary" href="/use-cases/action-outcome-memory/" />
+  <LinkCard title="Physical AI workflow" description="Where ROS 2 ingest, sensor replay, and operator review fit in the stack" href="/use-cases/robotics/" />
 </CardGrid>

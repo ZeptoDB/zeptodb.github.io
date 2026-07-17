@@ -7,6 +7,7 @@ description: "ZeptoDB Action-Outcome Memory for Physical AI: store actions, cont
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import ExperimentHighlights from '../../../components/ExperimentHighlights.astro';
 
 Physical AI agents need more than perception and fast telemetry. They need memory of what was tried, what happened afterward, and whether the same action should be repeated, suppressed, or escalated in the next similar context.
 
@@ -35,24 +36,13 @@ This is a time-series problem as much as an AI problem. The value is not just te
 
 ---
 
-## What the current research shows
+## What the experiments show
 
-<CardGrid>
-  <Card title="1.00 recovery Top-1" icon="approve-check-circle">
-    In the Physical AI fixture, the context-gated Action-Outcome variant selected the expected recovery action across all five incident families.
-  </Card>
-  <Card title="1.00 risky-repeat avoidance" icon="star">
-    Similar-incident, runbook-prior, and reflection-only baselines repeated hazardous actions. The context-gated variant avoided them.
-  </Card>
-  <Card title="32 suppressions exposed" icon="open-book">
-    Misleading historical successes are still retained for audit, but down-weighted before action aggregation.
-  </Card>
-  <Card title="Native SQL replay passed" icon="seti:clock">
-    The result survives live ZeptoDB materialization through action/outcome JOINs, ASOF joins, ROW_NUMBER, LAG, and spatial checks.
-  </Card>
-</CardGrid>
+The first comparison tested whether context changes which previous outcome is safe to reuse. The next step replayed the same decision trail through native ZeptoDB SQL. Both summaries below are rendered from the shared experiment record used by the evidence hub.
 
-[Read the evidence table →](/research/action-outcome-evidence/)
+<ExperimentHighlights ids={['013', '014']} />
+
+[Follow the complete experiment timeline →](/research/action-outcome-evidence/)
 
 ---
 
@@ -139,8 +129,8 @@ The current supported language is: **controlled pilot / controlled shadow pilot*
 ## Next steps
 
 <CardGrid>
-  <LinkCard title="Research Evidence" description="Experiment 013-023 results and maturity boundaries" href="/research/action-outcome-evidence/" />
+  <LinkCard title="Action-Outcome Experiments" description="Result-first summaries, the experiment timeline, and maturity boundaries" href="/research/action-outcome-evidence/" />
   <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, edge telemetry, and replayable robot episodes" href="/use-cases/robotics/" />
   <LinkCard title="Agent Memory" description="Live evidence, scoped recall, prompt cache, and AgentOps replay" href="/use-cases/agent-memory/" />
-  <LinkCard title="Research Overview" description="Grounded Physical AI memory scope, limits, and research-only claims" href="/blog/physical-ai-action-outcome-memory/" />
+  <LinkCard title="Why the roadmap changed" description="The experiment story behind context-gated robot memory" href="/blog/physical-ai-action-outcome-memory/" />
 </CardGrid>

@@ -36,12 +36,8 @@ export default defineConfig({
           items: [
             { label: 'Docs Home', slug: 'docs' },
             { label: 'Quick Start', slug: 'getting-started/quick_start' },
-            { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
-            { label: 'Action-Outcome Memory', slug: 'use-cases/action-outcome-memory' },
             { label: 'ROS 2 Setup', slug: 'operations/ros2_setup' },
             { label: 'ROS 2 Edge Deployment', slug: 'operations/ros2_edge_deployment' },
-            { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
-            { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
             { label: 'Telegraf Output', slug: 'operations/telegraf_output' },
             { label: 'HTTP API', slug: 'api/http_reference' },
             { label: 'Python API', slug: 'api/python_reference' },
@@ -73,12 +69,12 @@ export default defineConfig({
         {
           label: 'Product',
           items: [
+            { label: 'Product Overview', slug: 'features' },
+            { label: 'Action-Outcome Memory', slug: 'use-cases/action-outcome-memory' },
             { label: 'Physical AI & Robotics', slug: 'use-cases/robotics' },
             { label: 'Agent Memory', slug: 'use-cases/agent-memory' },
-            { label: 'Action-Outcome Memory', slug: 'use-cases/action-outcome-memory' },
             { label: 'Python Agent Memory Quickstart', slug: 'use-cases/agent-memory-python-quickstart' },
             { label: 'Logistics & Edge Automation', slug: 'use-cases/logistics' },
-            { label: 'Features', slug: 'features' },
             { label: 'Benchmarks', slug: 'benchmarks' },
             { label: 'Security', slug: 'security' },
             { label: 'Integrations', slug: 'integrations' },
@@ -86,9 +82,9 @@ export default defineConfig({
           ],
         },
         {
-          label: 'Research',
+          label: 'Experiments',
           items: [
-            { label: 'Action-Outcome Evidence', slug: 'research/action-outcome-evidence' },
+            { label: 'Experiments Overview', slug: 'research/action-outcome-evidence' },
             { label: 'Experiment 023: Commit Ledger', slug: 'research/physical_ai_supervisor_commit_ledger_stress_experiment_023' },
             { label: 'Experiment 022: Node Replacement', slug: 'research/physical_ai_supervisor_node_replacement_experiment_022' },
             { label: 'Experiment 021: Shadow Supervisor', slug: 'research/physical_ai_shadow_supervisor_ab_experiment_021' },

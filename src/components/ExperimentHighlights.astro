@@ -1,0 +1,218 @@
+---
+import { selectExperiments } from '../data/action-outcome-experiments';
+
+interface Props {
+  variant?: 'grid' | 'timeline';
+  ids?: string[];
+}
+
+const { variant = 'grid', ids } = Astro.props;
+const experiments = selectExperiments(ids);
+---
+
+{variant === 'grid' ? (
+  <div class="experiment-grid">
+    {experiments.map((experiment) => (
+      <article class="experiment-card">
+        <div class="experiment-meta">
+          <span class="experiment-id">EXP {experiment.id}</span>
+          <span class="experiment-stage">{experiment.stage}</span>
+        </div>
+        <h3>{experiment.result}</h3>
+        <p class="experiment-question">{experiment.question}</p>
+        <dl class="experiment-metrics">
+          {experiment.metrics.map((metric) => (
+            <div>
+              <dt>{metric.label}</dt>
+              <dd>{metric.value}</dd>
+            </div>
+          ))}
+        </dl>
+        <p class="experiment-impact">{experiment.whyItMatters}</p>
+        <p class="experiment-limit"><strong>Boundary:</strong> {experiment.limitation}</p>
+        <div class="experiment-links">
+          <a href={experiment.href}>Read experiment</a>
+          <a href={experiment.evidenceHref}>Raw evidence</a>
+        </div>
+      </article>
+    ))}
+  </div>
+) : (
+  <ol class="experiment-timeline">
+    {experiments.map((experiment) => (
+      <li>
+        <div class="timeline-marker" aria-hidden="true"></div>
+        <div class="timeline-meta">
+          <span>EXP {experiment.id}</span>
+          <time datetime={experiment.date}>{experiment.date}</time>
+        </div>
+        <h3><a href={experiment.href}>{experiment.title}</a></h3>
+        <p class="timeline-result">{experiment.result}</p>
+        <p>{experiment.whyItMatters}</p>
+      </li>
+    ))}
+  </ol>
+)}
+
+<style>
+  .experiment-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 18rem), 1fr));
+    gap: 1rem;
+    margin-block: 1.25rem 2rem;
+  }
+
+  .experiment-card {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    padding: 1.15rem;
+    border: 1px solid var(--sl-color-gray-5);
+    border-radius: 8px;
+    background: var(--sl-color-gray-6);
+  }
+
+  .experiment-meta,
+  .experiment-links,
+  .timeline-meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .experiment-id,
+  .timeline-meta span {
+    color: var(--sl-color-accent-high);
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+  }
+
+  .experiment-stage,
+  .timeline-meta time {
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-xs);
+  }
+
+  .experiment-card h3 {
+    margin-block: 0.8rem 0;
+    font-size: var(--sl-text-h3);
+    line-height: 1.35;
+  }
+
+  .experiment-question,
+  .experiment-impact,
+  .experiment-limit {
+    margin-block: 0.75rem 0;
+    color: var(--sl-color-gray-1);
+    font-size: var(--sl-text-sm);
+    line-height: 1.55;
+  }
+
+  .experiment-metrics {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+    margin-block: 1rem 0;
+  }
+
+  .experiment-metrics div {
+    min-width: 0;
+    padding-block-start: 0.65rem;
+    border-block-start: 1px solid var(--sl-color-gray-5);
+  }
+
+  .experiment-metrics dt {
+    color: var(--sl-color-gray-2);
+    font-size: 0.68rem;
+    line-height: 1.35;
+  }
+
+  .experiment-metrics dd {
+    margin: 0.2rem 0 0;
+    color: var(--sl-color-white);
+    font-family: var(--sl-font-mono);
+    font-size: 0.95rem;
+    font-weight: 700;
+  }
+
+  .experiment-limit {
+    padding-block-start: 0.7rem;
+    border-block-start: 1px solid var(--sl-color-gray-5);
+  }
+
+  .experiment-links {
+    justify-content: flex-start;
+    margin-block-start: auto;
+    padding-block-start: 1rem;
+  }
+
+  .experiment-links a,
+  .experiment-timeline a {
+    font-weight: 650;
+    text-decoration: none;
+  }
+
+  .experiment-links a:last-child {
+    color: var(--sl-color-gray-1);
+    font-size: var(--sl-text-sm);
+  }
+
+  .experiment-timeline {
+    list-style: none;
+    margin: 1.25rem 0 2rem;
+    padding: 0;
+  }
+
+  .experiment-timeline li {
+    position: relative;
+    margin: 0;
+    padding: 0 0 1.6rem 2rem;
+    border-inline-start: 1px solid var(--sl-color-gray-5);
+  }
+
+  .experiment-timeline li:last-child {
+    padding-block-end: 0;
+  }
+
+  .timeline-marker {
+    position: absolute;
+    inset-block-start: 0.2rem;
+    inset-inline-start: -0.34rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border: 2px solid var(--sl-color-black);
+    border-radius: 50%;
+    background: var(--sl-color-accent);
+  }
+
+  .timeline-meta {
+    justify-content: flex-start;
+  }
+
+  .experiment-timeline h3 {
+    margin-block: 0.3rem 0;
+  }
+
+  .experiment-timeline p {
+    margin-block: 0.35rem 0;
+    color: var(--sl-color-gray-1);
+  }
+
+  .experiment-timeline .timeline-result {
+    color: var(--sl-color-white);
+    font-weight: 650;
+  }
+
+  @media (max-width: 30rem) {
+    .experiment-metrics {
+      grid-template-columns: 1fr;
+    }
+
+    .experiment-links {
+      align-items: flex-start;
+      flex-direction: column;
+    }
+  }
+</style>

@@ -14,65 +14,42 @@ const currentPath = Astro.url.pathname;
 const navLinks = [
   {
     label: 'Product',
-    href: '/use-cases/robotics/',
+    href: '/features/',
     children: [
-      { label: 'Physical AI & Robotics', href: '/use-cases/robotics/' },
+      { label: 'Product Overview', href: '/features/' },
       { label: 'Action-Outcome Memory', href: '/use-cases/action-outcome-memory/' },
-      { label: 'Action-Outcome Evidence', href: '/research/action-outcome-evidence/' },
+      { label: 'Physical AI & Robotics', href: '/use-cases/robotics/' },
       { label: 'Agent Memory', href: '/use-cases/agent-memory/' },
-      { label: 'Python Agent Memory Quickstart', href: '/use-cases/agent-memory-python-quickstart/' },
-      { label: 'Features', href: '/features/' },
+      { label: 'Integrations', href: '/integrations/' },
       { label: 'Benchmarks', href: '/benchmarks/' },
       { label: 'Security', href: '/security/' },
-      { label: 'Integrations', href: '/integrations/' },
-    ],
-  },
-  {
-    label: 'Use Cases',
-    href: '/use-cases/robotics/',
-    children: [
-      { label: 'Physical AI & Robotics', href: '/use-cases/robotics/' },
-      { label: 'AI Agents & AgentOps', href: '/use-cases/agent-memory/' },
-      { label: 'Action-Outcome Memory', href: '/use-cases/action-outcome-memory/' },
-      { label: 'Python Agent Memory Quickstart', href: '/use-cases/agent-memory-python-quickstart/' },
-      { label: 'Industrial IoT & Smart Factory', href: '/use-cases/iot/' },
-      { label: 'Autonomous Systems', href: '/use-cases/autonomous-vehicles/' },
-      { label: 'Energy & Utilities', href: '/use-cases/energy/' },
-      { label: 'Capital Markets', href: '/use-cases/trading/' },
-    ],
-  },
-  {
-    label: 'Compare',
-    href: '/compare/vs-kdb/',
-    children: [
       { label: 'Agent Memory vs Vector DBs', href: '/compare/agent-memory-vs-vector-databases/' },
-      { label: 'vs kdb+', href: '/compare/vs-kdb/' },
-      { label: 'vs ClickHouse', href: '/compare/vs-clickhouse/' },
-      { label: 'vs InfluxDB', href: '/compare/vs-influxdb/' },
-      { label: 'vs TimescaleDB', href: '/compare/vs-timescaledb/' },
+      { label: 'Database Comparisons', href: '/compare/vs-kdb/' },
     ],
   },
+  { label: 'Experiments', href: '/research/action-outcome-evidence/' },
   {
     label: 'Docs',
     href: '/docs/',
     children: [
       { label: 'Docs Home', href: '/docs/' },
       { label: 'Quick Start', href: '/getting-started/quick_start/' },
-      { label: 'Physical AI & Robotics', href: '/use-cases/robotics/' },
       { label: 'ROS 2 Setup', href: '/operations/ros2_setup/' },
-      { label: 'Agent Memory', href: '/use-cases/agent-memory/' },
       { label: 'HTTP API', href: '/api/http_reference/' },
       { label: 'Python API', href: '/api/python_reference/' },
       { label: 'Deployment', href: '/deployment/production_deployment/' },
     ],
   },
-  { label: 'Research', href: '/research/action-outcome-evidence/' },
   { label: 'Blog', href: '/blog/' },
   { label: 'Community', href: '/community/' },
 ];
 
 function isActive(href: string) {
   return currentPath.startsWith(href.replace(/\/$/, ''));
+}
+
+function isNavActive(link: (typeof navLinks)[number]) {
+  return isActive(link.href) || link.children?.some((child) => isActive(child.href));
 }
 ---
 
@@ -87,7 +64,7 @@ function isActive(href: string) {
       <div class:list={['nav-item', { 'has-dropdown': link.children }]}>
         <a
           href={link.href}
-          class:list={['nav-link', { active: isActive(link.href) }]}
+          class:list={['nav-link', { active: isNavActive(link) }]}
         >
           {link.label}
           {link.children && (

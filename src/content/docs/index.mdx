@@ -1,6 +1,6 @@
 ---
 title: ZeptoDB
-description: "ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, policy context, and replayable evidence."
+description: "ZeptoDB is an Action-Outcome Memory database for Physical AI, keeping telemetry, prior actions, outcomes, and replayable evidence on one timeline."
 template: splash
 head:
   - tag: title
@@ -14,13 +14,13 @@ head:
       name: twitter:title
       content: "ZeptoDB | Action-Outcome Memory for Physical AI"
 hero:
-  tagline: "Action-Outcome Memory for Physical AI. ZeptoDB keeps robot state, sensor evidence, prior actions, outcomes, and policy context on one timeline so robotic agents can recall what worked, avoid risky repeats, and replay why a recommendation was made."
+  tagline: "A time-series and memory database for systems that act in the physical world. Keep robot state, prior actions, outcomes, and the evidence needed to decide whether an old result still applies."
   actions:
-    - text: Physical AI Memory
-      link: /use-cases/robotics/
-      icon: right-arrow
-    - text: Action-Outcome Evidence
+    - text: Explore experiments
       link: /research/action-outcome-evidence/
+      icon: right-arrow
+    - text: Product overview
+      link: /features/
       icon: right-arrow
       variant: secondary
     - text: GitHub
@@ -30,177 +30,61 @@ hero:
 ---
 
 import { Card, CardGrid, LinkCard } from '@astrojs/starlight/components';
+import ExperimentHighlights from '../../components/ExperimentHighlights.astro';
 
-## Memory for robots that act in the world
+## Memory for systems that act
 
-Physical AI agents need more than chat history or a detached vector index. A robot decision depends on the physical situation: pose, sensor window, payload, zone, human proximity, policy context, the action taken, and what happened afterward.
+A robot does not need another detached history store. It needs a record that keeps the physical situation, retrieved context, proposed action, observed outcome, and later reflection attached to the same event-time evidence.
 
-ZeptoDB is the database layer for that memory loop. It stores high-frequency telemetry and agent memory on the same timeline, then lets an application retrieve prior action-outcome episodes with the live evidence needed to decide whether the old outcome is appropriate to reuse.
+ZeptoDB provides that substrate. High-frequency telemetry and agent memory remain queryable on one timeline, so an application can inspect what happened before reusing a previous outcome. ZeptoDB supplies memory and replay; the application, controller, model, or operator remains responsible for policy and execution.
 
-ZeptoDB is not a robot controller and does not claim certified robot safety. Its role is to provide the memory, evidence, replay, and policy-context substrate that Physical AI systems can use before and after an action.
-
-<CardGrid stagger>
-  <Card title="Action-outcome episodes" icon="open-book">
-    Store what the robot observed, which context was retrieved, what action was recommended or taken, and what outcome followed.
+<CardGrid>
+  <Card title="Telemetry and memory together" icon="seti:clock">
+    Keep robot state, sensor summaries, decisions, tool calls, interventions, and outcomes on a shared temporal substrate.
   </Card>
-  <Card title="Context-gated recall" icon="approve-check-circle">
-    Compare prior outcomes against current time, zone, payload, human proximity, sensor pattern, and policy context before reuse.
+  <Card title="Context before reuse" icon="approve-check-circle">
+    Check time, zone, payload, sensor pattern, policy, and human proximity before treating an old success as relevant now.
   </Card>
-  <Card title="Replayable evidence" icon="seti:clock">
-    Join memory records back to robot state, sensor summaries, operator interventions, cache events, and tool/model calls.
-  </Card>
-  <Card title="Fast telemetry foundation" icon="rocket">
-    Ingest live robot and edge telemetry, retrieve evidence at microsecond scale, and hand data to Python without serialization.
+  <Card title="Replayable decisions" icon="open-book">
+    Reconstruct the path from observed state to retrieved evidence, proposed action, suppression, and eventual outcome.
   </Card>
 </CardGrid>
 
-Benchmark claims are defined by hardware, build, data shape, scope, and measurement protocol. See the [benchmark criteria and reproduction notes](/benchmarks/#benchmark-criteria) before comparing or republishing a single number.
+Performance claims depend on hardware, build, data shape, and measurement protocol. See the [benchmark criteria and reproduction notes](/benchmarks/#benchmark-criteria) for the measured scope.
 
-## What the Action-Outcome research has validated
+## Observe, recall, gate, act, replay
 
-ZeptoDB's current Action-Outcome research track has moved from offline comparison into native SQL replay, edge/fleet feed replay, shadow supervisor tests, and a documented controlled-pilot boundary.
+1. **Observe.** Ingest ordered telemetry, typed robot profiles, incidents, and operator interventions.
+2. **Recall.** Retrieve prior episodes and outcomes with tenant, session, robot, time, and metadata filters.
+3. **Gate.** Compare the old result with the current temporal, spatial, operational, and policy context.
+4. **Act.** Let the surrounding application decide, then write the recommendation or intervention back to the timeline.
+5. **Replay.** Inspect the complete evidence chain after the outcome is known.
+
+The [Action-Outcome Memory overview](/use-cases/action-outcome-memory/) describes the episode model. The [Physical AI workflow](/use-cases/robotics/) shows where ROS 2 ingest, sensor replay, and operator review fit.
+
+## Results, not just a roadmap
+
+The experiments deliberately move from an offline comparison to native SQL replay and then to bounded runtime fault cases. These are the three milestones that best explain the direction.
+
+<ExperimentHighlights ids={['023', '021', '013']} />
+
+[See the complete experiment timeline →](/research/action-outcome-evidence/)
+
+## Available now and still experimental
 
 <CardGrid>
-  <Card title="15/15 hazardous proposals suppressed" icon="approve-check-circle">
-    Shadow supervisor tests blocked every hazardous baseline proposal while allowing every safe context-gated proposal.
+  <Card title="Available product surface" icon="approve-check-circle">
+    Time-series SQL, ASOF and Window JOINs, ROS 2 scalar and typed-profile ingest, rosbag2 import and replay, Agent Memory, prompt cache, replay telemetry, and zero-copy Python paths.
   </Card>
-  <Card title="52/52 feed events acknowledged" icon="seti:clock">
-    Edge-to-fleet replay converged through bounded batches, duplicate handling, late arrivals, outage retry, and restart reload.
-  </Card>
-  <Card title="Native SQL replay passed" icon="rocket">
-    Robot state ASOF JOINs, sensor ASOF JOINs, action/outcome JOINs, suppression audit JOINs, ROW_NUMBER, LAG, and spatial checks all pass in live ZeptoDB SQL.
-  </Card>
-  <Card title="Controlled pilot, not GA" icon="open-book">
-    The runtime path is deliberately bounded: admin-gated, shadow/pilot scoped, monitored, and not described as a broad autonomous control feature.
+  <Card title="Experiment and pilot surface" icon="open-book">
+    Context-gated Action-Outcome fixtures, edge-to-fleet feed semantics, and the shadow supervisor runtime remain research or bounded experimental paths. They are not certified robot safety or autonomous control features.
   </Card>
 </CardGrid>
 
-[Action-Outcome Memory →](/use-cases/action-outcome-memory/) · [Research evidence →](/research/action-outcome-evidence/) · [Grounded overview →](/blog/physical-ai-action-outcome-memory/)
-
----
-
-## The Physical AI memory loop
+## Choose the next layer
 
 <CardGrid>
-  <Card title="Observe" icon="rocket">
-    Capture ROS 2 telemetry, typed robot profiles, sensor summaries, incidents, operator interventions, and edge events as ordered time-series data.
-  </Card>
-  <Card title="Recall" icon="open-book">
-    Retrieve prior episodes, reflections, policy notes, and similar action outcomes from Agent Memory with tenant, session, robot, and metadata filters.
-  </Card>
-  <Card title="Gate" icon="approve-check-circle">
-    Check whether a prior successful action still matches the current temporal, spatial, payload, policy, and human-proximity context.
-  </Card>
-  <Card title="Act" icon="star">
-    Let the application decide, call a model or tool on cache miss, write the decision back, and keep the full action path inspectable.
-  </Card>
-  <Card title="Replay" icon="seti:clock">
-    Reconstruct the chain from live evidence to retrieved memory, proposed action, suppression, outcome, and reflection.
-  </Card>
-</CardGrid>
-
----
-
-## Safety-adjacent robot workflows
-
-ZeptoDB should be described as safety-adjacent infrastructure, not as a certified safety system. It helps applications keep the evidence needed for guardrails, reviews, and cautious reuse of prior outcomes.
-
-<CardGrid>
-  <Card title="Risky-repeat avoidance" icon="approve-check-circle">
-    Suppress a prior action recommendation when the current zone, payload, sensor motif, or policy context does not match the old successful episode.
-  </Card>
-  <Card title="Intervention memory" icon="open-book">
-    Keep human/operator interventions, rollback notes, and recovery actions beside the raw robot timeline that made them necessary.
-  </Card>
-  <Card title="Policy evidence" icon="star">
-    Attach approval requirements, geofence context, risk tier, and allowed-action metadata to the memory record an agent retrieves.
-  </Card>
-  <Card title="Incident replay" icon="seti:clock">
-    Review what the robot saw, what memory was retrieved, whether a recommendation was reused or suppressed, and what happened afterward.
-  </Card>
-</CardGrid>
-
----
-
-## Available today vs research-only
-
-| Status | What belongs here |
-| --- | --- |
-| **Available product surface** | ROS 2 scalar/profile ingest, typed profile tables, rosbag2 import/replay, time-series SQL, ASOF JOIN, Window JOIN, Agent Memory, exact/semantic cache, replay telemetry, zero-copy Python |
-| **Research-only evidence** | Context-gated Physical AI Action-Outcome Memory experiments, synthetic robot/fleet fixtures, SQL replay harnesses, edge/fleet replay shape |
-| **Not claimed** | Fully autonomous robot control, certified robot safety, runtime edge-to-fleet replication, or a production control plane that executes robot actions |
-
-Read the grounded overview: [Physical AI Memory and Action-Outcome Memory](/blog/physical-ai-action-outcome-memory/).
-
----
-
-## Why Physical AI teams pick ZeptoDB
-
-- **One timeline for sensor evidence and decisions.** Store raw robot events and agent memory records beside the workflows that consume them.
-- **Memory with physical context.** Retrieve by time, robot, site, zone, session, payload, metadata, TTL, importance, pinned status, recency, and access count.
-- **Replay instead of detached recall.** A memory is useful only when the system can replay the telemetry and outcome that made it true.
-- **Fast enough for robot-adjacent loops.** Microsecond time-series recall, millisecond-scale memory search, exact/semantic cache lookup, and zero-copy Python access.
-- **Open implementation path.** Use GitHub, ROS 2 setup docs, Python helpers, HTTP APIs, and benchmark notes to inspect what exists today.
-
----
-
-## Built for Physical AI and adjacent systems
-
-<CardGrid>
-  <Card title="Physical AI & Robotics" icon="star">
-    ROS 2 typed profiles, rosbag2 replay, sensor fusion, and action history become replayable episodes. A robot agent can recall what it saw, what it tried, and which previous intervention worked.
-
-    [Physical AI →](/use-cases/robotics/)
-  </Card>
-  <Card title="Industrial Robots & Smart Factory" icon="star">
-    Factory telemetry becomes operational memory. Maintenance and quality agents can combine sensor history, work orders, operator notes, and safety procedures.
-
-    [Industrial IoT →](/use-cases/iot/)
-  </Card>
-  <Card title="Autonomous Systems" icon="star">
-    Fleet logs, scenario mining, disengagement notes, and agent decisions stay on one timeline for scenario replay and evidence review.
-
-    [Autonomous Systems →](/use-cases/autonomous-vehicles/)
-  </Card>
-  <Card title="Logistics & Edge Automation" icon="star">
-    AGV pose, RFID, sorter, cold-chain, and yard events become spatially queryable timelines for replay, geofencing, and exception agents.
-
-    [Logistics →](/use-cases/logistics/)
-  </Card>
-  <Card title="AgentOps for Embodied Agents" icon="star">
-    Store retrievals, cache events, model calls/errors, context traces, replay windows, tool calls, and outcomes as ordinary time-series tables.
-
-    [Agent Memory →](/use-cases/agent-memory/)
-  </Card>
-</CardGrid>
-
----
-
-## How it compares
-
-| | **Vector DB only** | **Generic TSDB** | **Prompt cache only** | **ZeptoDB** |
-|---|---|---|---|---|
-| **Robot telemetry timeline** | separate | native | no | **native time-series** |
-| **Action-outcome memory** | text-like recall | manual schema | no | **memory beside evidence** |
-| **Temporal joins** | no | varies | no | **ASOF + Window JOIN** |
-| **Policy/context gates** | application-only | application-only | no | **queryable evidence + memory metadata** |
-| **Replay path** | detached from sensors | telemetry only | response only | **sensor → memory → action → outcome** |
-| **Python path** | serialized | usually serialized | n/a | **522ns zero-copy** |
-
-Detailed comparisons: [Agent Memory vs Vector DBs](/compare/agent-memory-vs-vector-databases/) · [vs kdb+](/compare/vs-kdb/) · [vs ClickHouse](/compare/vs-clickhouse/) · [vs InfluxDB](/compare/vs-influxdb/) · [vs TimescaleDB](/compare/vs-timescaledb/)
-
----
-
-## Start building
-
-<CardGrid>
-  <LinkCard title="Physical AI & Robotics" description="ROS 2 ingest, typed profiles, rosbag2 replay, action memory, and safety-adjacent replay" href="/use-cases/robotics/" />
-  <LinkCard title="Action-Outcome Memory" description="Physical AI action, recovery, suppression, and outcome memory" href="/use-cases/action-outcome-memory/" />
-  <LinkCard title="Action-Outcome Evidence" description="Experiment 013-023 results, runtime maturity, and controlled-pilot boundaries" href="/research/action-outcome-evidence/" />
-  <LinkCard title="Physical AI Research Overview" description="What ZeptoDB has actually validated, with research-only limits kept clear" href="/blog/physical-ai-action-outcome-memory/" />
-  <LinkCard title="ROS 2 Setup" description="Build and smoke test the ROS 2 connector path" href="/operations/ros2_setup/" />
-  <LinkCard title="Agent Memory" description="Memory records, context retrieval, cache lookup, and replay for agents" href="/use-cases/agent-memory/" />
-  <LinkCard title="Python Quickstart" description="Copy-paste memory, context, cache, and write-back flow" href="/use-cases/agent-memory-python-quickstart/" />
-  <LinkCard title="Benchmarks" description="Criteria, reproduction notes, ingestion, query latency, Python zero-copy, and memory recall" href="/benchmarks/" />
-  <LinkCard title="GitHub" description="Read the source, file issues, and follow community discussions" href="https://github.com/zeptodb/zeptodb" />
+  <LinkCard title="Understand the product" description="Current database capabilities, storage, ingestion, clients, security, and deployment" href="/features/" />
+  <LinkCard title="Inspect the experiments" description="Result-first summaries, limitations, methods, and raw reproducible evidence" href="/research/action-outcome-evidence/" />
+  <LinkCard title="Start building" description="Install ZeptoDB, run the quick start, and follow the API and ROS 2 guides" href="/getting-started/quick_start/" />
 </CardGrid>
