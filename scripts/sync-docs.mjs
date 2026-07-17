@@ -102,10 +102,47 @@ function isWeakDescription(description) {
     || /^(?:generated at|last updated|effective date|date started|status|branch|fixture|docker |cd |\.\/)/i.test(value);
 }
 
-function addFrontmatter(content, fallbackTitle) {
+function rawResearchMetadata(rel) {
+  const normalizedRel = rel.replaceAll('\\', '/').toLowerCase();
+  const isRawArtifact = normalizedRel.startsWith('research/results/')
+    || normalizedRel === 'research/action_outcome_research_process_log.md';
+  if (!isRawArtifact) return null;
+
+  const acronyms = new Map([
+    ['ai', 'AI'],
+    ['aiops', 'AIOps'],
+    ['cpp', 'C++'],
+    ['sql', 'SQL'],
+  ]);
+  const label = basename(rel, '.md')
+    .split(/[_-]+/)
+    .map((word) => acronyms.get(word.toLowerCase()) || `${word.charAt(0).toUpperCase()}${word.slice(1)}`)
+    .join(' ');
+
+  return {
+    title: `${label} - Raw Research Artifact`,
+    description: `Raw ZeptoDB experiment output for ${label}, published as replayable evidence for independent review.`,
+  };
+}
+
+function setFrontmatterField(frontmatter, key, value) {
+  const serialized = typeof value === 'boolean' ? String(value) : `"${String(value).replace(/"/g, '\\"')}"`;
+  const field = `${key}: ${serialized}`;
+  const pattern = new RegExp(`^${key}:\\s*.*$`, 'm');
+  return pattern.test(frontmatter) ? frontmatter.replace(pattern, field) : `${frontmatter}\n${field}`;
+}
+
+function addFrontmatter(content, fallbackTitle, rel) {
+  const rawMetadata = rawResearchMetadata(rel);
   if (content.startsWith('---')) {
     const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
     if (!match) return content;
+    if (rawMetadata) {
+      let nextFrontmatter = setFrontmatterField(match[1], 'title', rawMetadata.title);
+      nextFrontmatter = setFrontmatterField(nextFrontmatter, 'description', rawMetadata.description);
+      nextFrontmatter = setFrontmatterField(nextFrontmatter, 'pagefind', false);
+      return `---\n${nextFrontmatter}\n---\n\n${match[2].replace(/^\n+/, '')}`;
+    }
     const titleLine = match[1].match(/^title:\s*["']?(.*?)["']?\s*$/m);
     const descriptionLine = match[1].match(/^description:\s*(.*?)\s*$/m);
     const title = titleLine?.[1] || extractTitle(match[2]) || fallbackTitle;
@@ -118,11 +155,12 @@ function addFrontmatter(content, fallbackTitle) {
     return `---\n${nextFrontmatter}\n---\n\n${match[2].replace(/^\n+/, '')}`;
   }
 
-  const title = extractTitle(content) || fallbackTitle;
+  const title = rawMetadata?.title || extractTitle(content) || fallbackTitle;
   // Remove the first # heading that matches the title to avoid duplication
   const body = content.replace(/^#\s+.+\n*/m, '');
-  const description = extractDescription(body, title);
-  return `---\ntitle: "${title.replace(/"/g, '\\"')}"\ndescription: "${description.replace(/"/g, '\\"')}"\n---\n\n${body}`;
+  const description = rawMetadata?.description || extractDescription(body, title);
+  const pagefind = rawMetadata ? '\npagefind: false' : '';
+  return `---\ntitle: "${title.replace(/"/g, '\\"')}"\ndescription: "${description.replace(/"/g, '\\"')}"${pagefind}\n---\n\n${body}`;
 }
 
 /**
@@ -345,14 +383,14 @@ async function main() {
       const destPath = join(DEST, 'ko', dir.toLowerCase(), enName);
       await mkdir(dirname(destPath), { recursive: true });
       const rewritten = sanitizePublicDocs(rewriteLinks(content, true, rel), rel);
-      await writeFile(destPath, addFrontmatter(rewritten, enName.replace('.md', '')));
+      await writeFile(destPath, addFrontmatter(rewritten, enName.replace('.md', ''), rel));
       koCount++;
     } else {
       // English — lowercase filename
       const destPath = join(DEST, dir.toLowerCase(), name.toLowerCase());
       await mkdir(dirname(destPath), { recursive: true });
       const rewritten = sanitizePublicDocs(rewriteLinks(content, false, rel), rel);
-      await writeFile(destPath, addFrontmatter(rewritten, name.replace('.md', '')));
+      await writeFile(destPath, addFrontmatter(rewritten, name.replace('.md', ''), rel));
       enCount++;
     }
   }
