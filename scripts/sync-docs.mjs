@@ -430,7 +430,7 @@ async function replaceDestination() {
   await rm(BACKUP_DEST, { recursive: true, force: true });
 }
 
-async function writeSyncManifest(enCount, koCount, documents) {
+async function writeSyncManifest(enCount, koCount, documents, siteDirtyBeforeSync) {
   const actualSourceSha = sourceGitOutput(['rev-parse', 'HEAD']);
   assertGitSha(actualSourceSha, 'Checked-out source SHA');
   const expectedSourceSha = process.env.ZEPTODB_SOURCE_SHA || actualSourceSha;
@@ -444,13 +444,12 @@ async function writeSyncManifest(enCount, koCount, documents) {
     || sourceGitOutput(['symbolic-ref', '--short', '-q', 'HEAD'])
     || 'detached';
   const sourceDirty = Boolean(sourceGitOutput(['status', '--porcelain', '--', basename(SOURCE)]));
-  const siteDirty = Boolean(siteGitOutput(['status', '--porcelain']));
   const manifest = {
     schemaVersion: 2,
     generatedAt: new Date().toISOString(),
     siteRepository: 'https://github.com/ZeptoDB/zeptodb.github.io',
     siteSha,
-    siteDirty,
+    siteDirty: siteDirtyBeforeSync,
     sourceRepository: 'https://github.com/ZeptoDB/ZeptoDB',
     sourceSha: expectedSourceSha,
     sourceRef,
@@ -465,6 +464,10 @@ async function writeSyncManifest(enCount, koCount, documents) {
 }
 
 async function main() {
+  // Record the caller's state before sync intentionally rewrites generated docs
+  // and the manifest. A clean CI checkout must remain clean in provenance even
+  // when the checked-in generated docs differ from the selected source SHA.
+  const siteDirtyBeforeSync = Boolean(siteGitOutput(['status', '--porcelain']));
   await rm(SYNC_MANIFEST, { force: true });
   if (!existsSync(SOURCE)) {
     const message = `Source not found: ${SOURCE}. Refusing to build from stale generated docs.`;
@@ -529,7 +532,7 @@ async function main() {
   }
 
   await replaceDestination();
-  await writeSyncManifest(enCount, koCount, documents);
+  await writeSyncManifest(enCount, koCount, documents, siteDirtyBeforeSync);
 
   console.log(`✓ Synced ${enCount} EN + ${koCount} KO docs → src/content/docs/`);
 }
