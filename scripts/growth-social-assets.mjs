@@ -192,8 +192,8 @@ function socialSvg({ route, title, description, theme }) {
   const routeLabel = route === '/' ? 'zeptodb.com' : `zeptodb.com${route}`;
   const chipX = 78;
   const chipY = 54;
-  const titleY = 208;
-  const descY = 450;
+  const titleY = 236;
+  const descY = 470;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
