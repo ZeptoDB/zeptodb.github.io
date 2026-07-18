@@ -28,7 +28,8 @@ const pageDescription = pageData.description || description;
 const pageUrl = new URL(Astro.url.pathname, siteUrl).href;
 const isBlogPost = /^\/blog\/[^/]+\/$/.test(pathname);
 const isResearchPage = pathname.startsWith('/research/');
-const ogType = isBlogPost || isResearchPage ? 'article' : 'website';
+const isExperimentPage = pathname.startsWith('/experiments/');
+const ogType = isBlogPost || isResearchPage || isExperimentPage ? 'article' : 'website';
 const publishedAt = pageData.publishedAt?.toISOString();
 const socialPreview = socialPreviews[pathname] || socialPreviews[decodeURIComponent(pathname)];
 const ogImage = new URL(socialPreview?.image || '/og-default.png', Astro.site);
@@ -81,7 +82,7 @@ if (pathname === '/') {
     ],
     publisher: { '@id': `${siteUrl}/#organization` },
   });
-} else if (isBlogPost || isResearchPage) {
+} else if (isBlogPost || isResearchPage || isExperimentPage) {
   graph.push({
     '@type': isBlogPost ? 'BlogPosting' : 'TechArticle',
     '@id': `${pageUrl}#article`,
@@ -152,6 +153,7 @@ const resolvedHead = routeData.head.map((item) => {
 
         function contentGroup(pathname) {
           if (pathname === '/') return 'home';
+          if (pathname.startsWith('/experiments/')) return 'experiments';
           if (pathname.startsWith('/research/')) return 'research';
           if (pathname.startsWith('/use-cases/')) return 'use_case';
           if (pathname.startsWith('/benchmarks/')) return 'benchmark';
@@ -197,6 +199,7 @@ const resolvedHead = routeData.head.map((item) => {
         }
 
         function internalDestination(pathname) {
+          if (pathname.startsWith('/experiments/')) return 'experiment';
           if (pathname.startsWith('/research/')) return 'research';
           if (pathname.startsWith('/use-cases/action-outcome-memory/')) return 'action_outcome';
           if (pathname.includes('quick_start') || pathname.includes('quickstart')) return 'quickstart';
@@ -212,6 +215,7 @@ const resolvedHead = routeData.head.map((item) => {
         function eventForDestination(destination) {
           return {
             research: 'research_click',
+            experiment: 'experiment_click',
             action_outcome: 'action_outcome_click',
             quickstart: 'quickstart_click',
             benchmark: 'benchmark_click',
@@ -319,6 +323,17 @@ const resolvedHead = routeData.head.map((item) => {
             destination_path: url.pathname,
             nav_area: navigationArea(link),
           };
+
+          if (link.matches('[data-experiment-link]')) {
+            sendGaEvent('experiment_record_open', {
+              ...linkContext,
+              experiment_id: cleanText(link.getAttribute('data-experiment-id'), 'unknown'),
+            });
+          }
+
+          if (link.matches('[data-raw-evidence-link]')) {
+            sendGaEvent('raw_evidence_open', linkContext);
+          }
 
           if (url.origin === window.location.origin) {
             const destination = internalDestination(url.pathname);

@@ -67,11 +67,11 @@ measurement notes from the benchmark documentation.
 
 - Home: https://zeptodb.com/
 - Docs: https://zeptodb.com/docs/
-- Action-Outcome Experiments: https://zeptodb.com/research/action-outcome-evidence/
+- Action-Outcome Experiments: https://zeptodb.com/experiments/
 - Physical AI and Robotics: https://zeptodb.com/use-cases/robotics/
 - Action-Outcome Memory: https://zeptodb.com/use-cases/action-outcome-memory/
 - Robot Memory Experiment Story: https://zeptodb.com/blog/physical-ai-action-outcome-memory/
-- Physical AI Shadow Supervisor Experiment 021: https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/
+- Physical AI Shadow Supervisor Experiment 021: https://zeptodb.com/experiments/021-shadow-supervisor-ab/
 - Physical AI Shadow Supervisor Results 021: https://zeptodb.com/research/results/physical_ai_shadow_supervisor_ab_021/
 - Research Experiment Governance: https://zeptodb.com/research/experiment_governance/
 - ROS 2 Setup: https://zeptodb.com/operations/ros2_setup/

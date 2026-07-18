@@ -85,7 +85,7 @@ const topicOverrides = {
   '/': 'Action-Outcome Memory',
   '/features/': 'Live Data Infrastructure',
   '/blog/introducing-zeptodb/': 'Live Data Infrastructure',
-  '/research/action-outcome-evidence/': 'Action-Outcome Research',
+  '/experiments/': 'Action-Outcome Research',
   '/use-cases/action-outcome-memory/': 'Action-Outcome Research',
   '/blog/physical-ai-action-outcome-memory/': 'Action-Outcome Research',
   '/use-cases/agent-memory/': 'Agent Memory',
@@ -187,13 +187,13 @@ function wrapWords(value, limit, maxLines) {
 }
 
 function socialSvg({ route, title, description, theme }) {
-  const titleLines = wrapWords(title, 24, 2);
+  const titleLines = wrapWords(title, 24, 3);
   const descLines = wrapWords(description || theme.proof, 62, 2);
   const routeLabel = route === '/' ? 'zeptodb.com' : `zeptodb.com${route}`;
   const chipX = 78;
   const chipY = 54;
-  const titleY = 236;
-  const descY = 470;
+  const titleY = 208;
+  const descY = 450;
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg width="1200" height="630" viewBox="0 0 1200 630" xmlns="http://www.w3.org/2000/svg">
@@ -301,7 +301,7 @@ function uniqueRoutes() {
     '/blog/what-is-agent-memory/',
     '/blog/best-database-for-ai-agents-live-data/',
     '/blog/physical-ai-action-outcome-memory/',
-    '/research/action-outcome-evidence/',
+    '/experiments/',
     '/use-cases/agent-memory/',
     '/use-cases/agent-memory-python-quickstart/',
     '/use-cases/action-outcome-memory/',

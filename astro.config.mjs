@@ -2,9 +2,11 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
+import { experimentRedirects } from './src/data/experiment-routes.mjs';
 
 export default defineConfig({
   site: 'https://zeptodb.com',
+  redirects: experimentRedirects,
   integrations: [
     sitemap(),
     starlight({
@@ -28,6 +30,7 @@ export default defineConfig({
       components: {
         Header: './src/components/Header.astro',
         Head: './src/components/Head.astro',
+        PageTitle: './src/components/PageTitle.astro',
       },
       sidebar: [
         // ── Docs & Reference (sidebar) ──
@@ -79,16 +82,6 @@ export default defineConfig({
             { label: 'Security', slug: 'security' },
             { label: 'Integrations', slug: 'integrations' },
             { label: 'Community', slug: 'community' },
-          ],
-        },
-        {
-          label: 'Experiments',
-          items: [
-            { label: 'Experiments Overview', slug: 'research/action-outcome-evidence' },
-            { label: 'Experiment 023: Commit Ledger', slug: 'research/physical_ai_supervisor_commit_ledger_stress_experiment_023' },
-            { label: 'Experiment 022: Node Replacement', slug: 'research/physical_ai_supervisor_node_replacement_experiment_022' },
-            { label: 'Experiment 021: Shadow Supervisor', slug: 'research/physical_ai_shadow_supervisor_ab_experiment_021' },
-            { label: 'Experiment 016: Edge/Fleet Replay', slug: 'research/physical_ai_edge_fleet_feed_replay_experiment_016' },
           ],
         },
         {

@@ -1,0 +1,113 @@
+---
+import { actionOutcomeExperiments } from '../data/action-outcome-experiments';
+
+const route = Astro.locals.starlightRoute;
+const pathname = Astro.url.pathname;
+const detailMatch = pathname.match(/^\/experiments\/(\d{3})[^/]*\/$/);
+const isExperimentDetail = Boolean(detailMatch);
+const experiment = actionOutcomeExperiments.find((item) => item.id === detailMatch?.[1]);
+const experimentDescription = experiment?.question ||
+  'A public experiment record with the hypothesis, procedure, measured result, limitations, and next step.';
+---
+
+{isExperimentDetail ? (
+  <div class="experiment-page-heading">
+    <nav class="experiment-local-nav" aria-label="Experiment sections">
+      <a href="/experiments/">Overview</a>
+      <a href="/experiments/#timeline">Timeline</a>
+      <a href="/research/experiment_governance/">Methods</a>
+      <a href="/experiments/#experiment-catalog">All experiments</a>
+    </nav>
+    <p class="experiment-eyebrow">
+      <span>EXP {detailMatch?.[1]}</span>
+      <span>{experiment?.stage || 'Experiment record'}</span>
+    </p>
+    <h1 id="_top">{route.entry.data.title}</h1>
+    <p class="experiment-description">{experimentDescription}</p>
+  </div>
+) : (
+  <h1 id="_top">{route.entry.data.title}</h1>
+)}
+
+<style>
+  h1 {
+    margin-top: 1rem;
+    color: var(--sl-color-white);
+    font-size: var(--sl-text-h1);
+    font-weight: 600;
+    line-height: var(--sl-line-height-headings);
+  }
+
+  .experiment-page-heading {
+    max-width: 67.5rem;
+    margin-inline: auto;
+    padding-block: 0.5rem 1rem;
+  }
+
+  .experiment-local-nav {
+    display: flex;
+    gap: 1.25rem;
+    overflow-x: auto;
+    margin-block-end: 2.5rem;
+    padding-block-end: 0.75rem;
+    border-block-end: 1px solid var(--sl-color-gray-5);
+    white-space: nowrap;
+  }
+
+  .experiment-local-nav a {
+    color: var(--sl-color-gray-1);
+    font-size: var(--sl-text-sm);
+    font-weight: 600;
+    text-decoration: none;
+  }
+
+  .experiment-local-nav a:hover,
+  .experiment-local-nav a:first-child {
+    color: var(--sl-color-accent-high);
+  }
+
+  .experiment-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin: 0;
+    color: var(--sl-color-gray-1);
+    font-size: var(--sl-text-sm);
+  }
+
+  .experiment-eyebrow span:first-child {
+    color: var(--sl-color-accent-high);
+    font-family: var(--sl-font-mono);
+    font-size: var(--sl-text-xs);
+    font-weight: 700;
+  }
+
+  .experiment-page-heading h1 {
+    max-width: 52rem;
+    margin-block: 0.65rem 0;
+    font-size: 3.25rem;
+    line-height: 1.08;
+  }
+
+  .experiment-description {
+    max-width: 48rem;
+    margin-block: 1rem 0;
+    color: var(--sl-color-gray-1);
+    font-size: 1.05rem;
+    line-height: 1.65;
+  }
+
+  @media (max-width: 40rem) {
+    .experiment-local-nav {
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-block-end: 1.75rem;
+      overflow-x: visible;
+      white-space: normal;
+    }
+
+    .experiment-page-heading h1 {
+      font-size: 2rem;
+    }
+  }
+</style>

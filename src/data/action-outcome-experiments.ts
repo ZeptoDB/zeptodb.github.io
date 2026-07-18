@@ -1,3 +1,5 @@
+import { experimentHref } from './experiment-routes.mjs';
+
 export interface ExperimentMetric {
   label: string;
   value: string;
@@ -28,7 +30,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can a robot reuse a prior recovery without repeating an action that only worked under a different physical context?',
     whyItMatters: 'The result moved the problem from incident search to evidence-backed action reuse.',
     limitation: 'Five synthetic Physical AI incident families; not a production safety guarantee.',
-    href: '/research/physical_ai_action_outcome_experiment_013/',
+    href: experimentHref('013'),
     evidenceHref: '/research/results/physical_ai_action_outcome_013/',
     metrics: [
       { label: 'Recovery Top-1', value: '1.00' },
@@ -45,7 +47,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can the fixture be replayed through live ZeptoDB tables, joins, windows, and spatial checks?',
     whyItMatters: 'Robot state, sensor evidence, recommendations, suppressions, and outcomes became one inspectable SQL path.',
     limitation: 'Research tables and replay harness; no new promoted product surface.',
-    href: '/research/physical_ai_action_outcome_sql_replay_experiment_014/',
+    href: experimentHref('014'),
     evidenceHref: '/research/results/physical_ai_action_outcome_sql_replay_014/',
     metrics: [
       { label: 'Tables', value: '9' },
@@ -62,7 +64,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can immediate edge decisions remain local while fleet evidence converges later?',
     whyItMatters: 'The replay preserved bounded transfer, duplicate handling, late delivery, and restart recovery.',
     limitation: 'Deterministic research worker; not a general replication service.',
-    href: '/research/physical_ai_edge_fleet_feed_replay_experiment_016/',
+    href: experimentHref('016'),
     evidenceHref: '/research/results/physical_ai_edge_fleet_feed_replay_016/',
     metrics: [
       { label: 'Acknowledged', value: '52/52' },
@@ -79,7 +81,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can a shadow supervisor suppress hazardous baseline proposals and remain idempotent after restart?',
     whyItMatters: 'The experiment connected historical outcomes to explicit allow, suppress, and manual-review decisions.',
     limitation: 'Research-only shadow fixture; no autonomous actuation.',
-    href: '/research/physical_ai_shadow_supervisor_ab_experiment_021/',
+    href: experimentHref('021'),
     evidenceHref: '/research/results/physical_ai_shadow_supervisor_ab_021/',
     metrics: [
       { label: 'Hazardous suppressed', value: '15/15' },
@@ -96,7 +98,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can the experimental supervisor survive an expired-lease handoff without duplicate or lost decisions?',
     whyItMatters: 'The bounded runtime recovered ownership and completed the remaining proposal stream exactly once.',
     limitation: 'The SQL lease is a pilot guard, not a consensus or leader-election system.',
-    href: '/research/physical_ai_supervisor_node_replacement_experiment_022/',
+    href: experimentHref('022'),
     evidenceHref: '/research/results/physical_ai_supervisor_node_replacement_022/',
     metrics: [
       { label: 'Proposals converged', value: '3/3' },
@@ -113,7 +115,7 @@ export const actionOutcomeExperiments: ActionOutcomeExperiment[] = [
     question: 'Can fresh runtime objects repair committed state without duplicating decision or evidence rows?',
     whyItMatters: 'The commit ledger held as an effectively-once boundary for the bounded supervisor sink.',
     limitation: 'Supervisor-specific contract; not a generic multi-table SQL transaction.',
-    href: '/research/physical_ai_supervisor_commit_ledger_stress_experiment_023/',
+    href: experimentHref('023'),
     evidenceHref: '/research/results/physical_ai_supervisor_commit_ledger_stress_023/',
     metrics: [
       { label: 'Proposals converged', value: '12/12' },

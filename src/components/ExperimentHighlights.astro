@@ -31,8 +31,8 @@ const experiments = selectExperiments(ids);
         <p class="experiment-impact">{experiment.whyItMatters}</p>
         <p class="experiment-limit"><strong>Boundary:</strong> {experiment.limitation}</p>
         <div class="experiment-links">
-          <a href={experiment.href}>Read experiment</a>
-          <a href={experiment.evidenceHref}>Raw evidence</a>
+          <a href={experiment.href} data-experiment-link data-experiment-id={experiment.id}>Read experiment</a>
+          <a href={experiment.evidenceHref} data-raw-evidence-link>Raw evidence</a>
         </div>
       </article>
     ))}
@@ -46,7 +46,7 @@ const experiments = selectExperiments(ids);
           <span>EXP {experiment.id}</span>
           <time datetime={experiment.date}>{experiment.date}</time>
         </div>
-        <h3><a href={experiment.href}>{experiment.title}</a></h3>
+        <h3><a href={experiment.href} data-experiment-link data-experiment-id={experiment.id}>{experiment.title}</a></h3>
         <p class="timeline-result">{experiment.result}</p>
         <p>{experiment.whyItMatters}</p>
       </li>

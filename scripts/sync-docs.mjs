@@ -11,6 +11,7 @@
 import { readdir, readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
 import { join, relative, basename, dirname, posix } from 'node:path';
 import { existsSync } from 'node:fs';
+import { experimentRouteForSource } from '../src/data/experiment-routes.mjs';
 
 const SOURCE = process.argv[2] || process.env.ZEPTODB_DOCS_PATH || join(import.meta.dirname, '..', '..', 'zeptodb', 'docs');
 const DEST = join(import.meta.dirname, '..', 'src', 'content', 'docs');
@@ -132,6 +133,22 @@ function setFrontmatterField(frontmatter, key, value) {
   return pattern.test(frontmatter) ? frontmatter.replace(pattern, field) : `${frontmatter}\n${field}`;
 }
 
+function publicDestinationRel(rel) {
+  const normalized = rel.replaceAll('\\', '/').toLowerCase();
+  if (!normalized.startsWith('research/')) return rel;
+  const experimentRoute = experimentRouteForSource(basename(normalized));
+  return experimentRoute ? `experiments/${experimentRoute.slug}.md` : rel;
+}
+
+function setExperimentPresentation(content, rel) {
+  if (!rel.replaceAll('\\', '/').startsWith('experiments/')) return content;
+  const match = content.match(/^---\n([\s\S]*?)\n---\n?([\s\S]*)$/);
+  if (!match) return content;
+  let frontmatter = setFrontmatterField(match[1], 'template', 'splash');
+  frontmatter = setFrontmatterField(frontmatter, 'tableOfContents', false);
+  return `---\n${frontmatter}\n---\n\n${match[2].replace(/^\n+/, '')}`;
+}
+
 function addFrontmatter(content, fallbackTitle, rel) {
   const rawMetadata = rawResearchMetadata(rel);
   if (content.startsWith('---')) {
@@ -204,10 +221,15 @@ function rewriteLinks(content, isKorean, rel) {
         return `](https://github.com/zeptodb/zeptodb/blob/main/${repoPath}${anchorSuffix})`;
       }
 
-      let route = targetRel
-        .replace(/(?:\.ko|_ko)\.md$/i, '.md')
-        .replace(/\.md$/i, '')
-        .toLowerCase();
+      const experimentRoute = targetRel.toLowerCase().startsWith('research/')
+        ? experimentRouteForSource(basename(targetRel).toLowerCase())
+        : undefined;
+      let route = experimentRoute
+        ? `experiments/${experimentRoute.slug}`
+        : targetRel
+          .replace(/(?:\.ko|_ko)\.md$/i, '.md')
+          .replace(/\.md$/i, '')
+          .toLowerCase();
 
       // If the link targets a Korean doc but we're in English content, prefix with /ko
       if (isKoLink && !isKorean) {
@@ -334,14 +356,15 @@ async function main() {
   // Save manual files
   const manualEntries = [
     'index.mdx', 'docs.mdx', 'features.mdx', 'integrations.mdx',
-    'security.mdx', 'community.mdx', 'about.mdx',
+    'security.mdx', 'community.mdx', 'about.mdx', 'experiments/index.mdx',
   ];
   const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog', 'research'];
   for (const f of manualEntries) {
     const src = join(DEST, f);
     if (existsSync(src)) {
-      await mkdir(manualDir, { recursive: true });
-      await cp(src, join(manualDir, f));
+      const manualTarget = join(manualDir, f);
+      await mkdir(dirname(manualTarget), { recursive: true });
+      await cp(src, manualTarget);
     }
   }
   for (const d of manualDirs) {
@@ -367,8 +390,9 @@ async function main() {
 
   for (const { full, rel } of files) {
     const content = await readFile(full, 'utf-8');
-    const name = basename(rel);
-    const dir = dirname(rel);
+    const publicRel = publicDestinationRel(rel);
+    const name = basename(publicRel);
+    const dir = dirname(publicRel);
 
     const normalizedRel = rel.toLowerCase();
 
@@ -383,14 +407,16 @@ async function main() {
       const destPath = join(DEST, 'ko', dir.toLowerCase(), enName);
       await mkdir(dirname(destPath), { recursive: true });
       const rewritten = sanitizePublicDocs(rewriteLinks(content, true, rel), rel);
-      await writeFile(destPath, addFrontmatter(rewritten, enName.replace('.md', ''), rel));
+      const withFrontmatter = addFrontmatter(rewritten, enName.replace('.md', ''), rel);
+      await writeFile(destPath, setExperimentPresentation(withFrontmatter, publicRel));
       koCount++;
     } else {
       // English — lowercase filename
       const destPath = join(DEST, dir.toLowerCase(), name.toLowerCase());
       await mkdir(dirname(destPath), { recursive: true });
       const rewritten = sanitizePublicDocs(rewriteLinks(content, false, rel), rel);
-      await writeFile(destPath, addFrontmatter(rewritten, name.replace('.md', ''), rel));
+      const withFrontmatter = addFrontmatter(rewritten, name.replace('.md', ''), rel);
+      await writeFile(destPath, setExperimentPresentation(withFrontmatter, publicRel));
       enCount++;
     }
   }

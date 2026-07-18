@@ -1,0 +1,104 @@
+---
+template: splash
+tableOfContents: false
+title: "Action-Outcome Experiments"
+description: "Public ZeptoDB experiment records with measured outcomes, limitations, methods, and raw evidence."
+head:
+  - tag: title
+    content: "ZeptoDB Experiments | Action-Outcome Evidence"
+hero:
+  tagline: "We test whether systems that act in the physical world can recall prior outcomes without blindly repeating the past. Every record includes the result, the boundary, and the evidence behind it."
+  actions:
+    - text: Latest result
+      link: /experiments/023-commit-ledger-stress/
+      icon: right-arrow
+    - text: Browse the timeline
+      link: "#timeline"
+      icon: right-arrow
+      variant: secondary
+    - text: Research methods
+      link: /research/experiment_governance/
+      icon: open-book
+      variant: minimal
+---
+
+import { CardGrid, LinkCard } from '@astrojs/starlight/components';
+import ExperimentHighlights from '../../../components/ExperimentHighlights.astro';
+import ExperimentCatalog from '../../../components/ExperimentCatalog.astro';
+
+<nav class="experiment-subnav" aria-label="Experiment sections">
+  <a href="#latest-result">Latest result</a>
+  <a href="#timeline">Timeline</a>
+  <a href="#current-evidence">Current evidence</a>
+  <a href="#experiment-catalog">All experiments</a>
+</nav>
+
+<div class="experiment-intro" data-pagefind-weight="10">
+  <p class="experiment-kicker">Public experiment record</p>
+  <p><strong>This is where ZeptoDB shows its work.</strong> The product documentation explains how to use the database. This area records what we tried, what happened, and how much confidence the result deserves.</p>
+  <p>Read the interpreted experiment first. Open the raw artifact when you want the replay tables, output, or acceptance evidence.</p>
+</div>
+
+## Latest result
+
+The newest runtime validation stresses one narrow commit-ledger contract used by the experimental shadow supervisor. It asks whether committed state can be repaired after projection failures; it does not make a general transaction claim.
+
+<ExperimentHighlights ids={['023']} />
+
+<div id="timeline"></div>
+
+## How the evidence progressed
+
+The sequence matters more than any isolated benchmark number. Each experiment removes one assumption from the previous result, moving from an offline fixture toward bounded runtime failure cases.
+
+<ExperimentHighlights variant="timeline" ids={['013', '014', '016', '021', '022', '023']} />
+
+<div id="current-evidence"></div>
+
+## What the evidence supports now
+
+<div class="evidence-state">
+  <div>
+    <span>01</span>
+    <h3>Context changes action reuse</h3>
+    <p>Similarity alone can surface an episode whose outcome does not fit the current zone, payload, sensor motif, or policy context.</p>
+  </div>
+  <div>
+    <span>02</span>
+    <h3>The decision trail can stay queryable</h3>
+    <p>Native SQL replay keeps robot state, retrieved evidence, recommendations, suppressions, and outcomes inspectable together.</p>
+  </div>
+  <div>
+    <span>03</span>
+    <h3>Bounded failures can be tested</h3>
+    <p>Feed replay, restart idempotency, owner replacement, and projection repair have explicit experiment records instead of implied reliability claims.</p>
+  </div>
+</div>
+
+These results support continued experiments and controlled shadow pilots. They do not establish certified robot safety, autonomous actuation, generic replication, consensus, or general multi-table transactions.
+
+## Evidence and product boundary
+
+| Surface | Current status | Meaning |
+|---|---|---|
+| Action-Outcome comparison and SQL replay | Research complete | Reproducible evidence and schema/query validation |
+| Edge/fleet feed and shadow supervisor | Experimental runtime path | Admin-gated, bounded, monitored, and pilot-scoped |
+| Autonomous control or certified safety | Not claimed | Policy and actuation remain outside ZeptoDB |
+
+Promotion requires longer live soak windows, operator dashboards and alerts, documented limits and rollback, cross-architecture verification, and an explicit decision to widen the current shadow-only boundary.
+
+<div id="experiment-catalog"></div>
+
+## All experiments
+
+Interpreted experiment records now live here, separate from product documentation. Methods and raw outputs remain under Research for independent review and reproducibility.
+
+<ExperimentCatalog />
+
+## Methods and implementation
+
+<CardGrid>
+  <LinkCard title="Experiment governance" description="How research, runtime validation, and product-readiness states are separated" href="/research/experiment_governance/" />
+  <LinkCard title="Raw evidence" description="Generated tables and replay output, kept separate from the interpreted result" href="/research/results/physical_ai_supervisor_commit_ledger_stress_023/" />
+  <LinkCard title="Action-Outcome Memory" description="The episode model, context gates, runtime shape, and current maturity boundary" href="/use-cases/action-outcome-memory/" />
+</CardGrid>

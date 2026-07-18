@@ -25,7 +25,7 @@ perplexity,What database handles ROS 2 telemetry and agent memory?,https://zepto
 perplexity,How should robot agents remember action outcomes?,https://zeptodb.com/blog/physical-ai-action-outcome-memory/,1,Perplexity Physical AI memory check.
 chatgpt_search,What is a shadow supervisor for Physical AI robot actions?,https://zeptodb.com/api/http_reference/,1,Experimental supervisor query.
 chatgpt_search,What database supports advisory action outcome supervision for robot agents?,https://zeptodb.com/api/http_reference/,1,Action Outcome supervisor query.
-chatgpt_search,What evidence shows action outcome memory avoids risky repeats in robots?,https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/,1,Experiment 021 evidence query.
+chatgpt_search,What evidence shows action outcome memory avoids risky repeats in robots?,https://zeptodb.com/experiments/021-shadow-supervisor-ab/,1,Experiment 021 evidence query.
 chatgpt_search,How can robot agents avoid repeating unsafe actions?,https://zeptodb.com/use-cases/robotics/,1,Risky repeat suppression query.
 google_ai_mode,Physical AI shadow supervisor database,https://zeptodb.com/api/http_reference/,1,Google AI Mode supervisor check.
 google_ai_mode,Action outcome supervisor for robotics memory,https://zeptodb.com/api/http_reference/,1,Google AI Mode Action Outcome supervisor check.

@@ -91,7 +91,7 @@ physical_ai_supervisor,manual review robot actions,problem,2,/blog/physical-ai-a
 physical_ai_supervisor,SQL backed action supervisor,solution,1,/api/http_reference/,Specific API fit.
 physical_ai_supervisor,robot decision ledger,solution,2,/api/http_reference/,Idempotency angle.
 physical_ai_supervisor,action outcome evidence,problem,1,/blog/physical-ai-action-outcome-memory/,Core category phrase.
-physical_ai_supervisor,shadow mode robot safety,problem,2,/research/physical_ai_shadow_supervisor_ab_experiment_021/,Research query with safety caveat.
+physical_ai_supervisor,shadow mode robot safety,problem,2,/experiments/021-shadow-supervisor-ab/,Research query with safety caveat.
 iot,industrial IoT database,category,1,/use-cases/iot/,High fit.
 iot,smart factory telemetry,problem,1,/use-cases/iot/,High fit.
 iot,OPC-UA time-series,solution,2,/integrations/,Integration route.

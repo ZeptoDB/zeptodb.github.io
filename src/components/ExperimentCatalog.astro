@@ -2,7 +2,8 @@
 import { getCollection } from 'astro:content';
 
 const entries = (await getCollection('docs'))
-  .filter((entry) => entry.id.startsWith('research/') && entry.id !== 'research/action-outcome-evidence')
+  .filter((entry) => entry.id.startsWith('experiments/') || entry.id.startsWith('research/'))
+  .filter((entry) => entry.id !== 'experiments')
   .map((entry) => ({
     id: entry.id,
     title: entry.data.title,
@@ -11,7 +12,7 @@ const entries = (await getCollection('docs'))
   }));
 
 function experimentNumber(id: string) {
-  const matches = [...id.matchAll(/(?:experiment_|_)(\d{3})(?=_|$)/g)];
+  const matches = [...id.matchAll(/(?:experiments\/|experiment_|_)(\d{3})(?=[-_/]|$)/g)];
   return Number(matches.at(-1)?.[1] || 0);
 }
 
@@ -23,15 +24,15 @@ const resultArtifacts = entries
   .filter((entry) => entry.id.startsWith('research/results/'))
   .sort(byExperimentThenTitle);
 const experimentRecords = entries
-  .filter((entry) => !entry.id.startsWith('research/results/') && /experiment_\d{3}/.test(entry.id))
+  .filter((entry) => entry.id.startsWith('experiments/'))
   .sort(byExperimentThenTitle);
 const supportingRecords = entries
-  .filter((entry) => !resultArtifacts.includes(entry) && !experimentRecords.includes(entry))
+  .filter((entry) => entry.id.startsWith('research/') && !resultArtifacts.includes(entry))
   .sort((a, b) => a.title.localeCompare(b.title));
 ---
 
 <details class="research-catalog-shell" data-pagefind-ignore>
-  <summary>Browse all experiment and method records ({entries.length})</summary>
+  <summary>Browse the complete experiment record ({experimentRecords.length} experiments)</summary>
   <div class="research-catalog">
     <section aria-labelledby="experiment-records-heading">
       <h3 id="experiment-records-heading">Experiment records</h3>
@@ -39,7 +40,7 @@ const supportingRecords = entries
       <ol class="catalog-list">
         {experimentRecords.map((entry) => (
           <li>
-            <a href={entry.href}>
+            <a href={entry.href} data-experiment-link data-experiment-id={String(experimentNumber(entry.id)).padStart(3, '0')}>
               <span class="experiment-id">EXP {String(experimentNumber(entry.id)).padStart(3, '0')}</span>
               <span class="entry-copy">
                 <strong>{entry.title}</strong>
@@ -51,32 +52,27 @@ const supportingRecords = entries
       </ol>
     </section>
 
-    <section aria-labelledby="supporting-records-heading">
-      <h3 id="supporting-records-heading">Methods and operating boundaries</h3>
-      <p class="catalog-intro">Schemas, governance, roadmaps, technical scans, and runtime plans.</p>
-      <ul class="catalog-list supporting-list">
-        {supportingRecords.map((entry) => (
-          <li>
-            <a href={entry.href}>
-              <span class="entry-copy">
-                <strong>{entry.title}</strong>
-                <span>{entry.description}</span>
-              </span>
-            </a>
-          </li>
-        ))}
-      </ul>
-    </section>
+    <div class="research-layers">
+      <details>
+        <summary>Methods and operating boundaries ({supportingRecords.length})</summary>
+        <p>Schemas, governance, roadmaps, technical scans, and runtime plans stay in the Research layer.</p>
+        <ul class="artifact-list">
+          {supportingRecords.map((entry) => (
+            <li><a href={entry.href}>{entry.title}</a></li>
+          ))}
+        </ul>
+      </details>
 
-    <details class="result-artifacts">
-      <summary>Raw result artifacts ({resultArtifacts.length})</summary>
-      <p>Generated tables and replay outputs are kept public for reproducibility, but excluded from site search so that interpreted evidence ranks first.</p>
-      <ul class="artifact-list">
-        {resultArtifacts.map((entry) => (
-          <li><a href={entry.href}>{entry.title}</a></li>
-        ))}
-      </ul>
-    </details>
+      <details>
+        <summary>Raw result artifacts ({resultArtifacts.length})</summary>
+        <p>Generated tables and replay outputs are public for reproducibility, but excluded from site search so interpreted evidence ranks first.</p>
+        <ul class="artifact-list">
+          {resultArtifacts.map((entry) => (
+            <li><a href={entry.href} data-raw-evidence-link>{entry.title}</a></li>
+          ))}
+        </ul>
+      </details>
+    </div>
   </div>
 </details>
 
@@ -167,15 +163,26 @@ const supportingRecords = entries
     line-height: 1.5;
   }
 
-  .result-artifacts {
+  .research-layers {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 1.5rem;
+  }
+
+  .research-layers details {
     border-block: 1px solid var(--sl-color-gray-5);
     padding-block: 1rem;
   }
 
-  .result-artifacts summary {
+  .research-layers summary {
     color: var(--sl-color-white);
     cursor: pointer;
     font-weight: 700;
+  }
+
+  .research-layers p {
+    color: var(--sl-color-gray-2);
+    font-size: var(--sl-text-sm);
   }
 
   .artifact-list {
@@ -192,6 +199,10 @@ const supportingRecords = entries
     .catalog-list a {
       grid-template-columns: minmax(0, 1fr);
       gap: 0.35rem;
+    }
+
+    .research-layers {
+      grid-template-columns: 1fr;
     }
   }
 </style>

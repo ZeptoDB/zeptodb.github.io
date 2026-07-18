@@ -50,6 +50,112 @@ pre {
   border: 1px solid var(--sl-color-gray-5) !important;
 }
 
+/* Experiments are a result-first publication surface, separate from the docs layout. */
+.experiment-subnav {
+  display: flex;
+  gap: 1.5rem;
+  overflow-x: auto;
+  margin-block: 0 3rem;
+  padding-block: 0.9rem;
+  border-block: 1px solid var(--sl-color-gray-5);
+  white-space: nowrap;
+}
+
+.experiment-subnav a {
+  color: var(--sl-color-gray-1);
+  font-size: var(--sl-text-sm);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.experiment-subnav a:hover {
+  color: var(--sl-color-accent-high);
+}
+
+.experiment-intro {
+  display: grid;
+  grid-template-columns: minmax(10rem, 0.45fr) minmax(0, 1fr);
+  gap: 1.5rem 3rem;
+  margin-block: 1rem 4rem;
+  padding-block-end: 2rem;
+  border-block-end: 1px solid var(--sl-color-gray-5);
+}
+
+.experiment-intro p {
+  margin: 0;
+  color: var(--sl-color-gray-1);
+  font-size: 1.05rem;
+  line-height: 1.7;
+}
+
+.experiment-intro .experiment-kicker {
+  color: var(--sl-color-accent-high);
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
+.evidence-state {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1.5rem;
+  margin-block: 1.5rem 2rem;
+  border-block: 1px solid var(--sl-color-gray-5);
+}
+
+.evidence-state > div {
+  min-width: 0;
+  padding-block: 1.5rem;
+}
+
+.evidence-state span {
+  color: var(--sl-color-accent-high);
+  font-family: var(--sl-font-mono);
+  font-size: var(--sl-text-xs);
+  font-weight: 700;
+}
+
+.evidence-state h3 {
+  margin-block: 0.55rem 0;
+  font-size: var(--sl-text-h3);
+}
+
+.evidence-state p {
+  margin-block: 0.65rem 0;
+  color: var(--sl-color-gray-1);
+  font-size: var(--sl-text-sm);
+  line-height: 1.6;
+}
+
+@media (max-width: 48rem) {
+  .experiment-subnav {
+    flex-wrap: wrap;
+    gap: 1rem;
+    margin-block-end: 2rem;
+    overflow-x: visible;
+    white-space: normal;
+  }
+
+  .experiment-intro,
+  .evidence-state {
+    grid-template-columns: 1fr;
+  }
+
+  .experiment-intro {
+    gap: 0.75rem;
+    margin-block-end: 3rem;
+  }
+
+  .evidence-state {
+    gap: 0;
+  }
+
+  .evidence-state > div + div {
+    border-block-start: 1px solid var(--sl-color-gray-5);
+  }
+}
+
 /* Slightly smaller base font size */
 :root {
   --sl-text-base: 0.9375rem;   /* 15px (default 16px) */

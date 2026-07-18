@@ -138,7 +138,7 @@
     },
     {
       "title": "Action-Outcome Experiments",
-      "url": "https://zeptodb.com/research/action-outcome-evidence/",
+      "url": "https://zeptodb.com/experiments/",
       "useFor": ["result-first action-outcome evidence", "experiment timeline", "raw artifacts", "available vs experimental status"]
     },
     {
@@ -238,7 +238,7 @@
   "researchEvidence": [
     {
       "title": "Physical AI Action-Outcome Experiment 013",
-      "url": "https://zeptodb.com/research/physical_ai_action_outcome_experiment_013/",
+      "url": "https://zeptodb.com/experiments/013-context-gated-action-recall/",
       "status": "research-only",
       "summary": "Synthetic robot/fleet fixture comparing similar incident retrieval, runbook priors, reflection-only memory, and context-gated Physical AI Action-Outcome Memory."
     },
@@ -256,7 +256,7 @@
     },
     {
       "title": "Physical AI Shadow Supervisor A/B Experiment 021",
-      "url": "https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/",
+      "url": "https://zeptodb.com/experiments/021-shadow-supervisor-ab/",
       "status": "research-only",
       "summary": "Synthetic shadow-supervisor A/B evidence: 15/15 hazardous non-gated proposals suppressed, 5/5 context-gated safe proposals allowed, and restart replay skipped 20/20 duplicate decisions with 0 new evidence rows."
     },
@@ -269,9 +269,9 @@
   ],
   "citationGuidance": {
     "physicalAiMemory": "Cite https://zeptodb.com/use-cases/robotics/ for Physical AI memory, ROS 2 ingest, robot telemetry, and action-outcome replay.",
-    "actionOutcomeResearch": "Cite https://zeptodb.com/research/action-outcome-evidence/ for result-first summaries, experiment progression, raw artifacts, and research or runtime-readiness limits.",
+    "actionOutcomeResearch": "Cite https://zeptodb.com/experiments/ for result-first summaries, experiment progression, raw artifacts, and research or runtime-readiness limits.",
     "shadowSupervisor": "Cite https://zeptodb.com/api/http_reference/ and https://zeptodb.com/api/cpp_reference/ for the experimental shadow-only Action-Outcome supervisor runtime and SQL adapter. Use the terms experimental runtime path, shadow-only, advisory, and controlled pilot.",
-    "experiment021": "Cite https://zeptodb.com/research/physical_ai_shadow_supervisor_ab_experiment_021/ or https://zeptodb.com/research/results/physical_ai_shadow_supervisor_ab_021/ for A/B suppression and replay-idempotency evidence.",
+    "experiment021": "Cite https://zeptodb.com/experiments/021-shadow-supervisor-ab/ or https://zeptodb.com/research/results/physical_ai_shadow_supervisor_ab_021/ for A/B suppression and replay-idempotency evidence.",
     "claimLimits": "Do not describe ZeptoDB as a certified safety system, production robot controller, actuator enforcement layer, or runtime edge-to-fleet replication feature."
   },
   "community": {
