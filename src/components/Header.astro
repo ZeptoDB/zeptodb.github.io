@@ -1,10 +1,10 @@
 ---
 import config from 'virtual:starlight/user-config';
-import LanguageSelect from 'virtual:starlight/components/LanguageSelect';
-import Search from 'virtual:starlight/components/Search';
-import SiteTitle from 'virtual:starlight/components/SiteTitle';
-import SocialIcons from 'virtual:starlight/components/SocialIcons';
-import ThemeSelect from 'virtual:starlight/components/ThemeSelect';
+import LanguageSelect from '@astrojs/starlight/components/LanguageSelect.astro';
+import Search from '@astrojs/starlight/components/Search.astro';
+import SiteTitle from '@astrojs/starlight/components/SiteTitle.astro';
+import SocialIcons from '@astrojs/starlight/components/SocialIcons.astro';
+import ThemeSelect from '@astrojs/starlight/components/ThemeSelect.astro';
 
 const shouldRenderSearch =
 	config.pagefind || config.components.Search !== '@astrojs/starlight/components/Search.astro';
@@ -48,6 +48,10 @@ function isActive(href: string) {
   return currentPath.startsWith(href.replace(/\/$/, ''));
 }
 
+function isCurrent(href: string) {
+  return currentPath.replace(/\/$/, '') === href.replace(/\/$/, '');
+}
+
 function isNavActive(link: (typeof navLinks)[number]) {
   return isActive(link.href) || link.children?.some((child) => isActive(child.href));
 }
@@ -65,6 +69,8 @@ function isNavActive(link: (typeof navLinks)[number]) {
         <a
           href={link.href}
           class:list={['nav-link', { active: isNavActive(link) }]}
+          aria-current={isCurrent(link.href) ? 'page' : undefined}
+          aria-haspopup={link.children ? 'true' : undefined}
         >
           {link.label}
           {link.children && (
@@ -76,7 +82,11 @@ function isNavActive(link: (typeof navLinks)[number]) {
         {link.children && (
           <div class="dropdown">
             {link.children.map((child) => (
-              <a href={child.href} class:list={['dropdown-link', { active: isActive(child.href) }]}>
+              <a
+                href={child.href}
+                class:list={['dropdown-link', { active: isActive(child.href) }]}
+                aria-current={isCurrent(child.href) ? 'page' : undefined}
+              >
                 {child.label}
               </a>
             ))}
@@ -121,7 +131,13 @@ function isNavActive(link: (typeof navLinks)[number]) {
 </div>
 
 {/* Mobile drawer — only meaningful below `lg`; hidden via CSS otherwise */}
-<div id="zd-mobile-nav" class="zd-mobile-nav lg:sl-hidden print:hidden" data-zd-open="false">
+<div
+  id="zd-mobile-nav"
+  class="zd-mobile-nav lg:sl-hidden print:hidden"
+  data-zd-open="false"
+  aria-hidden="true"
+  inert
+>
   <nav aria-label="Mobile primary">
     <ul class="zd-mobile-list">
       {navLinks.map((link) => (
@@ -137,7 +153,11 @@ function isNavActive(link: (typeof navLinks)[number]) {
               <ul class="zd-mobile-sublist">
                 {link.children.map((child) => (
                   <li>
-                    <a href={child.href} class:list={['zd-mobile-sublink', { active: isActive(child.href) }]}>
+                    <a
+                      href={child.href}
+                      class:list={['zd-mobile-sublink', { active: isActive(child.href) }]}
+                      aria-current={isCurrent(child.href) ? 'page' : undefined}
+                    >
                       {child.label}
                     </a>
                   </li>
@@ -145,7 +165,11 @@ function isNavActive(link: (typeof navLinks)[number]) {
               </ul>
             </details>
           ) : (
-            <a href={link.href} class:list={['zd-mobile-link', { active: isActive(link.href) }]}>
+            <a
+              href={link.href}
+              class:list={['zd-mobile-link', { active: isActive(link.href) }]}
+              aria-current={isCurrent(link.href) ? 'page' : undefined}
+            >
               {link.label}
             </a>
           )}
@@ -167,44 +191,92 @@ function isNavActive(link: (typeof navLinks)[number]) {
 
 <script>
   class ZdNavToggle extends HTMLElement {
+    abortController: AbortController | undefined;
+
     connectedCallback() {
       const btn = this.querySelector('button');
       const drawer = document.getElementById('zd-mobile-nav');
       if (!btn || !drawer) return;
+      this.abortController?.abort();
+      this.abortController = new AbortController();
+      const { signal } = this.abortController;
 
-      const setOpen = (open: boolean) => {
+      const focusableSelector = [
+        'a[href]',
+        'button:not([disabled])',
+        'summary',
+        'select:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(',');
+
+      const setOpen = (open: boolean, restoreFocus = false) => {
         btn.setAttribute('aria-expanded', String(open));
+        btn.setAttribute('aria-label', open ? 'Close navigation menu' : 'Open navigation menu');
         drawer.setAttribute('data-zd-open', String(open));
+        drawer.setAttribute('aria-hidden', String(!open));
+        drawer.toggleAttribute('inert', !open);
         document.body.toggleAttribute('data-zd-mobile-nav-open', open);
+        if (open) {
+          requestAnimationFrame(() => drawer.querySelector<HTMLElement>(focusableSelector)?.focus());
+        } else if (restoreFocus) {
+          btn.focus();
+        }
       };
 
       btn.addEventListener('click', () => {
         const open = btn.getAttribute('aria-expanded') !== 'true';
-        setOpen(open);
-      });
+        setOpen(open, !open);
+      }, { signal });
 
       // Close on link click inside drawer
       drawer.addEventListener('click', (e) => {
         const target = e.target as HTMLElement;
         if (target.closest('a')) setOpen(false);
-      });
+      }, { signal });
 
-      // Close on Escape
-      document.addEventListener('keyup', (e) => {
-        if (e.key === 'Escape' && btn.getAttribute('aria-expanded') === 'true') {
-          setOpen(false);
-          btn.focus();
+      // Keep keyboard focus inside the open drawer and restore it on Escape.
+      document.addEventListener('keydown', (e) => {
+        if (btn.getAttribute('aria-expanded') !== 'true') return;
+        if (e.key === 'Escape') {
+          e.preventDefault();
+          setOpen(false, true);
+          return;
         }
-      });
+        if (e.key !== 'Tab') return;
+
+        const focusable = [btn, ...drawer.querySelectorAll<HTMLElement>(focusableSelector)]
+          .filter((element) => !element.hasAttribute('disabled') && element.getClientRects().length > 0);
+        if (!focusable.length) return;
+        const first = focusable[0];
+        const last = focusable.at(-1);
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault();
+          first.focus();
+        }
+      }, { signal });
 
       // Close when resizing back to desktop (>= 72rem = 1152px)
       const mql = window.matchMedia('(min-width: 72rem)');
       mql.addEventListener('change', (e) => {
         if (e.matches) setOpen(false);
-      });
+      }, { signal });
+
+      // Starlight uses its sidebar menu below 50rem. If this drawer was opened
+      // at a wider tablet width, close it before CSS hides its trigger.
+      const compactSidebar = window.matchMedia('(max-width: 49.99rem)');
+      compactSidebar.addEventListener('change', (e) => {
+        if (e.matches && document.documentElement.hasAttribute('data-has-sidebar')) setOpen(false);
+      }, { signal });
+    }
+
+    disconnectedCallback() {
+      this.abortController?.abort();
     }
   }
-  customElements.define('zd-nav-toggle', ZdNavToggle);
+  if (!customElements.get('zd-nav-toggle')) customElements.define('zd-nav-toggle', ZdNavToggle);
 </script>
 
 <style>
@@ -307,13 +379,25 @@ function isNavActive(link: (typeof navLinks)[number]) {
     z-index: 100;
   }
 
-  .nav-item.has-dropdown:hover .dropdown {
+  .nav-item.has-dropdown:hover .dropdown,
+  .nav-item.has-dropdown:focus-within .dropdown {
     display: flex;
     flex-direction: column;
   }
 
-  .nav-item.has-dropdown:hover .chevron {
+  .nav-item.has-dropdown:hover .chevron,
+  .nav-item.has-dropdown:focus-within .chevron {
     transform: rotate(180deg);
+  }
+
+  .nav-link:focus-visible,
+  .dropdown-link:focus-visible,
+  .zd-menu-btn:focus-visible,
+  .zd-mobile-link:focus-visible,
+  .zd-mobile-sublink:focus-visible,
+  .zd-mobile-item > details > summary:focus-visible {
+    outline: 2px solid var(--sl-color-accent);
+    outline-offset: 2px;
   }
 
   .dropdown-link {
@@ -357,8 +441,8 @@ function isNavActive(link: (typeof navLinks)[number]) {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.75rem;
+    height: 2.75rem;
     padding: 0;
     border: 1px solid var(--sl-color-gray-5);
     border-radius: 0.375rem;
@@ -481,6 +565,16 @@ function isNavActive(link: (typeof navLinks)[number]) {
     align-items: center;
     gap: 1rem;
     flex-wrap: wrap;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .nav-link,
+    .chevron,
+    .dropdown-link,
+    .zd-menu-btn,
+    .zd-mobile-nav {
+      transition: none;
+    }
   }
 </style>
 

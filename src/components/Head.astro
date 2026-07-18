@@ -1,6 +1,13 @@
 ---
 import socialPreviews from '../generated/social-previews.json';
 
+interface SocialPreview {
+  image: string;
+  alt: string;
+  width: number;
+  height: number;
+}
+
 const siteUrl = 'https://zeptodb.com';
 const description =
   'ZeptoDB is an Action-Outcome Memory database for Physical AI and robotic agents, connecting robot telemetry, prior actions, outcomes, and replayable evidence.';
@@ -29,9 +36,11 @@ const pageUrl = new URL(Astro.url.pathname, siteUrl).href;
 const isBlogPost = /^\/blog\/[^/]+\/$/.test(pathname);
 const isResearchPage = pathname.startsWith('/research/');
 const isExperimentPage = pathname.startsWith('/experiments/');
+const isExperimentIndex = pathname === '/experiments/';
 const ogType = isBlogPost || isResearchPage || isExperimentPage ? 'article' : 'website';
 const publishedAt = pageData.publishedAt?.toISOString();
-const socialPreview = socialPreviews[pathname] || socialPreviews[decodeURIComponent(pathname)];
+const socialPreviewIndex = socialPreviews as Record<string, SocialPreview>;
+const socialPreview = socialPreviewIndex[pathname] || socialPreviewIndex[decodeURIComponent(pathname)];
 const ogImage = new URL(socialPreview?.image || '/og-default.png', Astro.site);
 const ogImageAlt = socialPreview?.alt || 'ZeptoDB: Action-Outcome Memory for Physical AI';
 const gaMeasurementId = import.meta.env.PUBLIC_GA_MEASUREMENT_ID?.trim();
@@ -81,6 +90,16 @@ if (pathname === '/') {
       'Zero-copy Python integration',
     ],
     publisher: { '@id': `${siteUrl}/#organization` },
+  });
+} else if (isExperimentIndex) {
+  graph.push({
+    '@type': 'CollectionPage',
+    '@id': `${pageUrl}#collection`,
+    name: pageTitle,
+    description: pageDescription,
+    url: pageUrl,
+    isPartOf: { '@id': `${siteUrl}/#website` },
+    inLanguage: 'en',
   });
 } else if (isBlogPost || isResearchPage || isExperimentPage) {
   graph.push({
@@ -139,11 +158,11 @@ const resolvedHead = routeData.head.map((item) => {
 <meta name="twitter:image:alt" content={ogImageAlt} />
 {googleSiteVerification && <meta name="google-site-verification" content={googleSiteVerification} />}
 {bingSiteVerification && <meta name="msvalidate.01" content={bingSiteVerification} />}
-<script type="application/ld+json" set:html={jsonLd} />
+<script is:inline type="application/ld+json" set:html={jsonLd} />
 
 {gaMeasurementId && (
   <>
-    <script define:vars={{ gaMeasurementId }}>
+    <script is:inline define:vars={{ gaMeasurementId }}>
       (() => {
         if (window.__zeptoAnalyticsBound) return;
         window.__zeptoAnalyticsBound = true;

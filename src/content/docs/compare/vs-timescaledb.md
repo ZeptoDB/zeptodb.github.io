@@ -3,54 +3,48 @@ title: "ZeptoDB vs TimescaleDB"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB and TimescaleDB — microsecond time-series and Agent Memory vs PostgreSQL extension"
+description: "Compare ZeptoDB and TimescaleDB by architecture, SQL workflow, time-series features, and operational fit."
 ---
 
-## Overview
+## Scope
 
-TimescaleDB extends PostgreSQL with time-series capabilities. ZeptoDB is a purpose-built in-memory time-series engine delivering lower latency for real-time workloads, with an Agent Memory layer for context retrieval, prompt cache, and AgentOps telemetry.
+This page compares architectural fit, not benchmark scores. TimescaleDB extends PostgreSQL for time-series workloads; ZeptoDB is a separate time-series engine with an in-memory hot path and an Action-Outcome/Agent Memory layer.
+
+**Last verified:** 2026-07-18
+
+**Version scope:** ZeptoDB means the exact source SHA recorded by the current build in [`docs-sync.json`](/docs-sync.json). TimescaleDB means the continuously updated official documentation accessed on the date above, not an asserted extension patch release; confirm every feature against the version and PostgreSQL release you will deploy.
 
 ---
 
-## Feature Comparison
+## Architecture and workflow
 
-| | **ZeptoDB** | **TimescaleDB** |
+| Decision area | **ZeptoDB** | **TimescaleDB** |
 |---|---|---|
-| **Architecture** | Purpose-built in-memory engine | PostgreSQL extension |
-| **Query Latency** | **272μs** (1M rows) | ~10ms |
-| **Ingestion** | **5.52M events/sec** | ~50K events/sec |
-| **Query Language** | Standard SQL | PostgreSQL SQL |
-| **ASOF JOIN** | ✓ (native, optimized) | ✗ (requires LATERAL JOIN workaround) |
-| **Window Functions** | ✓ + EMA, VWAP built-in | PostgreSQL window functions |
-| **xbar (time bucketing)** | ✓ | `time_bucket()` |
-| **Python Zero-Copy** | **522ns** | psycopg2 (~ms) |
-| **Agent Memory** | Native memory + exact/semantic cache layer | Separate stack required |
-| **JIT Compilation** | LLVM JIT | PostgreSQL JIT (limited) |
-| **SIMD** | Highway (AVX2/512, NEON) | ✗ |
-| **Continuous Aggregates** | Window functions | ✓ (materialized) |
-| **Compression** | Parquet (columnar) | Row-level compression |
-| **Ecosystem** | Growing | Full PostgreSQL ecosystem |
-| **License** | BUSL-1.1, free Community | Apache 2.0 (Community) / Proprietary (Cloud) |
+| **Architecture** | Purpose-built time-series engine | PostgreSQL extension |
+| **Query interface** | ZeptoDB SQL with native temporal operators | PostgreSQL SQL with TimescaleDB functions |
+| **Time partitioning** | Engine-managed hot data and historical Parquet paths | Hypertables partition time-series data into chunks |
+| **Temporal aggregation** | Window functions and time-series functions | `time_bucket` and continuous aggregates, alongside PostgreSQL features |
+| **Temporal alignment** | Native ASOF JOIN and Window JOIN | Build the required point-in-time query with supported PostgreSQL/TimescaleDB primitives and validate its plan |
+| **Ecosystem** | ZeptoDB APIs, Python path, and project integrations | PostgreSQL drivers, tools, extensions, and operational practices |
+| **Agent workflow** | Timeline evidence, retrieval/cache, and replay are part of ZeptoDB's product surface | Not evaluated in this comparison; verify the selected product and application stack |
 
----
+## Choose by workload
 
-## When to Choose ZeptoDB
+ZeptoDB is worth evaluating when native temporal joins, a bounded in-memory working set, and replayable agent context are primary design constraints.
 
-- Sub-millisecond latency is a hard requirement
-- ASOF JOIN for sensor, robot, or tick-by-tick alignment
-- Millions of events/sec ingestion throughput
-- Python zero-copy for ML feature stores and analytics pipelines
-- Agent Memory for operational agents that need timeline evidence and durable context
-- Multi-vertical footprint (Physical AI, industrial, automotive, energy, markets) where PostgreSQL would be a mismatch
+TimescaleDB is worth evaluating when PostgreSQL compatibility, existing PostgreSQL operations, relational joins and extensions, or continuous aggregates are more important than adopting a separate engine.
 
-## When TimescaleDB May Be Better
+## Verification notes
 
-- Existing PostgreSQL infrastructure and expertise
-- Need for full PostgreSQL ecosystem (PostGIS, extensions, etc.)
-- Continuous aggregates for pre-computed rollups
-- Preference for a hosted PostgreSQL-compatible service
-- Workloads where 10ms latency is acceptable
+- No shared ZeptoDB–TimescaleDB maximum-throughput or latency result is asserted here.
+- Test indexes, chunk sizing, retention, compression, durability, concurrency, and recovery using the deployment mode you intend to operate.
 
----
+## Primary sources
+
+- [ZeptoDB SQL reference](/api/sql_reference/)
+- [ZeptoDB benchmark scope and results](/benchmarks/)
+- [TimescaleDB hypertables](https://www.tigerdata.com/docs/use-timescale/latest/hypertables)
+- [TimescaleDB continuous aggregates](https://www.tigerdata.com/docs/use-timescale/latest/continuous-aggregates/create-a-continuous-aggregate)
+- [TimescaleDB time_bucket API](https://www.tigerdata.com/docs/api/latest/hyperfunctions/time_bucket)
 
 Get started with the [Quick Start Guide](/getting-started/quick_start/).

@@ -23,6 +23,13 @@ export const experimentRoutes = [
   ['021', 'physical_ai_shadow_supervisor_ab_experiment_021.md', '021-shadow-supervisor-ab'],
   ['022', 'physical_ai_supervisor_node_replacement_experiment_022.md', '022-supervisor-node-replacement'],
   ['023', 'physical_ai_supervisor_commit_ledger_stress_experiment_023.md', '023-commit-ledger-stress'],
+  ['024', 'physical_ai_agent_memory_eks_replay_experiment_024.md', '024-agent-memory-eks-replay'],
+  ['025', 'physical_ai_vision_retrieval_experiment_025.md', '025-real-vision-retrieval'],
+  ['026', 'physical_ai_vla_early_exit_experiment_026.md', '026-offline-vla-early-exit'],
+  ['027', 'physical_ai_vla_closed_loop_experiment_027.md', '027-closed-loop-vla-routing'],
+  ['028', 'physical_ai_vla_skip_region_experiment_028.md', '028-skip-region-discovery'],
+  ['029', 'physical_ai_vla_trajectory_fork_experiment_029.md', '029-trajectory-fork-causality'],
+  ['030', 'physical_ai_vla_safety_gate_experiment_030.md', '030-confidence-safety-dual-gate'],
 ].map(([key, sourceFile, slug]) => ({
   key,
   sourceFile,
@@ -43,8 +50,3 @@ export function experimentHref(key) {
 export function experimentRouteForSource(sourceFile) {
   return routesBySource.get(sourceFile);
 }
-
-export const experimentRedirects = Object.fromEntries([
-  ['/research/action-outcome-evidence/', '/experiments/'],
-  ...experimentRoutes.map((route) => [route.legacyHref, route.href]),
-]);
