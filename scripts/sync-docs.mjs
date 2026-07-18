@@ -8,31 +8,50 @@
  * Usage: node scripts/sync-docs.mjs [source_dir]
  */
 
-import { readdir, readFile, writeFile, mkdir, cp, rm } from 'node:fs/promises';
+import { readdir, readFile, writeFile, mkdir, cp, rm, rename } from 'node:fs/promises';
 import { join, relative, basename, dirname, posix } from 'node:path';
 import { existsSync } from 'node:fs';
-import { experimentRouteForSource } from '../src/data/experiment-routes.mjs';
+import { execFileSync } from 'node:child_process';
+import { createHash } from 'node:crypto';
+import { experimentRouteForSource, experimentRoutes } from '../src/data/experiment-routes.mjs';
+import { canonicalSourcePath, internalDocSources, publicDocSources } from '../src/data/public-docs.mjs';
 
+const ROOT = join(import.meta.dirname, '..');
 const SOURCE = process.argv[2] || process.env.ZEPTODB_DOCS_PATH || join(import.meta.dirname, '..', '..', 'zeptodb', 'docs');
-const DEST = join(import.meta.dirname, '..', 'src', 'content', 'docs');
+const DEST = join(ROOT, 'src', 'content', 'docs');
+const NEXT_DEST = `${DEST}-next-${process.pid}`;
+const BACKUP_DEST = `${DEST}-backup-${process.pid}`;
+const SYNC_MANIFEST = join(ROOT, 'public', 'docs-sync.json');
+const ALLOW_STALE_DOCS = process.env.ZEPTODB_ALLOW_STALE_DOCS === '1';
 
 const SKIP = new Set(['assets', 'requirements.txt', 'requirements']);
 // Directories that are internal-only (not for public docs site)
 const INTERNAL = new Set([
-  'business', 'devlog', 'design', 'bench', 'community', 'ops',
+  'business', 'devlog', 'design', 'bench', 'community', 'feeds', 'ops', 'usecases',
 ]);
-// Files we manage manually in the repo (don't overwrite)
-const MANUAL_FILES = new Set(['index.md']);
-// Standalone internal files to exclude (relative to docs root)
-const INTERNAL_FILES = new Set([
-  'backlog.md', 'completed.md', 'api_reference.md',
-  'brand_guidelines.md', 'parquet_s3_activation.md', 'web_ui.md',
-]);
+const MAPPED_EXPERIMENT_IDS = new Set(experimentRoutes.map((route) => route.key.match(/^\d{3}/)?.[0]).filter(Boolean));
 const PUBLIC_DOC_ALIASES = new Map([
   ['deployment/kubernetes_ops.md', 'operations/kubernetes_operations.md'],
   ['deployment/monitoring.md', 'operations/production_operations.md'],
   ['ops/rolling_upgrade.md', 'operations/rolling_upgrade.md'],
 ]);
+
+function visibilityForSource(rel) {
+  const normalized = canonicalSourcePath(rel);
+  if (normalized === 'index.md' || internalDocSources.has(normalized)) return 'internal';
+  if (publicDocSources.has(normalized)) return 'public';
+
+  if (/^research\/[^/]*_experiment_\d{3}\.md$/.test(normalized)) {
+    return experimentRouteForSource(basename(normalized)) ? 'public' : 'unclassified';
+  }
+
+  const resultId = normalized.startsWith('research/results/')
+    ? normalized.match(/_(\d{3})(?:_[^/]*)?\.md$/)?.[1]
+    : undefined;
+  if (resultId && MAPPED_EXPERIMENT_IDS.has(resultId)) return 'public';
+
+  return 'unclassified';
+}
 
 function extractTitle(content) {
   const match = content.match(/^#\s+(.+)$/m);
@@ -146,6 +165,8 @@ function setExperimentPresentation(content, rel) {
   if (!match) return content;
   let frontmatter = setFrontmatterField(match[1], 'template', 'splash');
   frontmatter = setFrontmatterField(frontmatter, 'tableOfContents', false);
+  const publishedAt = match[2].match(/^\*{0,2}Date\*{0,2}:\s*(\d{4}-\d{2}-\d{2})\s*$/mi)?.[1];
+  if (publishedAt) frontmatter = setFrontmatterField(frontmatter, 'publishedAt', publishedAt);
   return `---\n${frontmatter}\n---\n\n${match[2].replace(/^\n+/, '')}`;
 }
 
@@ -212,7 +233,7 @@ function rewriteLinks(content, isKorean, rel) {
       targetRel = PUBLIC_DOC_ALIASES.get(normalizedTarget) || targetRel;
       const publicTarget = targetRel.toLowerCase();
       const topDirectory = publicTarget.split('/')[0];
-      const isInternal = INTERNAL.has(topDirectory) || INTERNAL_FILES.has(publicTarget);
+      const isInternal = INTERNAL.has(topDirectory) || visibilityForSource(targetRel) !== 'public';
 
       if (targetRel.startsWith('../') || isInternal) {
         const repoPath = targetRel.startsWith('../')
@@ -242,7 +263,7 @@ function rewriteLinks(content, isKorean, rel) {
 
   return rewrittenDocs.replace(
     /\]\((\.\.?\/[^)#]+)(#[^)]*)?\)/g,
-    (match, rawPath, anchor = '') => {
+    (_match, rawPath, anchor = '') => {
       const repoPath = posix.normalize(posix.join('docs', posix.dirname(rel), rawPath));
       const githubView = rawPath.endsWith('/') ? 'tree' : 'blob';
       return `](https://github.com/zeptodb/zeptodb/${githubView}/main/${repoPath}${anchor})`;
@@ -311,6 +332,12 @@ function sanitizePublicDocs(content, rel) {
     .join('\n');
 
   const normalizedRel = rel.toLowerCase();
+  if (normalizedRel === 'api/python_reference.md') {
+    out = out
+      .replace(/\(#apex--pybind11-binding\)/g, '(#zeptodb--pybind11-binding)')
+      .replace(/\(#zeptopipeline\)/g, '(#zeptodbpipeline)')
+      .replace(/\(#zeptosqlqueryexecutor\)/g, '(#zeptodbsqlqueryexecutor)');
+  }
   if (normalizedRel === 'api/http_reference.md') {
     out = out.replace(/^\| `POST` \| `\/admin\/license\/trial`.*\n?/gm, '');
     out = stripSection(out, /^#{2,6}\s+`?POST \/admin\/license\/trial`?|^#{2,6}\s+.*Generate 30-day trial/i);
@@ -333,101 +360,186 @@ async function getAllMdFiles(dir, base = dir) {
   const files = [];
   for (const entry of entries) {
     const full = join(dir, entry.name);
-    if (SKIP.has(entry.name)) continue;
+    const normalizedName = entry.name.toLowerCase();
+    if (SKIP.has(normalizedName)) continue;
+    if (entry.isSymbolicLink()) {
+      throw new Error(`Symbolic links are not allowed in public docs source: ${relative(base, full)}`);
+    }
     if (entry.isDirectory()) {
-      if (INTERNAL.has(entry.name)) continue;
+      if (INTERNAL.has(normalizedName)) continue;
       files.push(...await getAllMdFiles(full, base));
-    } else if (entry.name.endsWith('.md')) {
+    } else if (normalizedName.endsWith('.md')) {
       files.push({ full, rel: relative(base, full) });
     }
   }
   return files;
 }
 
+function sourceGitOutput(args) {
+  try {
+    return execFileSync('git', ['-C', dirname(SOURCE), ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
+function siteGitOutput(args) {
+  try {
+    return execFileSync('git', ['-C', ROOT, ...args], {
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+    }).trim();
+  } catch {
+    return '';
+  }
+}
+
+function assertGitSha(value, label) {
+  if (!/^[0-9a-f]{40}$/i.test(value)) throw new Error(`${label} must be an exact 40-character Git SHA; received ${value || 'empty'}`);
+}
+
+async function copyManualSiteContent() {
+  const trackedOrVisible = siteGitOutput([
+    'ls-files', '--cached', '--others', '--exclude-standard', '--', 'src/content/docs',
+  ]).split('\n').filter(Boolean);
+
+  for (const repoRel of trackedOrVisible) {
+    const src = join(ROOT, repoRel);
+    if (!existsSync(src)) continue;
+    const destRel = relative(DEST, src);
+    if (destRel.startsWith('..')) throw new Error(`Manual content escaped docs root: ${repoRel}`);
+    const target = join(NEXT_DEST, destRel);
+    await mkdir(dirname(target), { recursive: true });
+    await cp(src, target);
+  }
+}
+
+async function replaceDestination() {
+  await rm(BACKUP_DEST, { recursive: true, force: true });
+  const hadDestination = existsSync(DEST);
+  if (hadDestination) await rename(DEST, BACKUP_DEST);
+  try {
+    await rename(NEXT_DEST, DEST);
+  } catch (error) {
+    if (hadDestination && existsSync(BACKUP_DEST) && !existsSync(DEST)) await rename(BACKUP_DEST, DEST);
+    throw error;
+  }
+  await rm(BACKUP_DEST, { recursive: true, force: true });
+}
+
+async function writeSyncManifest(enCount, koCount, documents) {
+  const actualSourceSha = sourceGitOutput(['rev-parse', 'HEAD']);
+  assertGitSha(actualSourceSha, 'Checked-out source SHA');
+  const expectedSourceSha = process.env.ZEPTODB_SOURCE_SHA || actualSourceSha;
+  assertGitSha(expectedSourceSha, 'Source SHA');
+  if (actualSourceSha !== expectedSourceSha) {
+    throw new Error(`Checked-out source SHA ${actualSourceSha} does not match requested SHA ${expectedSourceSha}`);
+  }
+  const siteSha = siteGitOutput(['rev-parse', 'HEAD']);
+  assertGitSha(siteSha, 'Site SHA');
+  const sourceRef = process.env.ZEPTODB_SOURCE_REF
+    || sourceGitOutput(['symbolic-ref', '--short', '-q', 'HEAD'])
+    || 'detached';
+  const sourceDirty = Boolean(sourceGitOutput(['status', '--porcelain', '--', basename(SOURCE)]));
+  const siteDirty = Boolean(siteGitOutput(['status', '--porcelain']));
+  const manifest = {
+    schemaVersion: 2,
+    generatedAt: new Date().toISOString(),
+    siteRepository: 'https://github.com/ZeptoDB/zeptodb.github.io',
+    siteSha,
+    siteDirty,
+    sourceRepository: 'https://github.com/ZeptoDB/ZeptoDB',
+    sourceSha: expectedSourceSha,
+    sourceRef,
+    sourceDirty,
+    englishDocuments: enCount,
+    koreanDocuments: koCount,
+    totalDocuments: enCount + koCount,
+    documents: documents.sort((a, b) => a.destination.localeCompare(b.destination)),
+  };
+  await mkdir(dirname(SYNC_MANIFEST), { recursive: true });
+  await writeFile(SYNC_MANIFEST, `${JSON.stringify(manifest, null, 2)}\n`);
+}
+
 async function main() {
+  await rm(SYNC_MANIFEST, { force: true });
   if (!existsSync(SOURCE)) {
-    console.warn(`Source not found: ${SOURCE}. Keeping existing src/content/docs.`);
+    const message = `Source not found: ${SOURCE}. Refusing to build from stale generated docs.`;
+    if (!ALLOW_STALE_DOCS) throw new Error(`${message} Set ZEPTODB_ALLOW_STALE_DOCS=1 only for an intentional stale-content preview.`);
+    console.warn(`${message} ZEPTODB_ALLOW_STALE_DOCS=1 is set, so existing src/content/docs will be kept.`);
     return;
   }
 
-  // Clean dest (preserve manually managed files)
-  // We re-create from scratch each time, but restore manual files after
-  const manualDir = join(import.meta.dirname, '..', 'src', 'content', 'docs-manual');
-  // Save manual files
-  const manualEntries = [
-    'index.mdx', 'docs.mdx', 'features.mdx', 'integrations.mdx',
-    'security.mdx', 'community.mdx', 'about.mdx', 'experiments/index.mdx',
-  ];
-  const manualDirs = ['use-cases', 'compare', 'benchmarks', 'blog', 'research'];
-  for (const f of manualEntries) {
-    const src = join(DEST, f);
-    if (existsSync(src)) {
-      const manualTarget = join(manualDir, f);
-      await mkdir(dirname(manualTarget), { recursive: true });
-      await cp(src, manualTarget);
-    }
-  }
-  for (const d of manualDirs) {
-    const src = join(DEST, d);
-    if (existsSync(src)) {
-      await mkdir(manualDir, { recursive: true });
-      await cp(src, join(manualDir, d), { recursive: true });
-    }
-  }
-  if (existsSync(DEST)) await rm(DEST, { recursive: true });
-  await mkdir(DEST, { recursive: true });
-  // Restore manual files
-  if (existsSync(manualDir)) {
-    const entries = await readdir(manualDir, { withFileTypes: true });
-    for (const entry of entries) {
-      await cp(join(manualDir, entry.name), join(DEST, entry.name), { recursive: entry.isDirectory() });
-    }
-    await rm(manualDir, { recursive: true });
-  }
+  await rm(NEXT_DEST, { recursive: true, force: true });
+  await mkdir(NEXT_DEST, { recursive: true });
+  await copyManualSiteContent();
 
   const files = await getAllMdFiles(SOURCE);
+  const unclassified = files
+    .map(({ rel }) => rel.replaceAll('\\', '/'))
+    .filter((rel) => visibilityForSource(rel) === 'unclassified')
+    .sort();
+  if (unclassified.length) {
+    throw new Error(`Unclassified source docs must be approved or marked internal:\n- ${unclassified.join('\n- ')}`);
+  }
+
   let enCount = 0, koCount = 0;
+  const documents = [];
+  const destinationOwners = new Map();
 
   for (const { full, rel } of files) {
+    if (visibilityForSource(rel) !== 'public') continue;
     const content = await readFile(full, 'utf-8');
     const publicRel = publicDestinationRel(rel);
     const name = basename(publicRel);
     const dir = dirname(publicRel);
+    const isKorean = /(?:\.ko|_ko)\.md$/i.test(name);
+    const outputName = isKorean
+      ? name.replace(/(?:\.ko|_ko)\.md$/i, '.md').toLowerCase()
+      : name.toLowerCase();
+    const destPath = isKorean
+      ? join(NEXT_DEST, 'ko', dir.toLowerCase(), outputName)
+      : join(NEXT_DEST, dir.toLowerCase(), outputName);
+    const destination = relative(NEXT_DEST, destPath).replaceAll('\\', '/');
+    const existingOwner = destinationOwners.get(destination);
+    if (existingOwner) throw new Error(`Public doc destination collision: ${existingOwner} and ${rel} both map to ${destination}`);
+    destinationOwners.set(destination, rel);
 
-    const normalizedRel = rel.toLowerCase();
-
-    // Skip root index.md — we have a custom index.mdx
-    if (normalizedRel === 'index.md') continue;
-    // Skip internal standalone files
-    if (INTERNAL_FILES.has(normalizedRel)) continue;
-
-    if (name.endsWith('.ko.md')) {
-      // Korean → ko/ subdirectory, strip .ko
-      const enName = name.replace('.ko.md', '.md').toLowerCase();
-      const destPath = join(DEST, 'ko', dir.toLowerCase(), enName);
-      await mkdir(dirname(destPath), { recursive: true });
-      const rewritten = sanitizePublicDocs(rewriteLinks(content, true, rel), rel);
-      const withFrontmatter = addFrontmatter(rewritten, enName.replace('.md', ''), rel);
-      await writeFile(destPath, setExperimentPresentation(withFrontmatter, publicRel));
-      koCount++;
-    } else {
-      // English — lowercase filename
-      const destPath = join(DEST, dir.toLowerCase(), name.toLowerCase());
-      await mkdir(dirname(destPath), { recursive: true });
-      const rewritten = sanitizePublicDocs(rewriteLinks(content, false, rel), rel);
-      const withFrontmatter = addFrontmatter(rewritten, name.replace('.md', ''), rel);
-      await writeFile(destPath, setExperimentPresentation(withFrontmatter, publicRel));
-      enCount++;
-    }
+    const rewritten = sanitizePublicDocs(rewriteLinks(content, isKorean, rel), rel);
+    const withFrontmatter = addFrontmatter(rewritten, outputName.replace('.md', ''), rel);
+    const renderedSource = setExperimentPresentation(withFrontmatter, publicRel);
+    await mkdir(dirname(destPath), { recursive: true });
+    await writeFile(destPath, renderedSource);
+    documents.push({
+      source: rel.replaceAll('\\', '/'),
+      destination,
+      sha256: createHash('sha256').update(renderedSource).digest('hex'),
+    });
+    if (isKorean) koCount++;
+    else enCount++;
   }
 
   // Copy assets
   const assetsDir = join(SOURCE, 'assets');
   if (existsSync(assetsDir)) {
-    await cp(assetsDir, join(DEST, '_assets'), { recursive: true });
+    await cp(assetsDir, join(NEXT_DEST, '_assets'), { recursive: true });
   }
+
+  await replaceDestination();
+  await writeSyncManifest(enCount, koCount, documents);
 
   console.log(`✓ Synced ${enCount} EN + ${koCount} KO docs → src/content/docs/`);
 }
 
-main().catch(console.error);
+main().catch(async (error) => {
+  await rm(NEXT_DEST, { recursive: true, force: true }).catch(() => {});
+  if (existsSync(BACKUP_DEST) && !existsSync(DEST)) {
+    await rename(BACKUP_DEST, DEST).catch(() => {});
+  }
+  await rm(BACKUP_DEST, { recursive: true, force: true }).catch(() => {});
+  console.error(error);
+  process.exitCode = 1;
+});

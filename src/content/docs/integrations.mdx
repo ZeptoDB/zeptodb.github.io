@@ -53,24 +53,22 @@ ZeptoDB does not call LLM or embedding providers from the server. Applications o
   <Card title="Kafka" icon="star">
     Built-in Kafka consumer with batch ingestion. Up to 3.2M events/sec from Kafka topics. Useful for operational event streams and AgentOps pipelines.
 
-    [Feed Handler Guide →](/feeds/feed_handler_guide/)
+    [C++ Reference →](/api/cpp_reference/#feed-handlers)
 
     > Kafka connector behavior should be validated in your deployment shape before relying on it.
   </Card>
   <Card title="FIX 4.4" icon="star">
     Native FIX parser for market-data and order feeds. Trading agents can pair tick data with strategy memory and decision replay.
 
-    [Feed Handlers →](/feeds/feed_handler_complete/)
+    [C++ Reference →](/api/cpp_reference/#feed-handlers)
   </Card>
   <Card title="ITCH" icon="star">
     NASDAQ ITCH handler for L3 order-book data. Lossless, nanosecond-timestamped, and ready for temporal market-memory workflows.
 
-    [Feed Handlers →](/feeds/feed_handler_complete/)
+    [C++ Reference →](/api/cpp_reference/#feed-handlers)
   </Card>
   <Card title="Binance WebSocket" icon="star">
-    Real-time crypto market data ingestion for agents watching multi-exchange state.
-
-    [Feed Handlers →](/feeds/feed_handler_complete/)
+    Planned connector. Applications can currently normalize exchange events and ingest them through the documented HTTP or C++ paths.
   </Card>
   <Card title="AWS Kinesis" icon="star">
     Optional `KinesisConsumer` for AWS-native streams, reusing Kafka/MQTT tick decoders with table-aware local and cluster routing.

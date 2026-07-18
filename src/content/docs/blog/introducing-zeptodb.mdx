@@ -6,9 +6,9 @@ publishedAt: 2026-07-17
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-The time-series database market has a gap. kdb+ delivers microsecond performance but costs $100K+/year and requires learning a proprietary language. ClickHouse and InfluxDB are affordable but operate at millisecond latency — 100-1000x slower for real-time workloads. None combine live time-series evidence, agent-scoped memory, prompt cache, and zero-copy Python in one operational layer.
+Time-series systems make different trade-offs around query language, storage, latency, ecosystem, and operations. ZeptoDB focuses on a specific combination: live time-series evidence, agent-scoped memory, prompt cache, replay, and an in-process Python path in one operational layer.
 
-ZeptoDB closes this gap.
+ZeptoDB is built for that combination.
 
 Today, that means more than fast tick or sensor queries. ZeptoDB turns live operational timelines into memory for AI agents: raw events, retrieved context, cache hits, model calls, tool calls, and decisions stay replayable with SQL.
 
@@ -26,25 +26,20 @@ Feed Handler → MPMC Ring Buffer → Column Store → SIMD/JIT Query Engine
                Parquet HDB (S3/NFS)
 ```
 
-Every layer is designed around a single principle: **zero-copy, zero-allocation on the hot path**.
+Every layer is designed to minimize copying and allocation on the hot path.
 
 - **Ingestion**: Lock-free MPMC ring buffer with Highway SIMD batch copy — 5.52M events/sec
-- **Storage**: Arena allocator with columnar layout, no malloc during ingestion or query
+- **Storage**: Arena allocator with a columnar layout designed to limit hot-path allocation
 - **Execution**: LLVM JIT compiles SQL to native code, Highway SIMD for vectorized aggregation
 - **Python**: pybind11 zero-copy — NumPy arrays reference engine memory directly (522ns)
 
 ---
 
-## How It Compares
+## How It Fits
 
-| | kdb+ | ClickHouse | InfluxDB | ZeptoDB |
-|---|---|---|---|---|
-| Latency | μs | ms | ms | **μs** |
-| Ingestion | ~5M/sec | 100K/sec | 50K/sec | **5.52M/sec** |
-| SQL | ✗ (q lang) | ✓ | InfluxQL | **✓ Standard SQL** |
-| Python | IPC | — | — | **522ns zero-copy** |
-| ASOF JOIN | ✓ | ✗ | ✗ | **✓** |
-| License | $100K+/yr | OSS | OSS | **BUSL-1.1, free Community** |
+ZeptoDB's project benchmarks describe ZeptoDB runs; they are not automatically comparable with numbers published for another system under different conditions. The current [Benchmarks](/benchmarks/) page contains no selection-grade cross-vendor performance ranking.
+
+Use the architecture guides for current, source-linked orientation: [kdb+](/compare/vs-kdb/), [ClickHouse](/compare/vs-clickhouse/), [InfluxDB 3](/compare/vs-influxdb/), and [TimescaleDB](/compare/vs-timescaledb/). For a selection decision, reproduce the target schema, retention, durability, concurrency, recovery, and failure behavior on the same hardware.
 
 ---
 
@@ -55,7 +50,7 @@ Every layer is designed around a single principle: **zero-copy, zero-allocation 
     ASOF JOIN, VWAP, EMA, xbar — the temporal operations you need, in standard SQL. Python zero-copy for notebooks.
   </Card>
   <Card title="Trading Desks" icon="rocket">
-    5.52M ticks/sec ingestion with built-in FIX 4.4, ITCH, and exchange WebSocket parsers.
+    Evaluate the measured ingestion path and the FIX, ITCH, Kafka, or WebSocket connector actually included and tested in your selected build.
   </Card>
   <Card title="IoT / Robotics" icon="seti:clock">
     10KHz sensor ingestion, Window JOIN for sensor fusion, Parquet HDB for historical replay.

@@ -3,7 +3,7 @@ title: "Benchmarks"
 template: splash
 prev: false
 next: false
-description: "ZeptoDB benchmark criteria and results for 5.52M events/sec ingestion, 272us query latency, 522ns Python zero-copy, and millisecond Agent Memory search and context assembly."
+description: "ZeptoDB benchmark criteria, reproducibility notes, measured results, and publication limits."
 ---
 
 Reproducible benchmarks on commodity hardware. The same engine, the same numbers — whether the input is tick data, PMU streams, factory sensors, or vehicle telemetry. All numbers measured on a single node unless the section explicitly says otherwise.
@@ -66,15 +66,11 @@ The P9 logistics proof suite defines repeatable workload shapes for AGV, sorter,
 
 Pass criteria include sustained target ingest for 10 minutes, no decode or ingest failures, p50/p99 query latency per workload, deterministic result parity, and matching result counts across x86_64 and aarch64 runs.
 
-### Factory 10KHz live competitor proof
+### Cross-system factory 10 kHz evidence status
 
-The factory 10KHz proof was rerun against ZeptoDB, InfluxDB, and TimescaleDB with a fixed 10,000 rows/sec target for 60 seconds. This is a correctness and sustained-rate proof, not a maximum-throughput shootout.
+An internal fixed-rate run dated 2026-06-03 used a local ZeptoDB server, InfluxDB 2.7, and TimescaleDB 2.15.3 on PostgreSQL 16. The durable public record does not yet include the ZeptoDB source SHA, host specification, durability settings, dataset artifact, or raw logs. Its numeric table is therefore withheld from this site and must not be used as cross-vendor selection evidence.
 
-| System | Result | Duration | Inserted | Verified | Failed | Observed rows/sec |
-|--------|--------|---------:|---------:|---------:|-------:|------------------:|
-| ZeptoDB | PASS | 60.000s | 600,000 | 600,000 | 0 | 9,999.98 |
-| InfluxDB | PASS | 60.000s | 600,000 | 600,000 | 0 | 9,999.98 |
-| TimescaleDB | PASS | 60.008s | 600,000 | 600,000 | 0 | 9,998.68 |
+Republish the result only after one public artifact bundle records the exact versions and SHAs, hardware, dataset generator, command, configuration/durability settings, verification queries, and raw output for every system.
 
 For logistics query patterns, see [Logistics & Edge Automation](/use-cases/logistics/).
 
@@ -142,24 +138,20 @@ The ANN path now includes sparse projection, HNSW, and IVF candidate modes, plus
 
 ---
 
-## Comparison
+## External comparison policy
 
-These numbers summarize the operating envelope, not an audited vendor bake-off. Use the [benchmark criteria](#benchmark-criteria) above before comparing external results or republishing a single metric.
+This page reports ZeptoDB project measurements and clearly named shared-harness tests. It does not combine third-party vendor numbers gathered on different hardware, schemas, durability settings, or software versions.
 
-| | **ZeptoDB** | **kdb+** | **ClickHouse** | **TimescaleDB** | **InfluxDB** |
-|---|---|---|---|---|---|
-| Ingestion (events/sec) | **5.52M** | ~5M | 100K | 50K | 50K |
-| Point query latency | **272μs** | ~300μs | ~5ms | ~10ms | ~15ms |
-| ASOF JOIN | ✓ | ✓ | ✗ | ✗ | ✗ |
-| SQL | Standard | q lang | ✓ | ✓ | InfluxQL |
-| Python zero-copy | **522ns** | IPC (~ms) | — | — | — |
-| License cost | **Free Community (BUSL-1.1)** | $100K+/yr | Free | Free | Free |
+- No current section is a selection-grade cross-vendor performance ranking.
+- Figures on this page describe ZeptoDB runs only unless a future section links a complete shared-harness artifact bundle.
+- For architecture and feature orientation, use the [ClickHouse](/compare/vs-clickhouse/), [InfluxDB 3](/compare/vs-influxdb/), [TimescaleDB](/compare/vs-timescaledb/), and [kdb+](/compare/vs-kdb/) guides.
+- Before publishing a cross-vendor conclusion, run the same dataset, client, hardware, warm-up, concurrency, durability, and verification rules for every system and retain the raw artifacts.
 
 ---
 
-## EKS Multi-Node (3× r7i.2xlarge)
+## EKS multi-node acceptance targets
 
-Distributed benchmarks on EKS with 3 data nodes + 1 load generator, single AZ placement. Representative of fleet-scale telemetry, multi-venue tick capture, or multi-line sensor ingestion.
+The following values are engineering acceptance targets for the three-data-node test, not measured results by themselves. The paragraphs and tables that follow the target list report completed runs; publish a target as achieved only when its environment manifest and raw artifact are retained.
 
 | Scenario | Target | Notes |
 |----------|--------|-------|
@@ -170,9 +162,6 @@ Distributed benchmarks on EKS with 3 data nodes + 1 load generator, single AZ pl
 | Distributed ASOF JOIN | Sub-ms overhead | Cross-node timestamp alignment |
 | Failover recovery | **<15s** | HealthMonitor dead_timeout=10s + pod restart |
 | Linear scalability (1→2→3 nodes) | Near-linear | GROUP BY throughput scales with node count |
-
-Cluster: EKS `zepto-bench` (ap-northeast-2), K8s v1.35, Helm chart deployment.
-Cost: ~$12/run (2 hours) or ~$1.17/run with sleep/wake automation.
 
 The full EKS rebalance integrity run now passes Stage 5/6 across amd64 and arm64: each architecture verified 50/50 symbols after rebalance using cluster HTTP `SELECT`, stable table identifiers, and the QueryCoordinator path.
 

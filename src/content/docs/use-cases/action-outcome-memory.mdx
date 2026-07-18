@@ -62,7 +62,7 @@ edge event
 
 ZeptoDB's current path separates immediate edge behavior from fleet-wide learning:
 
-- **Edge-local memory** makes the immediate safety decision.
+- **Edge-local memory** supplies evidence and context to the application-level safety gate; the controller or operator makes the decision.
 - **Fleet-global memory** receives evidence later for audit, replay, and policy improvement.
 - **ACK ledgers** make delivery boundaries explicit.
 - **Commit ledgers** make supervisor decisions idempotent across replay and restart.

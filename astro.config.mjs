@@ -2,7 +2,17 @@
 import { defineConfig } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
-import { experimentRedirects } from './src/data/experiment-routes.mjs';
+import { existsSync } from 'node:fs';
+import { experimentRoutes } from './src/data/experiment-routes.mjs';
+
+// Only emit a legacy redirect when the exact source-backed canonical page exists.
+// This lets route compatibility land before a coordinated ZeptoDB docs change.
+const experimentRedirects = Object.fromEntries([
+  ['/research/action-outcome-evidence/', '/experiments/'],
+  ...experimentRoutes
+    .filter((route) => existsSync(new URL(`./src/content/docs/experiments/${route.slug}.md`, import.meta.url)))
+    .map((route) => [route.legacyHref, route.href]),
+]);
 
 export default defineConfig({
   site: 'https://zeptodb.com',
@@ -38,6 +48,7 @@ export default defineConfig({
           label: 'Start Here',
           items: [
             { label: 'Docs Home', slug: 'docs' },
+            { label: 'Experiment Hub', slug: 'experiments' },
             { label: 'Quick Start', slug: 'getting-started/quick_start' },
             { label: 'ROS 2 Setup', slug: 'operations/ros2_setup' },
             { label: 'ROS 2 Edge Deployment', slug: 'operations/ros2_edge_deployment' },
@@ -63,10 +74,6 @@ export default defineConfig({
         {
           label: 'Operations',
           autogenerate: { directory: 'operations' },
-        },
-        {
-          label: 'Ingestion & Feeds',
-          autogenerate: { directory: 'feeds' },
         },
         // ── Product pages in sidebar ──
         {

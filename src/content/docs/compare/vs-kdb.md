@@ -3,68 +3,61 @@ title: "ZeptoDB vs kdb+"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB and kdb+ — microsecond time-series, standard SQL, zero-copy Python, and Agent Memory"
+description: "Compare ZeptoDB and kdb+ by query language, temporal operations, storage workflow, and application fit."
 ---
 
-## Overview
+## Scope
 
-kdb+ is the historical benchmark for microsecond time-series — and has been the de-facto choice on trading desks for two decades. The same workloads are now showing up outside capital markets: Physical AI, autonomous systems, industrial control, and grid operations all need the same temporal primitives at the same latency.
+kdb+ and ZeptoDB both address ordered time-series workloads and expose concepts such as as-of joins, window joins, and time bucketing. They are not drop-in replacements: query semantics, types, storage layout, deployment, operations, and surrounding ecosystems differ.
 
-ZeptoDB targets that broader envelope. Comparable microsecond performance to kdb+, but on standard SQL, with a zero-copy path into Python, an Agent Memory layer for context/cache/replay, and a license model that doesn't gate adoption.
+This page is an architecture and migration-orientation guide, not a head-to-head benchmark or pricing comparison.
+
+**Last verified:** 2026-07-18
+
+**Version scope:** ZeptoDB means the exact source SHA recorded by the current build in [`docs-sync.json`](/docs-sync.json). kdb+ means the continuously updated KX q reference accessed on the date above, not an asserted runtime patch release; confirm semantics against the version you will deploy.
 
 ---
 
-## Feature Comparison
+## Architecture and workflow
 
-| | **ZeptoDB** | **kdb+** |
+| Decision area | **ZeptoDB** | **kdb+** |
 |---|---|---|
-| **Latency** | μs (272μs / 1M rows) | μs |
-| **Ingestion** | 5.52M events/sec | ~5M events/sec |
-| **Query Language** | Standard SQL | q (proprietary) |
-| **ASOF JOIN** | ✓ | ✓ |
-| **Window JOIN** | ✓ | ✓ |
-| **xbar / time bucketing** | ✓ | ✓ |
-| **EMA / VWAP** | ✓ | ✓ |
-| **Python Integration** | 522ns zero-copy | IPC (~ms latency) |
-| **Agent Memory** | Native memory + exact/semantic cache layer | Separate stack required |
-| **C++ API** | Native | C binding |
-| **SQL** | Full standard SQL | ✗ (q lang only) |
-| **JIT Compilation** | LLVM JIT | Interpreter |
-| **SIMD** | Highway (AVX2/512, NEON) | Limited |
-| **Historical DB** | Parquet on S3 | Splayed tables on disk |
-| **Clustering** | Multi-node with auto-sharding | Manual |
-| **Security** | TLS 1.3, RBAC, JWT, audit | Basic |
-| **License** | **BUSL-1.1, free Community** | **$100K+/year** |
+| **Primary query language** | SQL | q |
+| **As-of join** | `ASOF JOIN` in ZeptoDB SQL | `aj`, `aj0`, `ajf`, and `ajf0` variants in q |
+| **Window join** | `WINDOW JOIN` in ZeptoDB SQL | `wj` and `wj1` in q |
+| **Time bucketing** | `xbar(...)` in ZeptoDB SQL | `xbar` in q |
+| **Historical workflow** | In-memory hot data with Parquet historical paths | kdb+ database layouts and q-based historical workflows |
+| **Application integration** | C++ APIs and an in-process Python path | q APIs, IPC, and KX ecosystem integrations |
+| **Agent workflow** | Timeline evidence, retrieval/cache, and replay are part of ZeptoDB's product surface | Not evaluated in this comparison; verify the selected product and application stack |
 
----
+## Choose by workload
 
-## When to Choose ZeptoDB
+ZeptoDB is worth evaluating when SQL is the preferred interface, the application needs ZeptoDB's Python/C++ paths, or agent context and operational events should share one replayable timeline.
 
-- You want kdb+-class performance without the license cost
-- Your team knows SQL, not q
-- You need Python zero-copy for quant research
-- You want strategy memory, prompt cache, and AgentOps replay beside tick data
-- You want modern security (RBAC, JWT/OIDC, audit logging)
-- You need Parquet/S3 for cost-effective historical storage
+kdb+ is worth evaluating when the organization has established q applications, operational expertise, vendor relationships, or KX ecosystem dependencies.
 
-## When kdb+ May Still Fit
+## Migration orientation
 
-- Deep existing investment in q codebases
-- Vendor support contract is a hard requirement
-- Specific kdb+ ecosystem tools (KX Dashboards, etc.)
+The following mappings are conceptual starting points, not guaranteed syntactic or semantic equivalence:
 
----
+| kdb+/q concept | ZeptoDB concept |
+|---|---|
+| `aj[...]` | `ASOF JOIN` |
+| `xbar[...]` | `xbar(...)` |
+| `ema[...]` | `ema(...)` |
+| `mavg[...]` | `mavg(...)` |
+| `wj[...]` | `WINDOW JOIN` |
 
-## Migration
+For every port, test sort order, equality keys, timestamp direction, boundary inclusion, null handling, late data, duplicate timestamps, and window aggregation semantics. Re-run performance tests on the same hardware and data after correctness matches.
 
-ZeptoDB supports the same temporal operations as kdb+ with SQL syntax:
+## Primary sources
 
-| kdb+ | ZeptoDB |
-|------|---------|
-| `aj[\`sym\`time; trades; quotes]` | `trades ASOF JOIN quotes ON sym, ts` |
-| `xbar[0D00:01; time]` | `xbar(1m, ts)` |
-| `ema[20; price]` | `ema(price, 20)` |
-| `mavg[50; price]` | `mavg(price, 50)` |
-| `wj[w; \`sym\`time; trades; (quotes; (max;bid); (min;ask))]` | `trades WINDOW JOIN quotes ...` |
+- [ZeptoDB SQL reference](/api/sql_reference/)
+- [ZeptoDB Python reference](/api/python_reference/)
+- [KX q reference: as-of join](https://code.kx.com/q/ref/aj/)
+- [KX q reference: window join](https://code.kx.com/q/ref/wj/)
+- [KX q reference: xbar](https://code.kx.com/q/ref/xbar/)
+- [KX q reference: ema](https://code.kx.com/q/ref/ema/)
+- [KX q reference: avg and mavg](https://code.kx.com/q/ref/avg/)
 
 Get started with the [Quick Start Guide](/getting-started/quick_start/).

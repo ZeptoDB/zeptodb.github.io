@@ -3,7 +3,7 @@ title: "Agent Memory vs Vector Databases"
 template: splash
 prev: false
 next: false
-description: "Compare ZeptoDB Agent Memory with standalone vector databases: semantic recall alone vs time-series evidence, prompt cache, context assembly, and replayable AgentOps telemetry."
+description: "Compare vector recall with ZeptoDB time-series evidence, prompt cache, context assembly, and AgentOps replay."
 ---
 
 ## Overview
