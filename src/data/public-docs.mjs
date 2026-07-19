@@ -56,14 +56,21 @@ export const internalDocSources = new Set([
   'research/aiops_time_series_memory_research_data.md',
   'research/aiops_timeseries_industry_scan_2026.md',
   'research/physical_ai_edge_fleet_production_readiness_plan.md',
-  // Experiment 031's spec still says Pending while its raw result records a
-  // fail-closed stop. Keep both private until the source pair is reconciled.
+  // Experiments 031-035 are complete research evidence, but they have not
+  // passed the public claim, raw-artifact-link, and editorial route review.
+  // Keep the complete evidence chain private until that review is explicit.
   'research/physical_ai_vla_risk_router_experiment_031.md',
   'research/results/physical_ai_vla_risk_router_031.md',
-  // Experiment 032's spec still says Ready to run/Pending while a result now
-  // exists. Keep the pair private until source status and claims are reviewed.
   'research/physical_ai_vla_calibration_failure_attribution_experiment_032.md',
   'research/results/physical_ai_vla_calibration_failure_attribution_032.md',
+  'research/physical_ai_vla_veto_separability_experiment_033.md',
+  'research/results/physical_ai_vla_veto_separability_033.md',
+  'research/results/physical_ai_vla_veto_separability_033_attempt1_invalidated.md',
+  'research/physical_ai_vla_task_mapping_correction_experiment_034.md',
+  'research/results/physical_ai_vla_veto_separability_034.md',
+  'research/results/physical_ai_vla_failure_root_cause_synthesis_032_034.md',
+  'research/physical_ai_vla_trajectory_window_preflight_experiment_035.md',
+  'research/results/physical_ai_vla_trajectory_window_preflight_035.md',
   'research/time_series_agent_memory_edge.md',
 ]);
 
