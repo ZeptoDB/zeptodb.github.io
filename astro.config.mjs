@@ -1,5 +1,6 @@
 // @ts-check
 import { defineConfig } from 'astro/config';
+import mdx from '@astrojs/mdx';
 import starlight from '@astrojs/starlight';
 import sitemap from '@astrojs/sitemap';
 import { existsSync } from 'node:fs';
@@ -107,5 +108,9 @@ export default defineConfig({
         },
       ],
     }),
+    // Starlight adds MDX automatically, but an explicit integration keeps GFM
+    // tables enabled for manual .mdx pages on Astro 6. It must follow Starlight
+    // so Expressive Code runs before the MDX compiler.
+    mdx({ gfm: true, optimize: true }),
   ],
 });
