@@ -251,6 +251,10 @@ async function main() {
       addIssue(errors, rel, 'experiment specification is public under /research; add a reviewed canonical mapping in experiment-routes.mjs');
     }
 
+    if (/<p>\s*\|[^\n]*\|\r?\n\s*\|(?:\s*:?-{3,}:?\s*\|){2,}/i.test(html)) {
+      addIssue(errors, rel, 'Markdown table syntax was rendered as paragraph text');
+    }
+
     const htmlTag = html.match(/<html\b[^>]*>/i)?.[0];
     if (!htmlTag || !getAttribute(htmlTag, 'lang')) addIssue(errors, rel, 'missing <html lang>');
 
